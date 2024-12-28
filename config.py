@@ -21,18 +21,19 @@ SORT = {
     "desc": "priceDesc",
     "asc": "priceAsc",
     "sales": "salesDesc",
-    "latest": "latest"
+    "latest": "latest",
 }
 
 
 class Settings(BaseSettings):
     """"""
 
-    bot_token: SecretStr = os.getenv('BOT_TOKEN', None)
-    api_key: SecretStr = os.getenv('API_KEY', None)
+    bot_token: SecretStr = os.getenv("BOT_TOKEN", None)
+    api_key: SecretStr = os.getenv("API_KEY", None)
 
-    host: StrictStr = os.getenv('HOST', None)
-    url: StrictStr = os.getenv('URL', None)
+    host: StrictStr = os.getenv("HOST", None)
+    url: StrictStr = os.getenv("URL", None)
     range: int = 5
+
 
 settings = Settings()
