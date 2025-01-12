@@ -9,6 +9,11 @@ class Form(StatesGroup):
     sort = State()
 
 
+class CategoryForm(StatesGroup):
+    """Группа состояний."""
+
+    name = State()
+
 # class UserState(StatesGroup):
 #     """Группа состояний."""
 #
