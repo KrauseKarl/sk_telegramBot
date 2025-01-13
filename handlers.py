@@ -1,4 +1,5 @@
 from aiogram import Router, types, F
+from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart, or_f
 from aiogram.exceptions import AiogramError
 from aiogram.fsm.context import FSMContext
@@ -6,8 +7,8 @@ from aiogram.types import Message, CallbackQuery
 
 from config import SORT, settings
 from statments import Form, CategoryForm
-from utils import card_info, category_info, request_handler
-from keyboards import sort_keyboard
+from utils import card_info, category_info, request_handler, request_detail, detail_info, detail_img
+from keyboards import sort_keyboard, item_kb
 
 router = Router()
 
@@ -26,7 +27,7 @@ async def request_item_name(message: Message, state: FSMContext) -> None:
 
 
 @router.message(Form.product)
-async def request_sorting(message: Message, state: FSMContext) -> None:
+async def item_search_sort(message: Message, state: FSMContext) -> None:
     await state.update_data(product=message.text)
     await state.set_state(Form.sort)
     await message.answer(
@@ -41,6 +42,8 @@ async def request_sorting(message: Message, state: FSMContext) -> None:
     # await message.answer(
     #     "💰 по продажам [salesDesc]"
     # )
+
+
 # def get_inline_kb():
 #     inline_kb_list = [
 #         [InlineKeyboardButton(text="Генерировать пользователя", callback_data='get_person')],
@@ -50,7 +53,7 @@ async def request_sorting(message: Message, state: FSMContext) -> None:
 
 
 @router.callback_query(Form.sort, F.data.in_({'default', 'priceDesc', 'priceAsc', 'salesDesc'}))
-async def send_random_person(call: CallbackQuery, state: FSMContext) -> None:
+async def item_search_qnt(call: CallbackQuery, state: FSMContext) -> None:
     print('+', call.data)
     await state.update_data(sort=call.data)
     await state.set_state(Form.qnt)
@@ -70,21 +73,20 @@ async def send_random_person(call: CallbackQuery, state: FSMContext) -> None:
 #         return await callback.answer("default")
 
 
-@router.message(Form.sort, F.text)
-async def request_pagination(message: Message, state: FSMContext) -> None:
-    print(message.text)
-    await state.update_data(sort=message.text)
-    await state.set_state(Form.qnt)
-    await message.answer(
-        "сколько единиц товара вывести"
-    )
+# @router.message(Form.sort, F.text)
+# async def item_search_qnt(message: Message, state: FSMContext) -> None:
+#     print(message.text)
+#     await state.update_data(sort=message.text)
+#     await state.set_state(Form.qnt)
+#     await message.answer(
+#         "сколько единиц товара вывести"
+#     )
 
 
 @router.message(Form.qnt)
-async def item_search(message: Message, state: FSMContext) -> None:
+async def item_search_result(message: Message, state: FSMContext) -> None:
     await state.update_data(qnt=message.text)
     data = await state.get_data()
-    print(data)
     try:
         q = data['product']
         sort = data['sort']
@@ -100,10 +102,24 @@ async def item_search(message: Message, state: FSMContext) -> None:
         currency = result["result"]["settings"]["currency"]
         for i in item_list:
             msg = card_info(i, currency)
-            await message.answer(msg)
+            i_kb = await item_kb(i["item"]['itemId'])
+            await message.answer(msg, reply_markup=i_kb)
         await state.clear()
     except AiogramError as err:
         await message.answer('⚠️ Я тебя не понимаю, напиши.')
+
+
+@router.callback_query(F.data.startswith('item'))
+async def item_detail(call: CallbackQuery, state: FSMContext) -> None:
+    print('+', call.data)
+    item_id = str(call.data).split('_')[1]
+    response = await request_detail(item_id)
+    msg = detail_info(response)
+    await call.message.answer(msg)
+    images = detail_img(response)
+    for img in images:
+
+        await call.message.answer(img)
 
 
 @router.message(Command("category"))
