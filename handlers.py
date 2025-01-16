@@ -7,7 +7,16 @@ from aiogram.types import Message, CallbackQuery
 
 from config import SORT, settings
 from statments import Form, CategoryForm
-from utils import card_info, category_info, request_handler, request_detail, detail_info, detail_img
+from utils import (
+    card_info,
+    category_info,
+    request_handler,
+    request_detail,
+    detail_info,
+    detail_img,
+    request_detail_2,
+    detail_info_2, detail_color_img
+)
 from keyboards import sort_keyboard, item_kb
 
 router = Router()
@@ -98,6 +107,11 @@ async def item_search_result(message: Message, state: FSMContext) -> None:
             sort=sort,
             current_url="item_search_2"
         )
+        try:
+            print(result['message'])
+            print("❌ лимит бесплатных API превышен")
+        except KeyError:
+            pass
         item_list = result["result"]["resultList"][:ranges]
         currency = result["result"]["settings"]["currency"]
         for i in item_list:
@@ -113,13 +127,35 @@ async def item_search_result(message: Message, state: FSMContext) -> None:
 async def item_detail(call: CallbackQuery, state: FSMContext) -> None:
     print('+', call.data)
     item_id = str(call.data).split('_')[1]
-    response = await request_detail(item_id)
-    msg = detail_info(response)
-    await call.message.answer(msg)
-    images = detail_img(response)
-    for img in images:
+    response = await request_detail_2(item_id)
+    try:
+        msg = detail_info_2(response)
+        await call.message.answer(msg)
 
-        await call.message.answer(img)
+        img_color = detail_color_img(response)
+        print(img_color)
+        print(len(img_color))
+
+        def separate_img_by_ten(obj: list, num: int = 9):
+            for i in range(0, len(obj), num):
+                yield obj[i:i + num]
+        image_color_list = list(separate_img_by_ten(img_color, 9))
+        await call.message.answer("Количество цветов {0}".format(len(img_color)))
+        for img in image_color_list:
+            color_images = [types.InputMediaPhoto(media=i) for i in img]
+            await call.message.answer_media_group(color_images)
+
+        images = detail_img(response)
+        image_color_list = list(separate_img_by_ten(images, 9))
+        await call.message.answer("Все иллюстрации")
+        for img in image_color_list:
+            color_images = [types.InputMediaPhoto(media=i) for i in img]
+            await call.message.answer_media_group(color_images)
+    except AiogramError as err:
+        err = response['result']['status']['data']
+        msg = response['result']['status']['msg']['data-error']
+        await call.message.answer(f'⚠️ Произошла ошибка{err}.')
+        await call.message.answer(msg)
 
 
 @router.message(Command("category"))

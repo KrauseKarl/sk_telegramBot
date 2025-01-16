@@ -41,13 +41,30 @@ async def request_detail(item_id: str):
     return response.json()
 
 
+async def request_detail_2(item_id: str):
+    url = "https://aliexpress-datahub.p.rapidapi.com/item_detail_6"
+    querystring = {
+        "itemId": item_id,
+        "locale": "ru_RU",
+        "currency": "RUB",
+        "region": "RU",
+    }
+    headers = {
+        "x-rapidapi-key": settings.api_key.get_secret_value(),
+        "x-rapidapi-host": settings.host,
+    }
+    response = requests.get(url, headers=headers, params=querystring)
+
+    return response.json()
+
+
 def card_info(i, currency):
     title = i["item"]["title"]
     sales = i["item"]["sales"]
     price = i["item"]["sku"]["def"]["promotionPrice"]
     image_url = ":".join(["https", i["item"]["itemUrl"]])
     image = ":".join(["https", i["item"]["image"]])
-    msg = "{0}название: {1}\n продано: {2}\n цена: {3} {4}\n{5}".format(
+    msg = "{0}\n название: {1}\n продано: {2}\n цена: {3} {4}\n{5}".format(
         image_url, title, sales, price, currency, image
     )
     return msg
@@ -61,21 +78,87 @@ def detail_info(i):
             prop["name"], prop["value"]
         )
     return msg
-# import http.client
-#
-# conn = http.client.HTTPSConnection("aliexpress-datahub.p.rapidapi.com")
-#
-# headers = {
-#     'x-rapidapi-key': "930bada217msh925d2aca021479ep153296jsnc18f0d99e1a9",
-#     'x-rapidapi-host': "aliexpress-datahub.p.rapidapi.com"
-# }
-#
-# conn.request("GET", "/item_detail_2?itemId=3256804591426248", headers=headers)
-#
-# res = conn.getresponse()
-# data = res.read()
-#
-# print(data.decode("utf-8"))
+
+
+def detail_info_2(i):
+    try:
+        print(i["result"]["item"]["title"])
+    except Exception as err:
+        print(i)
+        print("❌ERROR: ", err)
+    msg = ""
+    title = i["result"]["item"]["title"]
+    item_url = ":".join(["https", i["result"]["item"]["itemUrl"]])
+    properties_list = i["result"]["item"]["properties"]["list"]
+    promotion_price = i["result"]["item"]["sku"]["base"][0]["promotionPrice"]
+    size = i["result"]["item"]["sku"]["props"][0]["values"]
+    reviews = i["result"]["reviews"]["count"]
+    average_star = i["result"]["reviews"]["averageStar"]
+    shipping_out_days = i["result"]["delivery"]["shippingOutDays"]
+    weight = i["result"]["delivery"]["packageDetail"]["weight"]
+    length = i["result"]["delivery"]["packageDetail"]["height"]
+    width = i["result"]["delivery"]["packageDetail"]["width"]
+    height = i["result"]["delivery"]["packageDetail"]["height"]
+    store_title = i["result"]["seller"]["storeTitle"]
+    store_url = ":".join(["https", i["result"]["seller"]["storeUrl"]])
+
+    msg = msg + "{0}\n\n{1}\n".format(item_url, title)
+    msg = msg + "\n\t💰 Цена:\n\t".upper()
+    msg = msg + "\t{0}\n".format(promotion_price)
+    try:
+        msg = msg + "\n\tРазмеры:\n\t".upper()
+        for s in size:
+            msg = msg + "\t- {0}\n".format(
+                s["name"]
+            )
+    except Exception as err:
+        print("❌ERROR: ", err)
+    try:
+        msg = msg + "\n\t характеристики:\n".upper()
+        for prop in properties_list:
+            msg = msg + "\t- {0}: {1}\n".format(
+                prop["name"], prop["value"]
+            )
+    except Exception as err:
+        print("❌ERROR: ", err)
+
+    try:
+        msg = msg + "\n📈 Продажи: {0}\n🔝 Рейтинг: {1}\n".format(
+            reviews,
+            average_star,
+        )
+    except Exception as err:
+        print("❌ERROR: ", err)
+    try:
+        msg = msg + "\n🚚 Доставка: ".upper()
+        msg = msg + "{0} дн.\n\t- вес:  {1} кг\n".format(
+            shipping_out_days,
+            weight
+        )
+        msg = msg + "\t- длина: {0} см\n\t- ширина: {1} см\n\t- высота: {2}см \n".format(
+            length,
+            width,
+            height
+        )
+        msg = msg + "\n🏪 Продавец:\n".upper()
+        msg = msg + "\t{0}\n\t{1}\n".format(
+            store_title,
+            store_url
+        )
+    except Exception as err:
+        print("❌ERROR: ", err)
+    return msg
+
+
+def detail_color_img(i):
+    images = []
+    image_list = i["result"]["item"]["sku"]["props"][1]["values"]
+    for i in image_list:
+        print(i)
+        img = ":".join(["https", i['image']])
+        images.append(img)
+    return images
+
 
 def detail_img(i):
     images = []
