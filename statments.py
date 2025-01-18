@@ -14,6 +14,7 @@ class CategoryForm(StatesGroup):
 
     name = State()
 
+
 # class UserState(StatesGroup):
 #     """Группа состояний."""
 #

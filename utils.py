@@ -1,7 +1,7 @@
 import re
 
 import requests
-from aiogram.utils.formatting import as_list, as_marked_section, HashTag, Bold
+from aiogram.utils.formatting import Bold, HashTag, as_list, as_marked_section
 
 from config import settings
 
@@ -71,12 +71,10 @@ def card_info(i, currency):
 
 
 def detail_info(i):
-    properties = i["result"]["item"]["properties"]['list']
+    properties = i["result"]["item"]["properties"]["list"]
     msg = "характеристики:"
     for prop in properties:
-        msg = msg + "- {0}: {1}\n".format(
-            prop["name"], prop["value"]
-        )
+        msg = msg + "- {0}: {1}\n".format(prop["name"], prop["value"])
     return msg
 
 
@@ -108,17 +106,13 @@ def detail_info_2(i):
     try:
         msg = msg + "\n\tРазмеры:\n\t".upper()
         for s in size:
-            msg = msg + "\t- {0}\n".format(
-                s["name"]
-            )
+            msg = msg + "\t- {0}\n".format(s["name"])
     except Exception as err:
         print("❌ERROR: ", err)
     try:
         msg = msg + "\n\t характеристики:\n".upper()
         for prop in properties_list:
-            msg = msg + "\t- {0}: {1}\n".format(
-                prop["name"], prop["value"]
-            )
+            msg = msg + "\t- {0}: {1}\n".format(prop["name"], prop["value"])
     except Exception as err:
         print("❌ERROR: ", err)
 
@@ -132,19 +126,16 @@ def detail_info_2(i):
     try:
         msg = msg + "\n🚚 Доставка: ".upper()
         msg = msg + "{0} дн.\n\t- вес:  {1} кг\n".format(
-            shipping_out_days,
-            weight
+            shipping_out_days, weight
         )
-        msg = msg + "\t- длина: {0} см\n\t- ширина: {1} см\n\t- высота: {2}см \n".format(
-            length,
-            width,
-            height
+        msg = (
+            msg
+            + "\t- длина: {0} см\n\t- ширина: {1} см\n\t- высота: {2}см \n".format(
+                length, width, height
+            )
         )
         msg = msg + "\n🏪 Продавец:\n".upper()
-        msg = msg + "\t{0}\n\t{1}\n".format(
-            store_title,
-            store_url
-        )
+        msg = msg + "\t{0}\n\t{1}\n".format(store_title, store_url)
     except Exception as err:
         print("❌ERROR: ", err)
     return msg
@@ -155,7 +146,7 @@ def detail_color_img(i):
     image_list = i["result"]["item"]["sku"]["props"][1]["values"]
     for i in image_list:
         print(i)
-        img = ":".join(["https", i['image']])
+        img = ":".join(["https", i["image"]])
         images.append(img)
     return images
 
@@ -171,11 +162,11 @@ def detail_img(i):
 
 def category_info(i: dict, q: str = None):
     category_name = i["name"]
-    print('=' * 100)
-    print('', category_name)
+    print("=" * 100)
+    print("", category_name)
     msg = None
     item_list = []
-    for name in category_name.split(' '):
+    for name in category_name.split(" "):
         # print('-', i["list"])
         if name.startswith(q):
             # print('', category_name)
@@ -184,9 +175,9 @@ def category_info(i: dict, q: str = None):
             # print('', sub_category_name)
             for s in sub_category_name:
                 # print('-', sub_category_name)
-                print('\t\t\t', s["name"], s['id'])
+                print("\t\t\t", s["name"], s["id"])
                 sub_name = s["name"]
-                sub_id = s['id']
+                sub_id = s["id"]
                 # print('---', sub_name)
                 result = f"{sub_name} [{sub_id}]({category_name})"
                 item_list.append(result)
@@ -219,5 +210,10 @@ def category_info(i: dict, q: str = None):
         )
     else:
         content = None
-    print('=' * 100)
+    print("=" * 100)
     return content
+
+
+def separate_img_by_ten(obj: list, num: int = 9):
+    for i in range(0, len(obj), num):
+        yield obj[i : i + num]

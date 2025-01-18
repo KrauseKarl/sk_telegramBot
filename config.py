@@ -35,5 +35,11 @@ class Settings(BaseSettings):
     url: StrictStr = os.getenv("URL", None)
     range: int = 5
 
+    database: StrictStr = os.getenv("DB_NAME")
+    db_user: StrictStr = os.getenv("DB_USER")
+    db_host: StrictStr = os.getenv("DB_HOST")
+    db_port: StrictStr = os.getenv("DB_PORT")
+    db_password: StrictStr = os.getenv("DB_PASS")
+
 
 settings = Settings()
