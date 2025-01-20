@@ -3,25 +3,79 @@ from aiogram.exceptions import AiogramError
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from peewee import IntegrityError
 
 from keyboards import item_kb, sort_keyboard
 from statments import CategoryForm, Form
 from utils import *
+from database.db import *
 
 router = Router()
 
 SORT_SET = {"default", "priceDesc", "priceAsc", "salesDesc"}
 
 
+def get_or_create_user(data) -> tuple:
+    user, created = UserModel.get_or_create(**data)
+    return user, created
+
+
 @router.message(CommandStart())
 async def start_command(message: types.Message) -> None:
-    await message.answer("Привет! Я виртуальный помощник 😀")
+    user, created = UserModel.get_or_create(
+        user_id=message.from_user.id,
+        user_name=message.from_user.username,
+        first_name=message.from_user.first_name,
+        last_name=message.from_user.last_name
+    )
+    ItemListModel.create(user=message.from_user.id, command='start', ).save()
+    if created:
+        await message.answer('🟨 🤚 Добро пожаловать, {0}!'.format(
+            message.from_user.first_name,
+        ))
+        return
+    await message.answer('🟩 🤝 Рады снова видеть вас, {0}!'.format(
+        message.from_user.first_name,
+    ))
+
+    # try:
+    #     UserModel.create(
+    #         user_id=user_id,
+    #         user_name=user_name,
+    #         first_name=first_name,
+    #         last_name=last_name,
+    #     ).save()
+    #     await message.answer('Добро пожаловать, {0}!'.format(
+    #         message.from_user.first_name,
+    #     ))
+    # except IntegrityError:
+    #     await message.answer('Рады снова видеть вас, {0}!'.format(
+    #         message.from_user.first_name,
+    #     ))
+    # ItemListModel.create(user=user_id, command='start', ).save()
+    # await message.answer("Привет! Я виртуальный помощник 😀")
 
 
 @router.message(Command("search"))
 async def search_name(message: Message, state: FSMContext) -> None:
     await state.set_state(Form.product)
     await message.answer("🛍️ Введите название товара.")
+
+
+@router.message(Command("history"))
+async def history(message: Message) -> None:
+    history_list = ItemListModel.select().where(
+        ItemListModel.user == message.from_user.id
+    ).order_by(ItemListModel.date)
+    for i in history_list:
+        date = i.date.strftime('%d %b %Y')
+        time = i.date.strftime('%H:%M:%S')
+        await message.answer(
+            "📅 дата:\t{1}\n🕐 время:\t{2}\nкоманда:\t{0}".format(
+                i.command,
+                date,
+                time
+            ))
 
 
 @router.message(Form.product)
