@@ -14,8 +14,9 @@ def create_tables():
     db.set_allow_sync(True)
     # db.create_tables([MODELS], safe=True)
     UserModel.create_table(True)
-    ItemDetailModel.create_table(True)
-    ItemListModel.create_table(True)
+    # ItemDetailModel.create_table(True)
+    History.create_table(True)
+    # ItemListModel.create_table(True)
     db.close()
     # # with db.connect() as database:
     # db.set_allow_sync(True)
@@ -29,7 +30,8 @@ def create_tables():
 def drop_table():
     with objects.allow_sync():
         UserModel.drop_table(True)
-        ItemDetailModel.drop_table(True)
+        # ItemDetailModel.drop_table(True)
+        History.drop_table(True)
         ItemListModel.drop_table(True)
 
 

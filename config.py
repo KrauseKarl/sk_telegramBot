@@ -23,6 +23,12 @@ SORT = {
     "sales": "salesDesc",
     "latest": "latest",
 }
+SORT_SET = {
+    "default",
+    "priceDesc",
+    "priceAsc",
+    "salesDesc"
+}
 
 
 class Settings(BaseSettings):

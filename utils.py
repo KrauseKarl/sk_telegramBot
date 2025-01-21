@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 import requests
 from aiogram.utils.formatting import Bold, HashTag, as_list, as_marked_section
@@ -56,6 +57,13 @@ async def request_detail_2(item_id: str):
     response = requests.get(url, headers=headers, params=querystring)
 
     return response.json()
+
+
+def get_price_range(_list) -> Optional[str]:
+    if _list is not None:
+        sorted_prices = sorted(set(_list), reverse=True)
+        return "{} - {}".format(sorted_prices[0], sorted_prices[-1])
+    return None
 
 
 def card_info(i, currency):
@@ -129,10 +137,10 @@ def detail_info_2(i):
             shipping_out_days, weight
         )
         msg = (
-            msg
-            + "\t- длина: {0} см\n\t- ширина: {1} см\n\t- высота: {2}см \n".format(
-                length, width, height
-            )
+                msg
+                + "\t- длина: {0} см\n\t- ширина: {1} см\n\t- высота: {2}см \n".format(
+            length, width, height
+        )
         )
         msg = msg + "\n🏪 Продавец:\n".upper()
         msg = msg + "\t{0}\n\t{1}\n".format(store_title, store_url)
@@ -158,6 +166,34 @@ def detail_img(i):
         img = ":".join(["https", img])
         images.append(img)
     return images
+
+
+async def history_info(i):
+    msg = ''
+    date = i.date.strftime('%d %b %Y')
+    time = i.date.strftime('%H:%M:%S')
+    msg = msg + "⚙️ команда:\t{0}\n\n".format(i.command)
+    msg = msg + "📅 дата:\t{0}\n".format(date)
+    msg = msg + "🕐 время:\t{0}\n".format(time)
+
+    if i.search_name:
+        msg = msg + "🔎 поиск:\t{0}\n".format(i.search_name)
+    if i.result_qnt:
+        msg = msg + "🔟 result_qnt:\t{0}\n".format(i.result_qnt)
+
+    if i.price_range:
+        msg = msg + "⚪️ price_range:\t{0}\n".format(i.price_range)
+    if i.title:
+        msg = msg + "✅ title:\t{0}\n".format(i.title)
+    if i.price:
+        msg = msg + "🟠 price:\t{0}\n".format(i.price)
+    if i.reviews:
+        msg = msg + "👀 reviews:\t{0}\n".format(i.reviews)
+    if i.stars:
+        msg = msg + "⭐️ stars:\t{0}\n".format(i.stars)
+    if i.url:
+        msg = msg + "{0}\n".format(i.url)
+    return msg
 
 
 def category_info(i: dict, q: str = None):
@@ -216,4 +252,4 @@ def category_info(i: dict, q: str = None):
 
 def separate_img_by_ten(obj: list, num: int = 9):
     for i in range(0, len(obj), num):
-        yield obj[i : i + num]
+        yield obj[i: i + num]

@@ -15,7 +15,6 @@ db = peewee_async.PooledPostgresqlDatabase(
 
 
 class BaseModel(peewee.Model):
-
     class Meta:
         database = db
 
@@ -34,34 +33,55 @@ class UserModel(BaseModel):
         db_table = "user"
 
 
-class ItemListModel(BaseModel):
-    # id = peewee.PrimaryKeyField(primary_key=True, null=False)
+class History(BaseModel):
     uid = peewee.PrimaryKeyField()
     date = peewee.DateTimeField(default=datetime.now())
     command = peewee.CharField()
+
     search_name = peewee.CharField(null=True)
     result_qnt = peewee.IntegerField(null=True)
     price_range = peewee.TextField(null=True)
-    user = peewee.ForeignKeyField(UserModel, backref='item_list', to_field="user_id", related_name="items")
+    title = peewee.CharField(null=True, max_length=200)
 
-    class Meta:
-        db_table = "item_list"
-
-
-class ItemDetailModel(BaseModel):
-    uid = peewee.PrimaryKeyField()
-    # id = peewee.PrimaryKeyField(primary_key=True,  null=False)
-    date = peewee.DateTimeField(default=datetime.now())
-    command = peewee.CharField()
-    title = peewee.CharField(max_length=200, null=True)
     price = peewee.FloatField(null=True)
     reviews = peewee.IntegerField(null=True)
     stars = peewee.FloatField(null=True)
-    image = peewee.CharField(null=True)
-    user = peewee.ForeignKeyField(UserModel, backref='item_detail', to_field="user_id", related_name="item")
+    url = peewee.CharField(null=True)
+
+    user = peewee.ForeignKeyField(UserModel, backref='history', to_field="user_id", related_name="history")
 
     class Meta:
-        db_table = "item_detail"
+        db_table = "history"
+
+
+# class ItemListModel(History):
+#     # id = peewee.PrimaryKeyField(primary_key=True, null=False)
+#     uid = peewee.PrimaryKeyField()
+#     # date = peewee.DateTimeField(default=datetime.now())
+#     # command = peewee.CharField()
+#     search_name = peewee.CharField(null=True)
+#     result_qnt = peewee.IntegerField(null=True)
+#     price_range = peewee.TextField(null=True)
+#     # user = peewee.ForeignKeyField(UserModel, backref='item_list', to_field="user_id", related_name="items")
+#
+#     class Meta:
+#         db_table = "item_list"
+
+
+# class ItemDetailModel(BaseModel):
+#     uid = peewee.PrimaryKeyField()
+#     # id = peewee.PrimaryKeyField(primary_key=True,  null=False)
+#     date = peewee.DateTimeField(default=datetime.now())
+#     command = peewee.CharField()
+#     title = peewee.CharField(max_length=200, null=True)
+#     price = peewee.FloatField(null=True)
+#     reviews = peewee.IntegerField(null=True)
+#     stars = peewee.FloatField(null=True)
+#     image = peewee.CharField(null=True)
+#     user = peewee.ForeignKeyField(UserModel, backref='item_detail', to_field="user_id", related_name="item")
+#
+#     class Meta:
+#         db_table = "item_detail"
 
 #     command_order = AutoField()  # Автоматический ID. Порядковый номер команды.
 #     search_time = DateTimeField()  # Время запроса

@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, types
 
 from commands import private
 from config import settings
-from database.models import db, UserModel, ItemListModel, ItemDetailModel
+from database.models import *
 from handlers import router
 from database.db import create_tables, drop_table
 
