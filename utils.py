@@ -151,21 +151,28 @@ def detail_info_2(i):
 
 def detail_color_img(i):
     images = []
-    image_list = i["result"]["item"]["sku"]["props"][1]["values"]
-    for i in image_list:
-        print(i)
-        img = ":".join(["https", i["image"]])
-        images.append(img)
-    return images
+    print(i["result"]["item"]["sku"]["props"])
+    try:
+        image_list = i["result"]["item"]["sku"]["props"][1]["values"]
+        for i in image_list:
+            print(i)
+            img = ":".join(["https", i["image"]])
+            images.append(img)
+        return images
+    except (IndexError, KeyError):
+        return None
 
 
 def detail_img(i):
     images = []
-    image_list = i["result"]["item"]["description"]["images"]
-    for img in image_list:
-        img = ":".join(["https", img])
-        images.append(img)
-    return images
+    try:
+        image_list = i["result"]["item"]["description"]["images"]
+        for img in image_list:
+            img = ":".join(["https", img])
+            images.append(img)
+        return images
+    except (IndexError, KeyError):
+        return None
 
 
 async def history_info(i):

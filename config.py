@@ -29,6 +29,7 @@ SORT_SET = {
     "priceAsc",
     "salesDesc"
 }
+BTNS = {"2", "3", "5", "10"}
 
 
 class Settings(BaseSettings):
