@@ -156,7 +156,6 @@ def detail_color_img(i):
     try:
         image_list = i["result"]["item"]["sku"]["props"][1]["values"]
         for i in image_list:
-            print(i)
             img = ":".join(["https", i["image"]])
             images.append(img)
         return images
@@ -178,44 +177,25 @@ def detail_img(i):
 
 async def history_info(i):
     msg = ''
-    date = i.date.strftime('%d %b %Y')
-    time = i.date.strftime('%H:%M:%S')
     msg = msg + "⚙️ команда:\t{0}\n\n".format(i.command)
-    msg = msg + "📅 дата:\t{0}\n".format(date)
-    msg = msg + "🕐 время:\t{0}\n".format(time)
-
+    msg = msg + "📅 дата:\t{0}\n".format(i.date.strftime('%d %b %Y'))
+    msg = msg + "🕐 время:\t{0}\n".format(i.date.strftime('%H:%M:%S'))
     if i.search_name:
         msg = msg + "🔎 поиск:\t{0}\n".format(i.search_name)
-    else:
-        msg = msg + "\n"
     if i.result_qnt:
         msg = msg + "🔟 result_qnt:\t{0}\n".format(i.result_qnt)
-    else:
-        msg = msg + "\n"
     if i.price_range:
         msg = msg + "⚪️ price_range:\t{0}\n".format(i.price_range)
-    else:
-        msg = msg + "\n"
     if i.title:
         msg = msg + "✅ title:\t{0}\n".format(i.title)
-    else:
-        msg = msg + "\n"
     if i.price:
         msg = msg + "🟠 price:\t{0}\n".format(i.price)
-    else:
-        msg = msg + "\n"
     if i.reviews:
         msg = msg + "👀 reviews:\t{0}\n".format(i.reviews)
-    else:
-        msg = msg + "\n"
     if i.stars:
         msg = msg + "⭐️ stars:\t{0}\n".format(i.stars)
-    else:
-        msg = msg + "\n"
     if i.url:
-        msg = msg + "{0}\n".format(i.url)
-    else:
-        msg = msg + "\n"
+        msg = msg + "{0}\n".format(i.url.split("//")[1])
     return msg
 
 

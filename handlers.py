@@ -2,8 +2,9 @@ from aiogram import F, Router, types
 from aiogram.exceptions import AiogramError
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message, InputFile, FSInputFile
+from aiogram.types import CallbackQuery, Message, InputFile, FSInputFile, InputMediaPhoto
 from peewee import IntegrityError
+from pydantic import ValidationError
 
 from keyboards import *
 from pagination import Paginator
@@ -48,6 +49,17 @@ async def menu(message: Message) -> None:
         await message.answer(str(err))
 
 
+@router.callback_query(F.data.startswith("menu"))
+async def menu_call(callback: CallbackQuery) -> None:
+    try:
+        media = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\menu.png")
+        photo = InputMediaPhoto(media=media)
+        await callback.message.edit_media(media=photo, reply_markup=main_keyboard)
+    except Exception as err:
+        await callback.message.answer('⚠️ Что-то пошло не так с командой /menu')
+        await callback.message.answer(str(err))
+
+
 # HISTORY #############################################################################################################
 # @router.callback_query(F.data.startswith("history"))
 # async def history(call: CallbackQuery) -> None:
@@ -59,55 +71,10 @@ async def menu(message: Message) -> None:
 #     for i in history_list:
 #         msg = await history_info(i)
 #         await call.message.answer(msg)
-
-@router.callback_query(F.data.startswith("page"))
-async def history_page(callback: Message | CallbackQuery) -> None:
-    print(callback.data)
-
-    history_list = History.select().where(
-        History.user == callback.from_user.id
-    ).order_by(History.date)
-    keyboard = InlineKeyboardBuilder()
-    if F.data.startswith("page"):
-
-        page = int(callback.data.split("_")[2])
-        if callback.data.startswith("page_next"):
-            callback_next = "page_next_{0}".format(page + 1)
-            callback_previous = "page_previous_{0}".format(page - 1)
-
-            print('- if NEXT  back = {1} | {2} | {0} = next'.format(
-                callback_next.split("_")[2],
-                callback_previous.split("_")[2],
-                page
-            )
-            )
-            keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
-            keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
-        elif callback.data.startswith("page_previous"):
-
-            callback_next = "page_next_{0}".format(page + 1)
-            callback_previous = "page_previous_{0}".format(page - 1)
-            print('- if PREV  back = {1} | {2} | {0} = next'.format(
-                callback_next.split("_")[2],
-                callback_previous.split("_")[2],
-                page
-            )
-            )
-            keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
-            keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
-        paginator = Paginator(history_list, page=int(page))
-        # print(page)
-        # print(f"{paginator = }")
-        history_item = paginator.get_page()[0]
-        # print(keyboard._markup)
-        msg = await history_info(history_item)
-        await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
-
-
 @router.callback_query(F.data.startswith("history"))
 async def history_(callback: Message | CallbackQuery) -> None:
     print(callback.data)
-    # photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
+    photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
     # await callback.message.answer_photo(photo=photo)
     history_list = History.select().where(
         History.user == callback.from_user.id
@@ -118,28 +85,49 @@ async def history_(callback: Message | CallbackQuery) -> None:
         call_back_data = "page_next_{0}".format(int(page) + 1)
         print(call_back_data)
         keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=call_back_data))
+        keyboard.add(InlineKeyboardButton(text='главное меню', callback_data="menu"))
         paginator = Paginator(history_list, page=int(page))
         print(f"{paginator = }")
         history_item = paginator.get_page()[0]
         msg = await history_info(history_item)
         print(f"{msg = }")
-        await callback.message.answer(msg, reply_markup=keyboard.as_markup())
-    # else:
-    #     print(callback.data.startswith("page"))
-    #     page = str(callback.data.startswith("page")).split("_")[2]
-    #     print(page)
-    #     if callback.data.startswith("page_next"):
-    #         keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data="page_next_{0}".format(int(page) + 1)))
-    #         keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data="page_previous_{0}".format(int(page) + 1)))
-    #     elif callback.data.startswith("page_previous"):
-    #         keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data="page_next_{0}".format(int(page) - 1)))
-    #         keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data="page_previous_{0}".format(int(page) - 1)))
-    #     paginator = Paginator(history_list, page=int(page))
-    #     print(f"{paginator = }")
-    #     history_item = paginator.get_page()[0]
-    #     msg = await history_info(history_item)
-    #     print(f"{msg = }")
-    #     await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
+        msg = msg + "{0} из {1}".format(page, paginator.pages)
+        photo = InputMediaPhoto(media=photo, caption=msg)
+        await callback.message.edit_media(media=photo, reply_markup=keyboard.adjust(1, 1).as_markup())
+
+
+@router.callback_query(F.data.startswith("page"))
+async def history_page(callback: Message | CallbackQuery) -> None:
+    history_list = History.select().where(History.user == callback.from_user.id).order_by(History.date)
+    keyboard = InlineKeyboardBuilder()
+    if F.data.startswith("page"):
+        page = int(callback.data.split("_")[2])
+        paginator = Paginator(history_list, page=int(page))
+        print(f"{paginator = }")
+        history_item = paginator.get_page()[0]
+        msg = await history_info(history_item)
+        msg = msg + "{0} из {1}".format(page, paginator.pages)
+
+        if callback.data.startswith("page_next"):
+            callback_previous = "page_previous_{0}".format(page - 1)
+            keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
+            if page != paginator.pages:
+                callback_next = "page_next_{0}".format(page + 1)
+                keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
+        elif callback.data.startswith("page_previous"):
+            if page != 1:
+                callback_previous = "page_previous_{0}".format(page - 1)
+                keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
+            callback_next = "page_next_{0}".format(page + 1)
+            keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
+        keyboard.add(InlineKeyboardButton(text='главное меню', callback_data="menu"))
+        try:
+            photo = types.InputMediaPhoto(media=history_item.image, caption=msg)
+        except ValidationError:
+            media = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
+            photo = InputMediaPhoto(media=media, caption=msg)
+            #
+        await callback.message.edit_media(media=photo, reply_markup=keyboard.adjust(2, 1).as_markup())
 
 
 # ITEM LIST ############################################################################################################
@@ -162,13 +150,9 @@ async def search_sort(message: Message, state: FSMContext) -> None:
 async def search_qnt(call: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(sort=call.data)
     await state.set_state(Form.qnt)
-    photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\quantity.png")
-    await call.message.answer_photo(
-        photo=photo,
-        caption="сколько единиц товара вывести?",
-        reply_markup=await get_qnt_kb()
-    )
-    # await call.message.answer("сколько единиц товара вывести")
+    img = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\quantity.png")
+    photo = InputMediaPhoto(media=img, caption="сколько единиц товара вывести?")
+    await call.message.edit_media(media=photo, reply_markup=await get_qnt_kb())
 
 
 @router.callback_query(Form.qnt, F.data.in_(BTNS))
@@ -180,38 +164,38 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         sort = data["sort"]
         ranges = int(data["qnt"])
         await call.answer(f"⌛ searching {query}")
-        for _ in range(ranges):
-            await call.message.answer('🛍️ {0} товар'.format(_))
-        # result = await request_handler(
-        #     q=query,
-        #     sort=sort,
-        #     current_url="item_search_2"
-        # )
-        #
-        # try:
-        #     print(result["message"])
-        #     print("❌ лимит бесплатных API превышен")
-        # except KeyError:
-        #     pass
-        #
-        # item_list = result["result"]["resultList"][:ranges]
-        # currency = result["result"]["settings"]["currency"]
-        # price_range__list = []
-        # for i in item_list:
-        #     msg = card_info(i, currency)
-        #     item_id_kb = await item_kb(i["item"]["itemId"])
-        #     price = i["item"]["sku"]["def"]["promotionPrice"]
-        #     price_range__list.append(price)
-        #     await call.message.answer(msg, reply_markup=item_id_kb)
-        # price_range = get_price_range(price_range__list)
-        #
-        # History().create(
-        #     user=call.from_user.id,
-        #     command='search',
-        #     search_name=query,
-        #     result_qnt=int(ranges),
-        #     price_range=price_range
-        # ).save()
+        # for _ in range(ranges):
+        #     await call.message.answer('🛍️ {0} товар'.format(_))
+        result = await request_handler(
+            q=query,
+            sort=sort,
+            current_url="item_search_2"
+        )
+
+        try:
+            print(result["message"])
+            print("❌ лимит бесплатных API превышен")
+        except KeyError:
+            pass
+
+        item_list = result["result"]["resultList"][:ranges]
+        currency = result["result"]["settings"]["currency"]
+        price_range__list = []
+        for i in item_list:
+            msg = card_info(i, currency)
+            item_id_kb = await item_kb(i["item"]["itemId"])
+            price = i["item"]["sku"]["def"]["promotionPrice"]
+            price_range__list.append(price)
+            await call.message.answer(msg, reply_markup=item_id_kb)
+        price_range = get_price_range(price_range__list)
+
+        History().create(
+            user=call.from_user.id,
+            command='search',
+            search_name=query,
+            result_qnt=int(ranges),
+            price_range=price_range
+        ).save()
         await state.clear()
     except AiogramError as err:
         await call.message.answer("⚠️ Ошибка\n{0}".format(str(err)))
@@ -228,6 +212,12 @@ async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
     reviews = response["result"]["reviews"]["count"]
     star = response["result"]["reviews"]["averageStar"]
     item_url = ":".join(["https", response["result"]["item"]["itemUrl"]])
+    try:
+        img = response["result"]["item"]["sku"]["props"][1]["values"][0]
+        print(img)
+        hero_img = ":".join(["https", img["image"]])
+    except:
+        hero_img = None
     History().create(
         user=call.from_user.id,
         command='item',
@@ -235,7 +225,8 @@ async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
         price=price,
         reviews=reviews,
         stars=star,
-        url=item_url
+        url=item_url,
+        image=hero_img
     ).save()
     try:
         msg = detail_info_2(response)

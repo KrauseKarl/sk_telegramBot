@@ -2,6 +2,7 @@ from datetime import datetime
 
 import peewee
 import peewee_async
+from playhouse.migrate import PostgresqlMigrator, migrate
 
 from config import settings
 
@@ -12,6 +13,7 @@ db = peewee_async.PooledPostgresqlDatabase(
     port=settings.db_port,
     password=settings.db_password
 )
+migrator = PostgresqlMigrator(db)
 
 
 class BaseModel(peewee.Model):
@@ -47,12 +49,23 @@ class History(BaseModel):
     reviews = peewee.IntegerField(null=True)
     stars = peewee.FloatField(null=True)
     url = peewee.CharField(null=True)
-
-    user = peewee.ForeignKeyField(UserModel, backref='history', to_field="user_id", related_name="history")
+    image = peewee.CharField(null=True)
+    user = peewee.ForeignKeyField(
+        UserModel,
+        backref='history',
+        to_field="user_id",
+        related_name="history"
+    )
 
     class Meta:
         db_table = "history"
 
+
+try:
+    image = peewee.CharField(null=True)
+    migrate(migrator.add_column('history', 'image', image), )
+except peewee.ProgrammingError:
+    pass
 
 # class ItemListModel(History):
 #     # id = peewee.PrimaryKeyField(primary_key=True, null=False)
