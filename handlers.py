@@ -6,6 +6,7 @@ from aiogram.types import CallbackQuery, Message, InputFile, FSInputFile
 from peewee import IntegrityError
 
 from keyboards import *
+from pagination import Paginator
 from statments import *
 from utils import *
 from database.db import *
@@ -48,28 +49,97 @@ async def menu(message: Message) -> None:
 
 
 # HISTORY #############################################################################################################
+# @router.callback_query(F.data.startswith("history"))
+# async def history(call: CallbackQuery) -> None:
+#     photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
+#     await call.message.answer_photo(photo=photo)
+#     history_list = History.select().where(
+#         History.user == call.from_user.id
+#     ).order_by(History.date)
+#     for i in history_list:
+#         msg = await history_info(i)
+#         await call.message.answer(msg)
+
+@router.callback_query(F.data.startswith("page"))
+async def history_page(callback: Message | CallbackQuery) -> None:
+    print(callback.data)
+
+    history_list = History.select().where(
+        History.user == callback.from_user.id
+    ).order_by(History.date)
+    keyboard = InlineKeyboardBuilder()
+    if F.data.startswith("page"):
+
+        page = int(callback.data.split("_")[2])
+        if callback.data.startswith("page_next"):
+            callback_next = "page_next_{0}".format(page + 1)
+            callback_previous = "page_previous_{0}".format(page - 1)
+
+            print('- if NEXT  back = {1} | {2} | {0} = next'.format(
+                callback_next.split("_")[2],
+                callback_previous.split("_")[2],
+                page
+            )
+            )
+            keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
+            keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
+        elif callback.data.startswith("page_previous"):
+
+            callback_next = "page_next_{0}".format(page + 1)
+            callback_previous = "page_previous_{0}".format(page - 1)
+            print('- if PREV  back = {1} | {2} | {0} = next'.format(
+                callback_next.split("_")[2],
+                callback_previous.split("_")[2],
+                page
+            )
+            )
+            keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
+            keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
+        paginator = Paginator(history_list, page=int(page))
+        # print(page)
+        # print(f"{paginator = }")
+        history_item = paginator.get_page()[0]
+        # print(keyboard._markup)
+        msg = await history_info(history_item)
+        await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
+
+
 @router.callback_query(F.data.startswith("history"))
-async def history(call: CallbackQuery) -> None:
-    photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
-    await call.message.answer_photo(photo=photo)
+async def history_(callback: Message | CallbackQuery) -> None:
+    print(callback.data)
+    # photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
+    # await callback.message.answer_photo(photo=photo)
     history_list = History.select().where(
-        History.user == call.from_user.id
+        History.user == callback.from_user.id
     ).order_by(History.date)
-    for i in history_list:
-        msg = await history_info(i)
-        await call.message.answer(msg)
-
-
-@router.message(Command("history"))
-async def history_(message: Message) -> None:
-    photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
-    await message.answer_photo(photo=photo)
-    history_list = History.select().where(
-        History.user == message.from_user.id
-    ).order_by(History.date)
-    for i in history_list:
-        msg = await history_info(i)
-        await message.answer(msg)
+    keyboard = InlineKeyboardBuilder()
+    if F.data.startswith("history"):
+        page = 1
+        call_back_data = "page_next_{0}".format(int(page) + 1)
+        print(call_back_data)
+        keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=call_back_data))
+        paginator = Paginator(history_list, page=int(page))
+        print(f"{paginator = }")
+        history_item = paginator.get_page()[0]
+        msg = await history_info(history_item)
+        print(f"{msg = }")
+        await callback.message.answer(msg, reply_markup=keyboard.as_markup())
+    # else:
+    #     print(callback.data.startswith("page"))
+    #     page = str(callback.data.startswith("page")).split("_")[2]
+    #     print(page)
+    #     if callback.data.startswith("page_next"):
+    #         keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data="page_next_{0}".format(int(page) + 1)))
+    #         keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data="page_previous_{0}".format(int(page) + 1)))
+    #     elif callback.data.startswith("page_previous"):
+    #         keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data="page_next_{0}".format(int(page) - 1)))
+    #         keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data="page_previous_{0}".format(int(page) - 1)))
+    #     paginator = Paginator(history_list, page=int(page))
+    #     print(f"{paginator = }")
+    #     history_item = paginator.get_page()[0]
+    #     msg = await history_info(history_item)
+    #     print(f"{msg = }")
+    #     await callback.message.edit_text(msg, reply_markup=keyboard.as_markup())
 
 
 # ITEM LIST ############################################################################################################

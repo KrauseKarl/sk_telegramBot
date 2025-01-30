@@ -5,6 +5,7 @@ import requests
 from aiogram.utils.formatting import Bold, HashTag, as_list, as_marked_section
 
 from config import settings
+from pagination import Paginator
 
 
 async def request_handler(current_url, q=None, sort=None) -> dict:
@@ -185,21 +186,36 @@ async def history_info(i):
 
     if i.search_name:
         msg = msg + "🔎 поиск:\t{0}\n".format(i.search_name)
+    else:
+        msg = msg + "\n"
     if i.result_qnt:
         msg = msg + "🔟 result_qnt:\t{0}\n".format(i.result_qnt)
-
+    else:
+        msg = msg + "\n"
     if i.price_range:
         msg = msg + "⚪️ price_range:\t{0}\n".format(i.price_range)
+    else:
+        msg = msg + "\n"
     if i.title:
         msg = msg + "✅ title:\t{0}\n".format(i.title)
+    else:
+        msg = msg + "\n"
     if i.price:
         msg = msg + "🟠 price:\t{0}\n".format(i.price)
+    else:
+        msg = msg + "\n"
     if i.reviews:
         msg = msg + "👀 reviews:\t{0}\n".format(i.reviews)
+    else:
+        msg = msg + "\n"
     if i.stars:
         msg = msg + "⭐️ stars:\t{0}\n".format(i.stars)
+    else:
+        msg = msg + "\n"
     if i.url:
         msg = msg + "{0}\n".format(i.url)
+    else:
+        msg = msg + "\n"
     return msg
 
 
@@ -260,3 +276,14 @@ def category_info(i: dict, q: str = None):
 def separate_img_by_ten(obj: list, num: int = 9):
     for i in range(0, len(obj), num):
         yield obj[i: i + num]
+
+
+def pages(paginator: Paginator):
+    btns = dict()
+    if paginator.has_previous():
+        btns["◀ Пред."] = "previous"
+
+    if paginator.has_next():
+        btns["След. ▶"] = "next"
+
+    return btns
