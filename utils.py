@@ -8,13 +8,13 @@ from config import settings
 from pagination import Paginator
 
 
-async def request_handler(current_url, q=None, sort=None) -> dict:
+async def request_handler(url, q=None, sort=None) -> dict:
     headers = {
         "x-rapidapi-key": settings.api_key.get_secret_value(),
         "x-rapidapi-host": settings.host,
     }
     base_url = settings.url
-    url = base_url + "/" + current_url
+    full_url = base_url + "/" + url
     querystring = {
         "locale": "ru_RU",
         "currency": "RUB",
@@ -23,7 +23,7 @@ async def request_handler(current_url, q=None, sort=None) -> dict:
     if q and sort:
         querystring["q"] = q
         querystring["sort"] = sort
-    response = requests.get(url=url, headers=headers, params=querystring)
+    response = requests.get(url=full_url, headers=headers, params=querystring)
     return response.json()
 
 
@@ -67,16 +67,15 @@ def get_price_range(_list) -> Optional[str]:
     return None
 
 
-def card_info(i, currency):
-    title = i["item"]["title"]
-    sales = i["item"]["sales"]
-    price = i["item"]["sku"]["def"]["promotionPrice"]
-    image_url = ":".join(["https", i["item"]["itemUrl"]])
-    image = ":".join(["https", i["item"]["image"]])
-    msg = "{0}\n название: {1}\n продано: {2}\n цена: {3} {4}\n{5}".format(
-        image_url, title, sales, price, currency, image
-    )
-    return msg
+def card_info(item, currency):
+    image = ":".join(["https", item["item"]["image"]])
+    msg = "{0:.50}\n".format(item["item"]["title"])
+    msg = msg + "🔥 продано: <b>{0}</b>\n".format(item["item"]["sales"])
+    msg = msg + "💵 цена: <b>{0}</b>".format(
+        item["item"]["sku"]["def"]["promotionPrice"])
+    msg = msg + "{0}\n".format(currency)
+    msg = msg + "{0}".format(":".join(["https", item["item"]["itemUrl"]]))
+    return msg, image
 
 
 def detail_info(i):
@@ -89,7 +88,7 @@ def detail_info(i):
 
 def detail_info_2(i):
     try:
-        print(i["result"]["item"]["title"])
+        print('\ndetail_info_2=', i["result"]["item"]["title"])
     except Exception as err:
         print(i)
         print("❌ERROR: ", err)
@@ -109,7 +108,7 @@ def detail_info_2(i):
     store_title = i["result"]["seller"]["storeTitle"]
     store_url = ":".join(["https", i["result"]["seller"]["storeUrl"]])
 
-    msg = msg + "{0}\n\n{1}\n".format(item_url, title)
+    msg = msg + "{0}\n\n{1:.100}\n".format(item_url, title)
     msg = msg + "\n\t💰 Цена:\n\t".upper()
     msg = msg + "\t{0}\n".format(promotion_price)
     try:
@@ -152,7 +151,7 @@ def detail_info_2(i):
 
 def detail_color_img(i):
     images = []
-    print(i["result"]["item"]["sku"]["props"])
+    print('\ndetail_color_img = ', i["result"]["item"]["sku"]["props"])
     try:
         image_list = i["result"]["item"]["sku"]["props"][1]["values"]
         for i in image_list:
@@ -166,7 +165,7 @@ def detail_color_img(i):
 def detail_img(i):
     images = []
     try:
-        image_list = i["result"]["item"]["description"]["images"]
+        image_list = i["result"]["item"]["description"]["images"][:5]
         for img in image_list:
             img = ":".join(["https", img])
             images.append(img)
@@ -177,23 +176,23 @@ def detail_img(i):
 
 async def history_info(i):
     msg = ''
-    msg = msg + "⚙️ команда:\t{0}\n\n".format(i.command)
-    msg = msg + "📅 дата:\t{0}\n".format(i.date.strftime('%d %b %Y'))
+    msg = msg + "⚙️ команда:\t<b>{0}</b>\n".format(i.command)
+    msg = msg + "📅 дата:\t{0}\t".format(i.date.strftime('%d %b %Y'))
     msg = msg + "🕐 время:\t{0}\n".format(i.date.strftime('%H:%M:%S'))
     if i.search_name:
         msg = msg + "🔎 поиск:\t{0}\n".format(i.search_name)
     if i.result_qnt:
-        msg = msg + "🔟 result_qnt:\t{0}\n".format(i.result_qnt)
+        msg = msg + "🔟 количество:\t{0}\n".format(i.result_qnt)
     if i.price_range:
-        msg = msg + "⚪️ price_range:\t{0}\n".format(i.price_range)
+        msg = msg + "⚪️ диапазон цен:\t{0}\n".format(i.price_range)
     if i.title:
-        msg = msg + "✅ title:\t{0}\n".format(i.title)
+        msg = msg + "✅ :\t{0:.100}\n".format(i.title)
     if i.price:
-        msg = msg + "🟠 price:\t{0}\n".format(i.price)
+        msg = msg + "🟠 :\t{0} RUB\n".format(i.price)
     if i.reviews:
-        msg = msg + "👀 reviews:\t{0}\n".format(i.reviews)
+        msg = msg + "👀 просмотры:\t{0}\n".format(i.reviews)
     if i.stars:
-        msg = msg + "⭐️ stars:\t{0}\n".format(i.stars)
+        msg = msg + "⭐️ рейтинг:\t{0}\n".format(i.stars)
     if i.url:
         msg = msg + "{0}\n".format(i.url.split("//")[1])
     return msg

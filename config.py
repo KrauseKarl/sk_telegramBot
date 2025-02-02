@@ -1,7 +1,8 @@
 import os
+from typing import Dict
 
 from dotenv import load_dotenv
-from pydantic import SecretStr, StrictStr
+from pydantic import SecretStr, StrictStr, DirectoryPath
 from pydantic_settings import BaseSettings
 
 load_dotenv()
@@ -47,6 +48,17 @@ class Settings(BaseSettings):
     db_host: StrictStr = os.getenv("DB_HOST")
     db_port: StrictStr = os.getenv("DB_PORT")
     db_password: StrictStr = os.getenv("DB_PASS")
+
+    headers: Dict = {
+        "x-rapidapi-key": os.getenv("API_KEY", None),
+        "x-rapidapi-host": os.getenv("HOST", None)
+    }
+    querystring: Dict = {
+        "locale": "ru_RU",
+        "currency": "RUB",
+        "region": "RU",
+    }
+    static_path: DirectoryPath = "C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\"
 
 
 settings = Settings()
