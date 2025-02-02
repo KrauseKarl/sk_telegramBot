@@ -13,6 +13,10 @@ class CategoryForm(StatesGroup):
     """Группа состояний."""
 
     name = State()
+    cat_id = State()
+    product = State()
+    qnt = State()
+    sort = State()
 
 
 # class UserState(StatesGroup):

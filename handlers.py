@@ -14,6 +14,7 @@ from statments import *
 from utils import *
 from database.db import *
 from config import *
+from request import request_item_detail, request_item_list
 
 router = Router()
 
@@ -66,16 +67,6 @@ async def menu_call(callback: CallbackQuery) -> None:
 
 
 # HISTORY #############################################################################################################
-# @router.callback_query(F.data.startswith("history"))
-# async def history(call: CallbackQuery) -> None:
-#     photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
-#     await call.message.answer_photo(photo=photo)
-#     history_list = History.select().where(
-#         History.user == call.from_user.id
-#     ).order_by(History.date)
-#     for i in history_list:
-#         msg = await history_info(i)
-#         await call.message.answer(msg)
 @router.callback_query(F.data.startswith("history"))
 async def history_(callback: Message | CallbackQuery) -> None:
     print(callback.data)
@@ -144,7 +135,7 @@ async def history_page(callback: Message | CallbackQuery) -> None:
             #
         await callback.message.edit_media(
             media=photo,
-            reply_markup=keyboard.adjust(2,2,1).as_markup())
+            reply_markup=keyboard.adjust(2, 2, 1).as_markup())
 
 
 # ITEM LIST ############################################################################################################
@@ -187,7 +178,7 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         await call.answer("⌛ searching {0}".format(data['product']))
         # for _ in range(ranges):
         #     await call.message.answer('🛍️ {0} товар'.format(_))
-        result = await request_handler(
+        result = await request_item_list(
             q=data["product"],
             sort=data["sort"],
             url="item_search_2"
@@ -224,7 +215,7 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
 async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
     item_data_dict = dict()
     item_id = str(call.data).split("_")[1]
-    response = await request_detail_2(item_id)
+    response = await request_item_detail(item_id)
     item = response["result"]["item"]
     reviews = response["result"]["reviews"]
     item_data_dict["user"] = call.from_user.id
@@ -251,7 +242,7 @@ async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
 
     # try:
     msg = detail_info_2(response)
-    print('@@@',len(msg))
+    print('@@@', len(msg))
     if len(msg) > 1000:
         msg = msg[:999]
         print('@@@', len(msg))
@@ -289,14 +280,108 @@ async def search_category(call: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.message(CategoryForm.name)
-async def search_category_sort(message: Message, state: FSMContext) -> None:
-    q = message.text
-    await state.update_data(name=q)
+async def search_category_name(message: Message, state: FSMContext) -> None:
+    await state.update_data(name=message.text)
+    await state.set_state(CategoryForm.cat_id)
     await message.answer("⌛ searching.")
-    result = await request_handler(url="category_list_1")
+    result = await request_item_list(url="category_list_1")
     item_list = result["result"]["resultList"]
     await state.clear()
     for i in item_list:
-        msg = category_info(i, q)
+        msg, cat_title, number = category_info(i, message.text)
         if msg is not None:
-            await message.answer(**msg.as_kwargs())
+            data = "cat_id_{}".format(number)
+            print(f"{data = }")
+            kb = InlineKeyboardMarkup(
+                row_width=1,
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text=cat_title, callback_data=data),
+                    ]
+                ],
+            )
+            await message.answer(**msg.as_kwargs(), reply_markup=kb)
+
+
+@router.callback_query(F.data.startswith("cat_id"))
+async def search_category_product_name(callback: CallbackQuery, state: FSMContext) -> None:
+    print("cat_id=", callback.data)
+    cat_id = str(callback.data).split('_')[2]
+    print(f"{cat_id= }")
+    await state.update_data(cat_id=int(cat_id))
+    await state.set_state(CategoryForm.product)
+    data = await state.get_data()
+    print('#2', data.items())
+    print('#3', data['cat_id'])
+    await state.set_state(CategoryForm.product)
+    path = os.path.join(settings.static_path, "category.png")
+    await callback.message.answer_photo(photo=FSInputFile(path), caption="🛍️🛍🛍🛍🛍🛍 Введите название товара.")
+
+
+@router.message(CategoryForm.cat_id)
+async def search_category_sort(message: Message, state: FSMContext) -> None:
+    await state.update_data(product=message.text)
+    await state.set_state(CategoryForm.sort)
+    data = await state.get_data()
+    print('#4', data.items())
+    path = os.path.join(settings.static_path, "category.png")
+    await message.answer_photo(
+        photo=FSInputFile(path),
+        caption="Как отсортировать результат?",
+        reply_markup=sort_keyboard
+    )
+
+
+@router.callback_query(CategoryForm.sort, F.data.in_(SORT_SET))
+async def search_category_qnt(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(product=callback.data)
+    await state.set_state(CategoryForm.qnt)
+    data = await state.get_data()
+    print('#5', data.items())
+    path = os.path.join(settings.static_path, "category.png")
+    photo = InputMediaPhoto(media=FSInputFile(path), caption="сколько единиц товара вывести?")
+    await callback.message.edit_media(media=photo, reply_markup=await get_qnt_kb())
+
+
+@router.callback_query(CategoryForm.qnt, F.data.in_(BTNS))
+async def search_category_result(call: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(qnt=call.data)
+    data = await state.get_data()
+    print('#6', data.items())
+    search_data = dict()
+    price_range_list = []
+    try:
+        await call.answer("⌛ searching {0}".format(data['product']))
+        # for _ in range(ranges):
+        #     await call.message.answer('🛍️ {0} товар'.format(_))
+        result = await request_item_list(
+            q=data["product"],
+            sort=data["sort"],
+            url="item_search_2",
+            cat_id=data["cat_id"],
+        )
+        try:
+            print("{0}\n❌ лимит бесплатных API превышен".format(result["message"]))
+        except KeyError:
+            pass
+        ranges = int(data["qnt"])
+        item_list = result["result"]["resultList"][:ranges]
+        currency = result["result"]["settings"]["currency"]
+
+        for item in item_list:
+            msg, img = card_info(item, currency)
+            kb = await item_kb(item["item"]["itemId"])
+            price = item["item"]["sku"]["def"]["promotionPrice"]
+            price_range_list.append(price)
+            await call.message.answer_photo(photo=img, caption=msg, reply_markup=kb, parse_mode="HTML")
+
+        search_data['user'] = call.from_user.id
+        search_data['command'] = 'search'
+        search_data["price_range"] = get_price_range(price_range_list)
+        search_data['result_qnt'] = int(ranges)
+        search_data['search_name'] = data['product']
+        History().create(**search_data).save()  # todo make orm func for orm.py
+
+        await state.clear()
+    except AiogramError as err:
+        await call.message.answer("⚠️ Ошибка\n{0}".format(str(err)))

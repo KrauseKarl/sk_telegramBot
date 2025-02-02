@@ -1,63 +1,8 @@
-import re
 from typing import Optional
+from aiogram.utils.formatting import HashTag, as_list, as_marked_section
 
-import requests
-from aiogram.utils.formatting import Bold, HashTag, as_list, as_marked_section
 
-from config import settings
 from pagination import Paginator
-
-
-async def request_handler(url, q=None, sort=None) -> dict:
-    headers = {
-        "x-rapidapi-key": settings.api_key.get_secret_value(),
-        "x-rapidapi-host": settings.host,
-    }
-    base_url = settings.url
-    full_url = base_url + "/" + url
-    querystring = {
-        "locale": "ru_RU",
-        "currency": "RUB",
-        "region": "RU",
-    }
-    if q and sort:
-        querystring["q"] = q
-        querystring["sort"] = sort
-    response = requests.get(url=full_url, headers=headers, params=querystring)
-    return response.json()
-
-
-async def request_detail(item_id: str):
-    url = "https://aliexpress-datahub.p.rapidapi.com/item_desc_2"
-    querystring = {
-        "itemId": item_id,
-        "locale": "ru_RU",
-        "currency": "RUB",
-        "region": "RU",
-    }
-    headers = {
-        "x-rapidapi-key": settings.api_key.get_secret_value(),
-        "x-rapidapi-host": settings.host,
-    }
-    response = requests.get(url, headers=headers, params=querystring)
-    return response.json()
-
-
-async def request_detail_2(item_id: str):
-    url = "https://aliexpress-datahub.p.rapidapi.com/item_detail_6"
-    querystring = {
-        "itemId": item_id,
-        "locale": "ru_RU",
-        "currency": "RUB",
-        "region": "RU",
-    }
-    headers = {
-        "x-rapidapi-key": settings.api_key.get_secret_value(),
-        "x-rapidapi-host": settings.host,
-    }
-    response = requests.get(url, headers=headers, params=querystring)
-
-    return response.json()
 
 
 def get_price_range(_list) -> Optional[str]:
@@ -200,26 +145,22 @@ async def history_info(i):
 
 def category_info(i: dict, q: str = None):
     category_name = i["name"]
-    print("=" * 100)
-    print("", category_name)
+    category_id =  i["id"]
+    # print("-", category_name)
     msg = None
     item_list = []
     for name in category_name.split(" "):
-        # print('-', i["list"])
         if name.startswith(q):
-            # print('', category_name)
             msg = "{0}\n".format(category_name)
             sub_category_name = i["list"]
-            # print('', sub_category_name)
             for s in sub_category_name:
-                # print('-', sub_category_name)
-                print("\t\t\t", s["name"], s["id"])
+                # print("\t\t\t", s["name"], s["id"])
                 sub_name = s["name"]
                 sub_id = s["id"]
-                # print('---', sub_name)
-                result = f"{sub_name} [{sub_id}]({category_name})"
+                result = f"{sub_name}\t[{sub_id}]"
                 item_list.append(result)
                 msg = msg + "- {0}\n".format(sub_name)
+            # msg = "{0}\n".format(category_name)
         # await message.answer(msg)
 
     # sub_category_name = i["list"]
@@ -248,8 +189,8 @@ def category_info(i: dict, q: str = None):
         )
     else:
         content = None
-    print("=" * 100)
-    return content
+    # print("=" * 100)
+    return content, category_name, str(category_id)
 
 
 def separate_img_by_ten(obj: list, num: int = 9):
