@@ -31,7 +31,7 @@ async def main():
 if __name__ == "__main__":
     try:
         # logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-        print("✅ BOT START")
+        print("✅ *** BOT START")
         asyncio.run(main())
     except KeyboardInterrupt:
         print("❌ BOT STOP")
