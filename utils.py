@@ -1,7 +1,6 @@
 from typing import Optional
 from aiogram.utils.formatting import HashTag, as_list, as_marked_section
 
-
 from pagination import Paginator
 
 
@@ -143,54 +142,57 @@ async def history_info(i):
     return msg
 
 
-def category_info(i: dict, q: str = None):
-    category_name = i["name"]
-    category_id =  i["id"]
-    # print("-", category_name)
-    msg = None
-    item_list = []
-    for name in category_name.split(" "):
-        if name.startswith(q):
-            msg = "{0}\n".format(category_name)
-            sub_category_name = i["list"]
-            for s in sub_category_name:
-                # print("\t\t\t", s["name"], s["id"])
-                sub_name = s["name"]
-                sub_id = s["id"]
-                result = f"{sub_name}\t[{sub_id}]"
-                item_list.append(result)
-                msg = msg + "- {0}\n".format(sub_name)
-            # msg = "{0}\n".format(category_name)
-        # await message.answer(msg)
+def unpacking_subcategory(sub_cat_list: list, query: str = None):
+    msg = ''
+    for s in sub_cat_list:
+        print('________', s)
+        sub_name = s["name"]
+        if sub_name:
+            if query in sub_name.lower():
+                msg = msg + "{0}\n".format(s["name"])
+            # else:
+            #     msg = msg + "- {0}\n".format(s["name"])
+    return msg
 
-    # sub_category_name = i["list"]
-    # if sub_category_name is not None:
-    #     for s in sub_category_name:
-    #         sub_name = s["name"]
-    #         if sub_name is not None:
-    #             sub_name_list = re.split('//| ', sub_name)
-    #             # sub_name_list = sub_name.split('/').split(' ')
-    #             print(f'\t{sub_name_list}')
-    #             for sub_name in sub_name_list:
-    #                 if sub_name.startswith(q):
-    #                     msg = "{0}\n".format(category_name)
-    #                     msg = msg + "- {0}\n".format(sub_name)
-    hashtag = "#{}".format(q)
 
-    if len(item_list) > 0:
-        content = as_list(
-            as_marked_section(
-                # Bold(f"По запросу - {q}:"),
-                *item_list,
-                # marker="✅ ",
-            ),
-            HashTag(hashtag),
-            sep="\n\n",
+def category_info(items: dict, query: str = None):
+    count = 0
+    query = query.lower()
+    # print(f"### {query=  }")
+    category_name = items.get("name")
+    category_id = items.get("id")
+    sub_category_name = items.get("list")
+    msg = ''
+    cat_name = category_name.lower()
+
+    if query in cat_name:
+        count += 1
+        msg = unpacking_subcategory(
+            query=query,
+            sub_cat_list=sub_category_name
         )
+        # print(f"🔥 {query} in ", cat_name)
+        # print(cat_name)
+        # print(msg)
+        # msg = msg + "\n#{0}\n".format(query)
     else:
-        content = None
-    # print("=" * 100)
-    return content, category_name, str(category_id)
+        for sub_cat in sub_category_name:
+            count += 1
+            sub_cat_name = sub_cat.get("name")
+            if sub_cat_name:
+                sub_cat_name = sub_cat_name.lower()
+
+                if query.lower() in sub_cat_name:
+                    msg = unpacking_subcategory(
+                        query=query,
+                        sub_cat_list=sub_category_name
+                    )
+                    # print(f"✅ {query} in ", sub_cat_name)
+                    # print(cat_name)
+                    # print(msg)
+                    # msg = msg + "\n#{0}\n".format(query)
+                    break
+    return msg, category_name, str(category_id), count
 
 
 def separate_img_by_ten(obj: list, num: int = 9):

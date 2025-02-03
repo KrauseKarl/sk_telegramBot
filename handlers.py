@@ -2,14 +2,14 @@ import os.path
 
 from aiogram import F, Router, types
 from aiogram.exceptions import AiogramError
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, and_f, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, InputFile, FSInputFile, InputMediaPhoto
 from peewee import IntegrityError
 from pydantic import ValidationError
 from aiogram.types.photo_size import PhotoSize
 from keyboards import *
-from pagination import Paginator
+from pagination import *
 from statments import *
 from utils import *
 from database.db import *
@@ -275,7 +275,9 @@ async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(F.data.startswith("category"))
 async def search_category(call: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(CategoryForm.name)
-    await call.message.answer("🛍️ Введите название товара или категории.")
+    path = os.path.join(settings.static_path, "category.png")
+    photo = InputMediaPhoto(media=FSInputFile(path), caption="Введите название товара или категории?")
+    await call.message.edit_media(media=photo)
     print("⌛ searching...")
 
 
@@ -283,27 +285,33 @@ async def search_category(call: CallbackQuery, state: FSMContext) -> None:
 async def search_category_name(message: Message, state: FSMContext) -> None:
     await state.update_data(name=message.text)
     await state.set_state(CategoryForm.cat_id)
-    await message.answer("⌛ searching.")
+    await message.answer("⌛ searching <u>{0}</u>".format(message.text), parse_mode="HTML ")
     result = await request_item_list(url="category_list_1")
     item_list = result["result"]["resultList"]
+    # print(item_list)
     await state.clear()
-    for i in item_list:
-        msg, cat_title, number = category_info(i, message.text)
-        if msg is not None:
+    kb = InlineKeyboardBuilder()
+
+    if len(item_list) > 0:
+        count = 0
+        for item in item_list:
+            msg, cat_title, number, count = category_info(items=item, query=message.text)
             data = "cat_id_{}".format(number)
-            print(f"{data = }")
-            kb = InlineKeyboardMarkup(
-                row_width=1,
-                inline_keyboard=[
-                    [
-                        InlineKeyboardButton(text=cat_title, callback_data=data),
-                    ]
-                ],
-            )
-            await message.answer(**msg.as_kwargs(), reply_markup=kb)
+            if len(msg) > 2:
+                button = InlineKeyboardButton(text="⭕️ {0}".format(cat_title), callback_data=data)
+                kb.add(button)
+            # kb = await kb_builder(size=(1,), data_list=[{cat_title: data}])
+        await message.answer(
+            "по запросу <u>{0}</u>\nнайдены следующие категории [{1}]".format(message.text, count),
+            reply_markup=kb.adjust(*(2,1,1,2)).as_markup(),
+            parse_mode="HTML"
+        )
+    else:
+        mgs = "⚠️По вашему запросу ничего не найдено.\nПопробуйте сформулировать запрос иначе."
+        await message.answer(mgs, reply_markup=main_keyboard)
 
 
-@router.callback_query(F.data.startswith("cat_id"))
+@router.callback_query(or_f(CategoryForm.cat_id, F.data.startswith("cat_id")))
 async def search_category_product_name(callback: CallbackQuery, state: FSMContext) -> None:
     print("cat_id=", callback.data)
     cat_id = str(callback.data).split('_')[2]
@@ -318,7 +326,7 @@ async def search_category_product_name(callback: CallbackQuery, state: FSMContex
     await callback.message.answer_photo(photo=FSInputFile(path), caption="🛍️🛍🛍🛍🛍🛍 Введите название товара.")
 
 
-@router.message(CategoryForm.cat_id)
+@router.message(CategoryForm.product)
 async def search_category_sort(message: Message, state: FSMContext) -> None:
     await state.update_data(product=message.text)
     await state.set_state(CategoryForm.sort)
@@ -334,7 +342,7 @@ async def search_category_sort(message: Message, state: FSMContext) -> None:
 
 @router.callback_query(CategoryForm.sort, F.data.in_(SORT_SET))
 async def search_category_qnt(callback: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(product=callback.data)
+    await state.update_data(sort=callback.data)
     await state.set_state(CategoryForm.qnt)
     data = await state.get_data()
     print('#5', data.items())

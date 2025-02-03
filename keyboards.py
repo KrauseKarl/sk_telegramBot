@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from config import *
+
 main_keyboard = InlineKeyboardMarkup(
     row_width=3,
     inline_keyboard=[
@@ -49,3 +50,12 @@ async def item_kb(item_id: str):
         ],
     )
     return item_keyboard
+
+
+async def kb_builder(size: tuple = None, data_list: list = None):
+    kb = InlineKeyboardBuilder()
+    for data in data_list:
+        for text, callback in data.items():
+            button = InlineKeyboardButton(text=text, callback_data=callback)
+            kb.add(button)
+    return kb.adjust(*size).as_markup()
