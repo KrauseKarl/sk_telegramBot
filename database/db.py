@@ -32,7 +32,7 @@ def drop_table():
         UserModel.drop_table(True)
         # ItemDetailModel.drop_table(True)
         History.drop_table(True)
-        ItemListModel.drop_table(True)
+        # ItemListModel.drop_table(True)
 
 
 # Create async models manager:
