@@ -1,2 +1,4 @@
 /.env
 /venv/
+/item.detail.json
+/category.item.json
