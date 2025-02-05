@@ -1,12 +1,14 @@
 import os
 from typing import Dict
-
+from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import SecretStr, StrictStr, DirectoryPath
 from pydantic_settings import BaseSettings
 
 load_dotenv()
 
+BASE_DIR = Path(__file__).resolve(strict=True).parent
+STATIC_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath("static"))
 # DATETIME_FORMAT = '%d.%m.%Y - %H:%M:%S'
 # DEFAULT_COMMANDS = (
 #     ('start', 'Начало работы'),
@@ -58,7 +60,6 @@ class Settings(BaseSettings):
         "currency": "RUB",
         "region": "RU",
     }
-    static_path: DirectoryPath = "C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\"
-
+    static_path: DirectoryPath = STATIC_PATH
 
 settings = Settings()
