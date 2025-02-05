@@ -45,7 +45,7 @@ async def menu(message: Message) -> None:
         static_folder = settings.static_path
         path = os.path.join(static_folder, 'menu.png')
         print(f"{path = }")
-        photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\menu.png")
+        photo = FSInputFile(path)
         await message.answer_photo(photo=photo, reply_markup=main_keyboard)
     # await message.answer(text='Главное меню', reply_markup=main_keyboard)
     except Exception as err:
@@ -58,7 +58,8 @@ async def menu(message: Message) -> None:
 @router.callback_query(F.data.startswith("menu"))
 async def menu_call(callback: CallbackQuery) -> None:
     try:
-        media = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\menu.png")
+        path = os.path.join(settings.static_path, "menu.png")
+        media = FSInputFile(path)
         photo = InputMediaPhoto(media=media)
         await callback.message.edit_media(media=photo, reply_markup=main_keyboard)
     except Exception as err:
@@ -70,7 +71,8 @@ async def menu_call(callback: CallbackQuery) -> None:
 @router.callback_query(F.data.startswith("history"))
 async def history_(callback: Message | CallbackQuery) -> None:
     print(callback.data)
-    photo = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
+    path = os.path.join(settings.static_path, "history.png")
+    photo = FSInputFile(path)
     # await callback.message.answer_photo(photo=photo)
     history_list = History.select().where(
         History.user == callback.from_user.id
@@ -129,7 +131,8 @@ async def history_page(callback: Message | CallbackQuery) -> None:
         try:
             photo = types.InputMediaPhoto(media=history_item.image, caption=msg, show_caption_above_media=False)
         except ValidationError:
-            media = FSInputFile("C:\\Users\\Kucheriavenko Dmitri\\github\\telegramBot\\static\\history.png")
+            path = os.path.join(settings.static_path, "history.png")
+            media = FSInputFile(path)
             photo = InputMediaPhoto(media=media, caption=msg, parse_mode='HTML')
 
             #
@@ -285,7 +288,7 @@ async def search_category(call: CallbackQuery, state: FSMContext) -> None:
 async def search_category_name(message: Message, state: FSMContext) -> None:
     await state.update_data(name=message.text)
     await state.set_state(CategoryForm.cat_id)
-    await message.answer("⌛ searching <u>{0}</u>".format(message.text), parse_mode="HTML ")
+    await message.answer("⌛ searching <u>{0}</u>".format(message.text), parse_mode="HTML")
     result = await request_item_list(url="category_list_1")
     item_list = result["result"]["resultList"]
     # print(item_list)
