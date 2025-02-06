@@ -1,7 +1,25 @@
-from typing import Optional
-from aiogram.utils.formatting import HashTag, as_list, as_marked_section
+import os
+from typing import Optional, Union
 
+from aiogram.filters import Filter
+from aiogram.types import FSInputFile, Message,CallbackQuery
+from aiogram.utils.formatting import HashTag, as_list, as_marked_section
+from httpx import Response
+
+from config import conf
 from pagination import Paginator
+
+
+class CustomFilter(Filter):
+    def __init__(self, command: Union[str, list]):
+        self.command = command
+
+    async def __call__(self, message: Message | CallbackQuery) -> bool:
+        if isinstance(message, CallbackQuery):
+            print('CallbackQuery ', message.data)
+            return message.data.startswith(self.command)
+        print('Message ', message.text)
+        return message.text.startswith("/{0}".format(self.command))
 
 
 def get_price_range(_list) -> Optional[str]:
@@ -30,7 +48,7 @@ def detail_info(i):
     return msg
 
 
-def detail_info_2(i):
+async def get_detail_info(i):
     try:
         print('\ndetail_info_2=', i["result"]["item"]["title"])
     except Exception as err:
@@ -93,7 +111,7 @@ def detail_info_2(i):
     return msg
 
 
-def detail_color_img(i):
+def get_color_img(i):
     images = []
     print('\ndetail_color_img = ', i["result"]["item"]["sku"]["props"])
     try:
@@ -144,14 +162,11 @@ async def history_info(i):
 
 def unpacking_subcategory(sub_cat_list: list, query: str = None):
     msg = ''
-    for s in sub_cat_list:
-        print('________', s)
-        sub_name = s["name"]
-        if sub_name:
-            if query in sub_name.lower():
-                msg = msg + "{0}\n".format(s["name"])
-            # else:
-            #     msg = msg + "- {0}\n".format(s["name"])
+    for category in sub_cat_list:
+        subcategory_name = category["name"]
+        if subcategory_name:
+            if query in subcategory_name.lower():
+                msg = msg + "{0}\n".format(category["name"])
     return msg
 
 
@@ -195,17 +210,37 @@ def category_info(items: dict, query: str = None):
     return msg, category_name, str(category_id), count
 
 
-def separate_img_by_ten(obj: list, num: int = 9):
-    for i in range(0, len(obj), num):
-        yield obj[i: i + num]
+def separate_img_by_ten(images: list, num: int = 9):
+    for i in range(0, len(images), num):
+        yield list(images[i: i + num])
 
 
 def pages(paginator: Paginator):
-    btns = dict()
+    buttons = dict()
     if paginator.has_previous():
-        btns["◀ Пред."] = "previous"
-
+        buttons["◀ пред."] = "previous"
     if paginator.has_next():
-        btns["След. ▶"] = "next"
+        buttons["след. ▶"] = "next"
+    return buttons
 
-    return btns
+
+async def deserialize_item_detail(response: dict, user_id: int) -> dict:
+    data = dict()
+    item = response["result"]["item"]
+    reviews = response["result"]["reviews"]
+    data["user"] = user_id
+    data["command"] = "item detail"
+    data["title"] = item.get("title")
+    data["price"] = item.get("sku").get("base")[0].get("promotionPrice")
+    data["reviews"] = reviews.get("count")
+    data["star"] = reviews.get("averageStar")
+    data["url"] = ":".join(["https", item.get("itemUrl")])
+
+    try:
+        image_full_path = ":".join(["https", item["images"][0]])
+    except:
+        image_full_path = FSInputFile(
+            os.path.join(conf.static_path, 'category.png'))
+    data["image"] = image_full_path
+
+    return data

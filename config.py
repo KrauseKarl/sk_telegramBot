@@ -62,4 +62,4 @@ class Settings(BaseSettings):
     }
     static_path: DirectoryPath = STATIC_PATH
 
-settings = Settings()
+conf = Settings()

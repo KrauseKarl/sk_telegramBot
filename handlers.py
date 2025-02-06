@@ -1,13 +1,16 @@
 import os.path
+from typing import Union
 
 from aiogram import F, Router, types
 from aiogram.exceptions import AiogramError
-from aiogram.filters import Command, CommandStart, and_f, or_f
+from aiogram.filters import Command, CommandStart, or_f, Filter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message, InputFile, FSInputFile, InputMediaPhoto
+from aiogram.types import CallbackQuery, Message, InputMediaPhoto
 from peewee import IntegrityError
 from pydantic import ValidationError
 from aiogram.types.photo_size import PhotoSize
+
+from database.orm import *
 from keyboards import *
 from pagination import *
 from statments import *
@@ -19,133 +22,133 @@ from request import request_item_detail, request_item_list
 router = Router()
 
 
+
+
+
 @router.message(CommandStart())
-async def start_command(message: types.Message) -> None:
-    user, created = UserModel.get_or_create(
-        user_id=message.from_user.id,
-        user_name=message.from_user.username,
-        first_name=message.from_user.first_name,
-        last_name=message.from_user.last_name
-    )
-    History.create(user=message.from_user.id, command='start').save()
-    if created:
-        await message.answer('🟨 🤚 Добро пожаловать, {0}!'.format(
-            message.from_user.first_name,
-        ))
-        return
-    await message.answer('🟩 🤝 Рады снова видеть вас, {0}!'.format(
-        message.from_user.first_name,
-    ), reply_markup=main_keyboard)
+async def start_command(message: Message) -> None:
+    try:
+        user = message.from_user
+        welcome_msg = orm_get_or_create_user(user=user)
+        await message.answer('{0}, {1}!'.format(welcome_msg, user.first_name))
+    except Exception as error:
+        await message.answer("⚠️ Произошла ошибка {0}".format(error))
 
 
 # MENU #############################################################################################################
-@router.message(Command("menu"))
-async def menu(message: Message) -> None:
-    try:
-        static_folder = settings.static_path
-        path = os.path.join(static_folder, 'menu.png')
-        print(f"{path = }")
-        photo = FSInputFile(path)
-        await message.answer_photo(photo=photo, reply_markup=main_keyboard)
+# @router.message(or_f(Command("menu"), F.data.startswith("menu")))
+@router.message(CustomFilter('menu'))
+async def menu(message: Message | CallbackQuery) -> None:
+    photo_path = os.path.join(conf.static_path, "menu.png")
+    if isinstance(message, CallbackQuery):
+        await message.message.edit_media(
+            media=InputMediaPhoto(media=FSInputFile(photo_path)),
+            reply_markup=main_keyboard
+        )
+    else:
+    # try:
+        await message.answer_photo(
+            photo=FSInputFile(photo_path),
+            reply_markup=main_keyboard
+        )
     # await message.answer(text='Главное меню', reply_markup=main_keyboard)
-    except Exception as err:
-        print(err)
-
-        await message.answer('⚠️ Что-то пошло не так с командой /menu')
-        await message.answer(str(err))
+    # except Exception as error:
+    #     await message.answer("⚠️ Произошла ошибка {0}".format(error))
 
 
-@router.callback_query(F.data.startswith("menu"))
-async def menu_call(callback: CallbackQuery) -> None:
-    try:
-        path = os.path.join(settings.static_path, "menu.png")
-        media = FSInputFile(path)
-        photo = InputMediaPhoto(media=media)
-        await callback.message.edit_media(media=photo, reply_markup=main_keyboard)
-    except Exception as err:
-        await callback.message.answer('⚠️ Что-то пошло не так с командой /menu')
-        await callback.message.answer(str(err))
+# @router.callback_query()
+# async def menu_call(callback: CallbackQuery) -> None:
+#     try:
+#         photo = InputMediaPhoto(
+#             media=FSInputFile(os.path.join(conf.static_path, "menu.png")))
+#         await callback.message.edit_media(media=photo, reply_markup=main_keyboard)
+#     except Exception as err:
+#         await callback.message.answer('⚠️ Что-то пошло не так с командой /menu')
+#         await callback.message.answer(str(err))
 
 
 # HISTORY #############################################################################################################
-@router.callback_query(F.data.startswith("history"))
-async def history_(callback: Message | CallbackQuery) -> None:
-    print(callback.data)
-    path = os.path.join(settings.static_path, "history.png")
-    photo = FSInputFile(path)
-    # await callback.message.answer_photo(photo=photo)
-    history_list = History.select().where(
-        History.user == callback.from_user.id
-    ).order_by(History.date)
-    keyboard = InlineKeyboardBuilder()
+# @router.callback_query(or_f(Command("history"), F.data.startswith("history")))
+@router.callback_query(CustomFilter('history'))
+async def history_(call: Message | CallbackQuery) -> None:
+    photo = FSInputFile(os.path.join(conf.static_path, "history.png"))
+    print(type(call))
+    if isinstance(call, CallbackQuery):
+        message = call.message
+        print('333 ', call.data)
+        user_id = call.from_user.id
+        print('345 ', call.from_user.id)
+
+    else:
+        message = call
+        user_id = call.from_user.id
+    print('555 ', message.text)
+
+    history_list = await orm_get_history_list(user_id)
+
+    kb = InlineKeyboardBuilder()
     if F.data.startswith("history"):
         page = 1
         call_back_data = "page_next_{0}".format(int(page) + 1)
-        print(call_back_data)
-        keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=call_back_data))
-        keyboard.add(InlineKeyboardButton(text='главное меню', callback_data="menu"))
-        paginator = Paginator(history_list, page=int(page))
-        print(f"{paginator = }")
-        history_item = paginator.get_page()[0]
-        msg = await history_info(history_item)
-        print(f"{msg = }")
+        kb.add(InlineKeyboardButton(text='След. ▶', callback_data=call_back_data))
+        kb.add(InlineKeyboardButton(text='главное меню', callback_data="menu"))
+        paginator = Paginator(history_list, page=page)
+        print(paginator.get_page())
+        history_items = paginator.get_page()[0]
+        msg = await history_info(history_items)
         msg = msg + "{0} из {1}".format(page, paginator.pages)
         photo = InputMediaPhoto(media=photo, caption=msg, parse_mode="HTML")
-        await callback.message.edit_media(media=photo, reply_markup=keyboard.adjust(1, 1).as_markup())
+        await message.edit_media(media=photo, reply_markup=kb.adjust(1, 1).as_markup())
 
 
 @router.callback_query(F.data.startswith("page"))
 async def history_page(callback: Message | CallbackQuery) -> None:
-    history_list = History.select().where(History.user == callback.from_user.id).order_by(History.date)
+    history_list = await orm_get_history_list(callback.from_user.id)
     keyboard = InlineKeyboardBuilder()
-    if F.data.startswith("page"):
-        page = int(callback.data.split("_")[2])
-        paginator = Paginator(history_list, page=int(page))
-        # print(f"{paginator = }")
-        history_item = paginator.get_page()[0]
-        msg = await history_info(history_item)
-        msg = msg + "{0} из {1}".format(page, paginator.pages)
 
-        if callback.data.startswith("page_next"):
-            callback_previous = "page_previous_{0}".format(page - 1)
-            keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
-            if page != paginator.pages:
-
-                callback_next = "page_next_{0}".format(page + 1)
-                keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
-                if paginator.pages > 10:
-                    callback_next = "page_next_{0}".format(page + 10)
-                    keyboard.add(InlineKeyboardButton(text='След. 10 ▶', callback_data=callback_next))
-        elif callback.data.startswith("page_previous"):
-            if page != 1:
-
-                callback_previous = "page_previous_{0}".format(page - 1)
-                keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
-                if page > 10:
-                    callback_previous = "page_previous_{0}".format(page - 10)
-                    keyboard.add(InlineKeyboardButton(text="◀ Пред. 10", callback_data=callback_previous))
-
+    page = int(callback.data.split("_")[2])
+    paginator = Paginator(history_list, page=int(page))
+    history_item = paginator.get_page()[0]
+    msg = await history_info(history_item)
+    msg = msg + "{0} из {1}".format(page, paginator.pages)
+    if callback.data.startswith("page_next"):
+        callback_previous = "page_previous_{0}".format(page - 1)
+        keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
+        if page != paginator.pages:
             callback_next = "page_next_{0}".format(page + 1)
             keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
-        keyboard.add(InlineKeyboardButton(text='главное меню', callback_data="menu"))
-        try:
-            photo = types.InputMediaPhoto(media=history_item.image, caption=msg, show_caption_above_media=False)
-        except ValidationError:
-            path = os.path.join(settings.static_path, "history.png")
-            media = FSInputFile(path)
-            photo = InputMediaPhoto(media=media, caption=msg, parse_mode='HTML')
+            # if paginator.pages > 10:
+            #     callback_next = "page_next_{0}".format(page + 10)
+            #     keyboard.add(InlineKeyboardButton(text='След. 10 ▶', callback_data=callback_next))
+    elif callback.data.startswith("page_previous"):
+        if page != 1:
+            callback_previous = "page_previous_{0}".format(page - 1)
+            keyboard.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
+            # if page > 10:
+            #     callback_previous = "page_previous_{0}".format(page - 10)
+            #     keyboard.add(InlineKeyboardButton(text="◀ Пред. 10", callback_data=callback_previous))
+        callback_next = "page_next_{0}".format(page + 1)
+        keyboard.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
+    keyboard.add(InlineKeyboardButton(text='главное меню', callback_data="menu"))
+    try:
+        photo = types.InputMediaPhoto(media=history_item.image, caption=msg, show_caption_above_media=False)
+    except ValidationError:
+        media = FSInputFile(os.path.join(conf.static_path, "history.png"))
+        photo = InputMediaPhoto(media=media, caption=msg, parse_mode='HTML')
 
-            #
-        await callback.message.edit_media(
-            media=photo,
-            reply_markup=keyboard.adjust(2, 2, 1).as_markup())
+        #
+    await callback.message.edit_media(
+        media=photo,
+        reply_markup=keyboard.adjust(2, 2, 1).as_markup())
 
 
 # ITEM LIST ############################################################################################################
-@router.callback_query(F.data.startswith("search"))
+# @router.callback_query(F.data.startswith("search"))
+@router.callback_query(CustomFilter("search"))
 async def search_name(call: CallbackQuery, state: FSMContext) -> None:
+    print('call ', call.data)
     await state.set_state(Form.product)
-    path = os.path.join(settings.static_path, "cart.png")
+    path = os.path.join(conf.static_path, "cart.png")
     photo = InputMediaPhoto(media=FSInputFile(path), caption="🛍️ Введите название товара.")
     await call.message.edit_media(media=photo)
 
@@ -154,7 +157,7 @@ async def search_name(call: CallbackQuery, state: FSMContext) -> None:
 async def search_sort(message: Message, state: FSMContext) -> None:
     await state.update_data(product=message.text)
     await state.set_state(Form.sort)
-    path = os.path.join(settings.static_path, "sort.png")
+    path = os.path.join(conf.static_path, "sort.png")
     await message.answer_photo(
         photo=FSInputFile(path),
         caption="Как отсортировать результат?",
@@ -166,7 +169,7 @@ async def search_sort(message: Message, state: FSMContext) -> None:
 async def search_qnt(call: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(sort=call.data)
     await state.set_state(Form.qnt)
-    path = os.path.join(settings.static_path, "quantity.png")
+    path = os.path.join(conf.static_path, "quantity.png")
     photo = InputMediaPhoto(media=FSInputFile(path), caption="сколько единиц товара вывести?")
     await call.message.edit_media(media=photo, reply_markup=await get_qnt_kb())
 
@@ -215,73 +218,43 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
 
 # ITEM DETAIL ##########################################################################################################
 @router.callback_query(F.data.startswith("item"))
-async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
-    item_data_dict = dict()
-    item_id = str(call.data).split("_")[1]
-    response = await request_item_detail(item_id)
-    item = response["result"]["item"]
-    reviews = response["result"]["reviews"]
-    item_data_dict["user"] = call.from_user.id
-    item_data_dict["command"] = "item detail"
-    item_data_dict["title"] = item.get("title")
-    item_data_dict["price"] = item.get("sku").get("base")[0].get("promotionPrice")
-    item_data_dict["reviews"] = reviews.get("count")
-    item_data_dict["star"] = reviews.get("averageStar")
-    item_data_dict["url"] = ":".join(["https", item.get("itemUrl")])
-    # try:
-    print('\n#0 {0}'.format(item["images"]))
-    img = item["images"][0]
-    print(f'\n#1 {img= }')
-    image_full_path = ":".join(["https", img])
-    print(f'\n#2 {image_full_path= }')
-    item_data_dict["image"] = image_full_path
-    # except:
-    #     static_folder = settings.static_path
-    #     path = os.path.join(static_folder, 'category.png')
-    #     image_full_path = FSInputFile(path)
-    #     item_data_dict["image"] = None
+async def get_item_detail(call: CallbackQuery) -> None:
+    try:
+        item_id = str(call.data).split("_")[1]
+        response = await request_item_detail(item_id)
+        item_data = await deserialize_item_detail(response, call.from_user.id)
+        msg = await get_detail_info(response)
+        msg = msg[:999] if len(msg) > 1000 else msg
+        orm_make_record_detail(item_data)
+        await call.message.answer_photo(photo=item_data['image'], caption=msg)
 
-    History().create(**item_data_dict).save()  # todo make orm func for orm.py
-
-    # try:
-    msg = detail_info_2(response)
-    print('@@@', len(msg))
-    if len(msg) > 1000:
-        msg = msg[:999]
-        print('@@@', len(msg))
-    # photo = InputMediaPhoto(media=img, caption=msg)
-    await call.message.answer_photo(photo=image_full_path, caption=msg)
-
-    img_color = detail_color_img(response)
-    if img_color is not None:
-        image_color_list = list(separate_img_by_ten(img_color, 9))
-        await call.message.answer("Количество цветов {0}".format(len(img_color)))
-        for img in image_color_list:
-            color_images = [types.InputMediaPhoto(media=i) for i in img]
-            await call.message.answer_media_group(color_images)
-    images = detail_img(response)
-    if images is not None:
-        image_color_list = list(separate_img_by_ten(images, 5))
-        await call.message.answer("Все иллюстрации")
-        for img in image_color_list:
-            color_images = [types.InputMediaPhoto(media=i) for i in img]
-            await call.message.answer_media_group(color_images, reply_markup=main_keyboard)
-    await call.message.answer('_', reply_markup=main_keyboard)
-    # except AiogramError as err:
-    #     err = response["result"]["status"]["data"]
-    #     # msg = response["result"]["status"]["msg"]["data-error"]
-    #     await call.message.answer(f"⚠️ Произошла ошибка{err}.")
-    #     await call.message.answer(msg)
+        img_color = get_color_img(response)
+        if img_color is not None:
+            image_color_list = separate_img_by_ten(img_color, 9)
+            await call.message.answer("Количество цветов {0}".format(len(img_color)))
+            for img_set in image_color_list:
+                await call.message.answer_media_group(
+                    media=[InputMediaPhoto(media=img) for img in img_set]
+                )
+        # images = detail_img(response)
+        # if images is not None:
+        #     image_color_list = list(separate_img_by_ten(images, 5))
+        #     await call.message.answer("Все иллюстрации")
+        #     for img in image_color_list:
+        #         color_images = [types.InputMediaPhoto(media=i) for i in img]
+        #         await call.message.answer_media_group(color_images, reply_markup=main_keyboard)
+        await call.message.answer('меню', reply_markup=main_keyboard)
+    except AiogramError as error:
+        await call.message.answer("⚠️ Произошла ошибка{0}".format(error))
 
 
 # CATEGORY  ###########################################################################################################
 @router.callback_query(F.data.startswith("category"))
 async def search_category(call: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(CategoryForm.name)
-    path = os.path.join(settings.static_path, "category.png")
+    path = os.path.join(conf.static_path, "category.png")
     photo = InputMediaPhoto(media=FSInputFile(path), caption="Введите название товара или категории?")
     await call.message.edit_media(media=photo)
-    print("⌛ searching...")
 
 
 @router.message(CategoryForm.name)
@@ -306,7 +279,7 @@ async def search_category_name(message: Message, state: FSMContext) -> None:
             # kb = await kb_builder(size=(1,), data_list=[{cat_title: data}])
         await message.answer(
             "по запросу <u>{0}</u>\nнайдены следующие категории [{1}]".format(message.text, count),
-            reply_markup=kb.adjust(*(2,1,1,2)).as_markup(),
+            reply_markup=kb.adjust(*(2, 1, 1, 2)).as_markup(),
             parse_mode="HTML"
         )
     else:
@@ -325,7 +298,7 @@ async def search_category_product_name(callback: CallbackQuery, state: FSMContex
     print('#2', data.items())
     print('#3', data['cat_id'])
     await state.set_state(CategoryForm.product)
-    path = os.path.join(settings.static_path, "category.png")
+    path = os.path.join(conf.static_path, "category.png")
     await callback.message.answer_photo(photo=FSInputFile(path), caption="🛍️🛍🛍🛍🛍🛍 Введите название товара.")
 
 
@@ -335,7 +308,7 @@ async def search_category_sort(message: Message, state: FSMContext) -> None:
     await state.set_state(CategoryForm.sort)
     data = await state.get_data()
     print('#4', data.items())
-    path = os.path.join(settings.static_path, "category.png")
+    path = os.path.join(conf.static_path, "category.png")
     await message.answer_photo(
         photo=FSInputFile(path),
         caption="Как отсортировать результат?",
@@ -349,7 +322,7 @@ async def search_category_qnt(callback: CallbackQuery, state: FSMContext) -> Non
     await state.set_state(CategoryForm.qnt)
     data = await state.get_data()
     print('#5', data.items())
-    path = os.path.join(settings.static_path, "category.png")
+    path = os.path.join(conf.static_path, "category.png")
     photo = InputMediaPhoto(media=FSInputFile(path), caption="сколько единиц товара вывести?")
     await callback.message.edit_media(media=photo, reply_markup=await get_qnt_kb())
 

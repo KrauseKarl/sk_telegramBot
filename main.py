@@ -5,12 +5,12 @@ import sys
 from aiogram import Bot, Dispatcher, types
 
 from commands import private
-from config import settings
+from config import conf
 from database.models import *
 from handlers import router
 from database.db import create_tables, drop_table
 
-bot = Bot(token=settings.bot_token.get_secret_value())
+bot = Bot(token=conf.bot_token.get_secret_value())
 dp = Dispatcher()
 
 dp.include_router(router)
