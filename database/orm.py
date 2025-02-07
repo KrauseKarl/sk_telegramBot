@@ -1,15 +1,15 @@
 from database.models import History, UserModel
 
 
-def orm_make_record_detail(data: dict) -> None:
+async def orm_make_record_detail(data: dict) -> None:
     History().create(**data).save()
 
 
-def orm_make_record_user(user_id: int) -> None:
+async def orm_make_record_user(user_id: int) -> None:
     History.create(user=user_id, command='start').save()
 
 
-def orm_get_or_create_user(user) -> str:
+async def orm_get_or_create_user(user) -> str:
     user, created = UserModel.get_or_create(
         user_id=user.id,
         user_name=user.username,
@@ -17,7 +17,7 @@ def orm_get_or_create_user(user) -> str:
         last_name=user.last_name
     )
     if created:
-        orm_make_record_user(user.id)
+        await orm_make_record_user(user.id)
         return "🟨 🤚 Добро пожаловать"
     return "🤝 Рады снова видеть вас"
 

@@ -1,25 +1,36 @@
 import os
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 from aiogram.filters import Filter
-from aiogram.types import FSInputFile, Message,CallbackQuery
+from aiogram.types import FSInputFile, Message, CallbackQuery, InlineKeyboardButton
 from aiogram.utils.formatting import HashTag, as_list, as_marked_section
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from httpx import Response
 
 from config import conf
 from pagination import Paginator
+from database.models import *
 
 
-class CustomFilter(Filter):
-    def __init__(self, command: Union[str, list]):
-        self.command = command
+async def get_error_answer(error: Exception):
+    photo = FSInputFile(os.path.join(conf.static_path, "error.png"))
+    msg = "⚠️ Произошла ошибка {0}".format(error)
+    return msg, photo
 
-    async def __call__(self, message: Message | CallbackQuery) -> bool:
-        if isinstance(message, CallbackQuery):
-            print('CallbackQuery ', message.data)
-            return message.data.startswith(self.command)
-        print('Message ', message.text)
-        return message.text.startswith("/{0}".format(self.command))
+
+async def make_paginate_history_list(history_list: List[History], page: int = 1):
+    if len(history_list) == 0:
+        return 'у вас нет истории просмотров'
+    kb = InlineKeyboardBuilder()
+    call_back_data = "page_next_{0}".format(int(page) + 1)
+    kb.add(InlineKeyboardButton(text='След. ▶', callback_data=call_back_data))
+    kb.add(InlineKeyboardButton(text='меню', callback_data="menu"))
+    paginator = Paginator(history_list, page=page)
+    history_items = paginator.get_page()[0]
+    msg = await history_info(history_items)
+    msg = msg + "\n{0} из {1}".format(page, paginator.pages)
+    keyboard = kb.adjust(1, 1).as_markup()
+    return msg, keyboard
 
 
 def get_price_range(_list) -> Optional[str]:
@@ -139,22 +150,22 @@ def detail_img(i):
 async def history_info(i):
     msg = ''
     msg = msg + "⚙️ команда:\t<b>{0}</b>\n".format(i.command)
-    msg = msg + "📅 дата:\t{0}\t".format(i.date.strftime('%d %b %Y'))
-    msg = msg + "🕐 время:\t{0}\n".format(i.date.strftime('%H:%M:%S'))
+    msg = msg + "📅 {0}\n".format(i.date.strftime('%d %b %Y'))
+    msg = msg + "🕐 {0}\n".format(i.date.strftime('%H:%M:%S'))
     if i.search_name:
-        msg = msg + "🔎 поиск:\t{0}\n".format(i.search_name)
+        msg = msg + "🔎 поиск:\t{0:.5}\n".format(i.search_name)
     if i.result_qnt:
         msg = msg + "🔟 количество:\t{0}\n".format(i.result_qnt)
     if i.price_range:
         msg = msg + "⚪️ диапазон цен:\t{0}\n".format(i.price_range)
     if i.title:
-        msg = msg + "✅ :\t{0:.100}\n".format(i.title)
+        msg = msg + "✅ \t{0:.100}\n".format(i.title)
     if i.price:
-        msg = msg + "🟠 :\t{0} RUB\n".format(i.price)
+        msg = msg + "🟠 \t{0} RUB\n".format(i.price)
     if i.reviews:
-        msg = msg + "👀 просмотры:\t{0}\n".format(i.reviews)
+        msg = msg + "👀 :\t{0}\n".format(i.reviews)
     if i.stars:
-        msg = msg + "⭐️ рейтинг:\t{0}\n".format(i.stars)
+        msg = msg + "⭐️{0}\n".format(i.stars)
     if i.url:
         msg = msg + "{0}\n".format(i.url.split("//")[1])
     return msg

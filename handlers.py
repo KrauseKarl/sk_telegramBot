@@ -22,83 +22,65 @@ from request import request_item_detail, request_item_list
 router = Router()
 
 
-
-
-
 @router.message(CommandStart())
 async def start_command(message: Message) -> None:
     try:
-        user = message.from_user
-        welcome_msg = orm_get_or_create_user(user=user)
-        await message.answer('{0}, {1}!'.format(welcome_msg, user.first_name))
+        welcoming = await orm_get_or_create_user(user=message.from_user)
+        msg = '{0}, {1}!'.format(welcoming, message.from_user.first_name)
+        await message.answer(msg, reply_markup=main_keyboard)
     except Exception as error:
         await message.answer("⚠️ Произошла ошибка {0}".format(error))
 
 
 # MENU #############################################################################################################
-# @router.message(or_f(Command("menu"), F.data.startswith("menu")))
-@router.message(CustomFilter('menu'))
-async def menu(message: Message | CallbackQuery) -> None:
+@router.message(Command("menu"))
+async def menu_message(message: Message | CallbackQuery) -> None:
     photo_path = os.path.join(conf.static_path, "menu.png")
-    if isinstance(message, CallbackQuery):
-        await message.message.edit_media(
+    try:
+        await message.answer_photo(photo=FSInputFile(photo_path), reply_markup=main_keyboard)
+    except Exception as error:
+        await message.answer("⚠️ Произошла ошибка {0}".format(error))
+
+
+@router.callback_query(F.data.startswith("menu"))
+async def menu_call(callback: CallbackQuery) -> None:
+    photo_path = os.path.join(conf.static_path, "menu.png")
+    try:
+        await callback.message.edit_media(
             media=InputMediaPhoto(media=FSInputFile(photo_path)),
             reply_markup=main_keyboard
         )
-    else:
-    # try:
-        await message.answer_photo(
-            photo=FSInputFile(photo_path),
-            reply_markup=main_keyboard
-        )
-    # await message.answer(text='Главное меню', reply_markup=main_keyboard)
-    # except Exception as error:
-    #     await message.answer("⚠️ Произошла ошибка {0}".format(error))
-
-
-# @router.callback_query()
-# async def menu_call(callback: CallbackQuery) -> None:
-#     try:
-#         photo = InputMediaPhoto(
-#             media=FSInputFile(os.path.join(conf.static_path, "menu.png")))
-#         await callback.message.edit_media(media=photo, reply_markup=main_keyboard)
-#     except Exception as err:
-#         await callback.message.answer('⚠️ Что-то пошло не так с командой /menu')
-#         await callback.message.answer(str(err))
+    except Exception as error:
+        await callback.message.answer("⚠️ Произошла ошибка {0}".format(error))
 
 
 # HISTORY #############################################################################################################
-# @router.callback_query(or_f(Command("history"), F.data.startswith("history")))
-@router.callback_query(CustomFilter('history'))
-async def history_(call: Message | CallbackQuery) -> None:
+@router.callback_query(F.data.startswith("history"))
+async def history_callback(callback: CallbackQuery) -> None:
     photo = FSInputFile(os.path.join(conf.static_path, "history.png"))
-    print(type(call))
-    if isinstance(call, CallbackQuery):
-        message = call.message
-        print('333 ', call.data)
-        user_id = call.from_user.id
-        print('345 ', call.from_user.id)
-
-    else:
-        message = call
-        user_id = call.from_user.id
-    print('555 ', message.text)
-
-    history_list = await orm_get_history_list(user_id)
-
-    kb = InlineKeyboardBuilder()
-    if F.data.startswith("history"):
-        page = 1
-        call_back_data = "page_next_{0}".format(int(page) + 1)
-        kb.add(InlineKeyboardButton(text='След. ▶', callback_data=call_back_data))
-        kb.add(InlineKeyboardButton(text='главное меню', callback_data="menu"))
-        paginator = Paginator(history_list, page=page)
-        print(paginator.get_page())
-        history_items = paginator.get_page()[0]
-        msg = await history_info(history_items)
-        msg = msg + "{0} из {1}".format(page, paginator.pages)
+    try:
+        user_id = callback.from_user.id
+        history_list = await orm_get_history_list(user_id)
+        msg, kb = await make_paginate_history_list(history_list)
         photo = InputMediaPhoto(media=photo, caption=msg, parse_mode="HTML")
-        await message.edit_media(media=photo, reply_markup=kb.adjust(1, 1).as_markup())
+        await callback.message.edit_media(media=photo, reply_markup=kb)
+    except IntegrityError as error:
+        await callback.message.answer("⚠️ Произошла ошибка {0}".format(error))
+
+
+@router.message(Command("history"))
+async def history_message(message: Message) -> None:
+
+    try:
+        photo = FSInputFile(os.path.join(conf.static_path, "history.png"))
+        user_id = message.from_user.id
+        history_list = await orm_get_history_list(user_id)
+        msg, kb = await make_paginate_history_list(history_list)
+        await message.answer_photo(photo=photo, caption=msg, reply_markup=kb, parse_mode="HTML")
+    except IntegrityError as error:
+        msg, photo = await get_error_answer(error)
+        await message.answer_photo(
+            photo=photo, caption=msg, reply_markup=main_keyboard, parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("page"))
@@ -143,10 +125,16 @@ async def history_page(callback: Message | CallbackQuery) -> None:
 
 
 # ITEM LIST ############################################################################################################
-# @router.callback_query(F.data.startswith("search"))
-@router.callback_query(CustomFilter("search"))
-async def search_name(call: CallbackQuery, state: FSMContext) -> None:
-    print('call ', call.data)
+@router.message(Command("search"))
+async def search_name_message(message: Message, state: FSMContext) -> None:
+    await state.set_state(Form.product)
+    path = os.path.join(conf.static_path, "cart.png")
+    photo = InputMediaPhoto(media=FSInputFile(path), caption="🛍️ Введите название товара.")
+    await message.edit_media(media=photo)
+
+
+@router.callback_query(F.data.startswith("search"))
+async def search_name_callback(call: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(Form.product)
     path = os.path.join(conf.static_path, "cart.png")
     photo = InputMediaPhoto(media=FSInputFile(path), caption="🛍️ Введите название товара.")
