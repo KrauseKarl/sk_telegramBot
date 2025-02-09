@@ -1,4 +1,6 @@
 /.env
 /venv/
-/item.detail.json
-/category.item.json
+/json_example/item.detail.json
+/json_example/category.item.json
+/static/products/
+/_json_example/

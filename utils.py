@@ -1,26 +1,39 @@
-import os
-from typing import Optional, Union, List
+import io
+import os.path
+import urllib
+from typing import List, Optional
+from urllib.parse import urlparse, unquote
+from urllib.request import urlretrieve
+from PIL import Image
 
-from aiogram.filters import Filter
-from aiogram.types import FSInputFile, Message, CallbackQuery, InlineKeyboardButton
-from aiogram.utils.formatting import HashTag, as_list, as_marked_section
+from aiogram.types import FSInputFile, InlineKeyboardButton, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from httpx import Response
 
-from config import conf
-from pagination import Paginator
+from core import config
 from database.models import *
+from database.orm import orm_make_record_request
+from keyboards import item_kb, menu_kb
+from pagination import *
 
 
-async def get_error_answer(error: Exception):
-    photo = FSInputFile(os.path.join(conf.static_path, "error.png"))
+async def get_error_answer_photo(error: Exception) -> tuple[str, FSInputFile]:
+    photo = await get_fs_input_hero_image("error")
     msg = "⚠️ Произошла ошибка {0}".format(error)
     return msg, photo
 
 
-async def make_paginate_history_list(history_list: List[History], page: int = 1):
+async def get_error_answer_media(error: Exception) -> InputMediaPhoto:
+    return await get_input_media_hero_image(
+        "error",
+        "⚠️ Произошла ошибка {0}".format(error)
+    )
+
+
+async def make_paginate_history_list(
+        history_list: List[History], page: int = 1
+):
     if len(history_list) == 0:
-        return 'у вас нет истории просмотров'
+        return 'у вас нет истории просмотров', menu_kb
     kb = InlineKeyboardBuilder()
     call_back_data = "page_next_{0}".format(int(page) + 1)
     kb.add(InlineKeyboardButton(text='След. ▶', callback_data=call_back_data))
@@ -47,7 +60,7 @@ def card_info(item, currency):
     msg = msg + "💵 цена: <b>{0}</b>".format(
         item["item"]["sku"]["def"]["promotionPrice"])
     msg = msg + "{0}\n".format(currency)
-    msg = msg + "{0}".format(":".join(["https", item["item"]["itemUrl"]]))
+    msg = msg + "\n{0}".format(":".join(["https", item["item"]["itemUrl"]]))
     return msg, image
 
 
@@ -60,11 +73,11 @@ def detail_info(i):
 
 
 async def get_detail_info(i):
-    try:
-        print('\ndetail_info_2=', i["result"]["item"]["title"])
-    except Exception as err:
-        print(i)
-        print("❌ERROR: ", err)
+    # try:
+    #     print('\ndetail_info_2=', i["result"]["item"]["title"])
+    # except Exception as err:
+    #     print(i)
+    #     print("❌ERROR: ", err)
     msg = ""
     title = i["result"]["item"]["title"]
     item_url = ":".join(["https", i["result"]["item"]["itemUrl"]])
@@ -81,24 +94,23 @@ async def get_detail_info(i):
     store_title = i["result"]["seller"]["storeTitle"]
     store_url = ":".join(["https", i["result"]["seller"]["storeUrl"]])
 
-    msg = msg + "{0}\n\n{1:.100}\n".format(item_url, title)
-    msg = msg + "\n\t💰 Цена:\n\t".upper()
-    msg = msg + "\t{0}\n".format(promotion_price)
+    msg = msg + "{0}\n\n{1:.50}\n".format(item_url, title)
+    msg = msg + "💰 {0}\n".format(promotion_price)
     try:
-        msg = msg + "\n\tРазмеры:\n\t".upper()
+        msg = msg + "<u>Размеры:</u> ".upper()
         for s in size:
-            msg = msg + "\t- {0}\n".format(s["name"])
+            msg = msg + "\t {0} ".format(s["name"])
     except Exception as err:
         print("❌ERROR: ", err)
     try:
-        msg = msg + "\n\t характеристики:\n".upper()
+        msg = msg + "\n<u>характеристики:</u>\n".upper()
         for prop in properties_list:
             msg = msg + "\t- {0}: {1}\n".format(prop["name"], prop["value"])
     except Exception as err:
         print("❌ERROR: ", err)
 
     try:
-        msg = msg + "\n📈 Продажи: {0}\n🔝 Рейтинг: {1}\n".format(
+        msg = msg + "\n📈 Продажи: {0}\t⭐️ Рейтинг: {1}\n".format(
             reviews,
             average_star,
         )
@@ -119,12 +131,12 @@ async def get_detail_info(i):
         msg = msg + "\t{0}\n\t{1}\n".format(store_title, store_url)
     except Exception as err:
         print("❌ERROR: ", err)
-    return msg
+    return msg[:(MESSAGE_LIMIT - 1)] if len(msg) > MESSAGE_LIMIT else msg
 
 
 def get_color_img(i):
     images = []
-    print('\ndetail_color_img = ', i["result"]["item"]["sku"]["props"])
+    # print('\ndetail_color_img = ', i["result"]["item"]["sku"]["props"])
     try:
         image_list = i["result"]["item"]["sku"]["props"][1]["values"]
         for i in image_list:
@@ -159,25 +171,15 @@ async def history_info(i):
     if i.price_range:
         msg = msg + "⚪️ диапазон цен:\t{0}\n".format(i.price_range)
     if i.title:
-        msg = msg + "✅ \t{0:.100}\n".format(i.title)
+        msg = msg + "✅ {:.30}\n".format(i.title)
     if i.price:
-        msg = msg + "🟠 \t{0} RUB\n".format(i.price)
+        msg = msg + "🟠 {0} RUB\n".format(i.price)
     if i.reviews:
-        msg = msg + "👀 :\t{0}\n".format(i.reviews)
+        msg = msg + "👀 {0}\n".format(i.reviews)
     if i.stars:
         msg = msg + "⭐️{0}\n".format(i.stars)
     if i.url:
         msg = msg + "{0}\n".format(i.url.split("//")[1])
-    return msg
-
-
-def unpacking_subcategory(sub_cat_list: list, query: str = None):
-    msg = ''
-    for category in sub_cat_list:
-        subcategory_name = category["name"]
-        if subcategory_name:
-            if query in subcategory_name.lower():
-                msg = msg + "{0}\n".format(category["name"])
     return msg
 
 
@@ -197,10 +199,10 @@ def category_info(items: dict, query: str = None):
             query=query,
             sub_cat_list=sub_category_name
         )
-        # print(f"🔥 {query} in ", cat_name)
-        # print(cat_name)
-        # print(msg)
-        # msg = msg + "\n#{0}\n".format(query)
+        print(f"🔥 {query} in ", cat_name)
+        print(cat_name)
+        print(msg)
+        msg = msg + "\n#{0}\n".format(query)
     else:
         for sub_cat in sub_category_name:
             count += 1
@@ -213,12 +215,22 @@ def category_info(items: dict, query: str = None):
                         query=query,
                         sub_cat_list=sub_category_name
                     )
-                    # print(f"✅ {query} in ", sub_cat_name)
-                    # print(cat_name)
-                    # print(msg)
-                    # msg = msg + "\n#{0}\n".format(query)
+                    print(f"✅ {query} in ", sub_cat_name)
+                    print(cat_name)
+                    print(msg)
+                    msg = msg + "\n#{0}\n".format(query)
                     break
     return msg, category_name, str(category_id), count
+
+
+def unpacking_subcategory(sub_cat_list: list, query: str = None):
+    msg = ''
+    for category in sub_cat_list:
+        subcategory_name = category["name"]
+        if subcategory_name:
+            if query in subcategory_name.lower():
+                msg = msg + "{0}\n".format(category["name"])
+    return msg
 
 
 def separate_img_by_ten(images: list, num: int = 9):
@@ -226,17 +238,9 @@ def separate_img_by_ten(images: list, num: int = 9):
         yield list(images[i: i + num])
 
 
-def pages(paginator: Paginator):
-    buttons = dict()
-    if paginator.has_previous():
-        buttons["◀ пред."] = "previous"
-    if paginator.has_next():
-        buttons["след. ▶"] = "next"
-    return buttons
-
-
-async def deserialize_item_detail(response: dict, user_id: int) -> dict:
+async def deserialize_item_detail(response: dict, user_id: int) -> Optional[dict]:
     data = dict()
+
     item = response["result"]["item"]
     reviews = response["result"]["reviews"]
     data["user"] = user_id
@@ -246,12 +250,81 @@ async def deserialize_item_detail(response: dict, user_id: int) -> dict:
     data["reviews"] = reviews.get("count")
     data["star"] = reviews.get("averageStar")
     data["url"] = ":".join(["https", item.get("itemUrl")])
-
     try:
-        image_full_path = ":".join(["https", item["images"][0]])
-    except:
-        image_full_path = FSInputFile(
-            os.path.join(conf.static_path, 'category.png'))
-    data["image"] = image_full_path
-
+        image_url = ":".join(["https", item["images"][0]])
+        path, file_name = await make_default_size_image(image_url)
+    except KeyError:
+        file_name = None
+    data["image"] = file_name
     return data
+
+
+async def deserialize_item_list(response: dict, user_id: int, data: dict) -> List[tuple]:
+    price_range_list = []
+    data_result_list = []
+    ranges = int(data["qnt"])
+    item_list = response.get("result").get("resultList")[:ranges]
+    currency = response.get("result").get("settings")["currency"]
+
+    for item in item_list:
+        msg, img = card_info(item, currency)
+        price = item["item"]["sku"]["def"]["promotionPrice"]
+        kb = await item_kb(item["item"]["itemId"])
+        price_range_list.append(price)
+        data_result_list.append((msg, img, kb))
+
+    await orm_make_record_request(
+        HistoryModel(
+            user=user_id,
+            command='search',
+            price_range=get_price_range(price_range_list),
+            result_qnt=int(ranges),
+            search_name=data['product'],
+        ).model_dump())
+    return data_result_list
+
+
+async def get_fs_input_hero_image(value: str) -> FSInputFile:
+    return FSInputFile(os.path.join(conf.static_path, HERO[value]))
+
+
+async def get_input_media_hero_image(value: str, msg: str = None) -> InputMediaPhoto:
+    return InputMediaPhoto(
+        media=await get_fs_input_hero_image(value),
+        caption=msg
+    )
+
+
+async def parse_url(url: str) -> str:
+    """Парсит имя файла из url."""
+    return unquote(Path(urlparse(url).path).name)
+
+
+async def make_default_size_image(url: str) -> tuple[Optional[str], Optional[str]]:
+    """
+    Изменяет размер (1024х576) изображения товара и
+    сохраняет в директории `static/products`
+    """
+    try:
+        file_name = await parse_url(url)
+        full_path = os.path.join(config.IMAGE_PATH, file_name)
+
+        fd = urllib.request.urlopen(url)
+        input_img_file = io.BytesIO(fd.read())
+
+        img = Image.open(input_img_file)
+        img.thumbnail((config.THUMBNAIL, config.HEIGHT))
+        img.save(fp=full_path, format=config.IMG_FORMAT)
+        input_width, input_height = img.size
+
+        bg = Image.new('RGB', (config.WIDTH, config.HEIGHT))
+        bg_width, bg_height = bg.size
+        offset = ((bg_width - input_width) // 2, (bg_height - input_height) // 2)
+        bg.paste(im=img, box=offset)
+        bg.save(fp=full_path, format=config.IMG_FORMAT)
+        bg.close()
+        img.close()
+
+        return full_path, file_name
+    except Exception:
+        return None, None

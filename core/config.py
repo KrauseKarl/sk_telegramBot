@@ -1,15 +1,11 @@
 import os
-from typing import Dict
 from pathlib import Path
+from typing import Dict
+
 from dotenv import load_dotenv
-from pydantic import SecretStr, StrictStr, DirectoryPath
+from pydantic import DirectoryPath, SecretStr, StrictStr
 from pydantic_settings import BaseSettings
 
-load_dotenv()
-
-BASE_DIR = Path(__file__).resolve(strict=True).parent
-STATIC_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath("static"))
-# DATETIME_FORMAT = '%d.%m.%Y - %H:%M:%S'
 # DEFAULT_COMMANDS = (
 #     ('start', 'Начало работы'),
 #     ('help', 'Информация по командам'),
@@ -18,7 +14,32 @@ STATIC_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath("static"))
 #     ('custom', 'Товары/услуги по настраиваемым характеристикам поиска'),
 #     ('history', 'История поиска'),
 # )
-# RESULT_LIMIT = 15
+load_dotenv()
+STATIC_FOLDER = 'static'
+PRODUCT_IMAGE_FOLDER = 'products'
+DEFAULT_FOLDER = 'default'
+
+BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
+STATIC_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath(STATIC_FOLDER))
+IMAGE_PATH = str(Path(STATIC_PATH).resolve(strict=True).joinpath(PRODUCT_IMAGE_FOLDER))
+# DATETIME_FORMAT = '%d.%m.%Y - %H:%M:%S'
+
+LOCALE = "ru_RU"
+CURRENCY = "RUB"
+REGION = "RU"
+
+RESULT_LIMIT = 5
+MESSAGE_LIMIT = 1000
+
+WIDTH = 1024
+HEIGHT = 576
+THUMBNAIL = 500
+IMG_FORMAT = "png"
+
+SORT_SET = {"default", "priceDesc", "priceAsc", "salesDesc"}
+
+QNT = {"2", "3", "5", "10"}
+
 SORT = {
     "default": "default",
     "desc": "priceDesc",
@@ -26,13 +47,17 @@ SORT = {
     "sales": "salesDesc",
     "latest": "latest",
 }
-SORT_SET = {
-    "default",
-    "priceDesc",
-    "priceAsc",
-    "salesDesc"
+HERO = {
+    "category": os.path.join(DEFAULT_FOLDER, "category_2.png"),
+    "error": os.path.join(DEFAULT_FOLDER, "error_2.png"),
+    "favorites": os.path.join(DEFAULT_FOLDER, "favorites_2.png"),
+    "help": os.path.join(DEFAULT_FOLDER, "help_2.png"),
+    "history": os.path.join(DEFAULT_FOLDER, "history_2.png"),
+    "menu": os.path.join(DEFAULT_FOLDER, "menu_2.png"),
+    "quantity": os.path.join(DEFAULT_FOLDER, "quantity_2.png"),
+    "sort": os.path.join(DEFAULT_FOLDER, "sort_2.png"),
+    "search": os.path.join(DEFAULT_FOLDER, "search_2.png"),
 }
-BTNS = {"2", "3", "5", "10"}
 
 
 class Settings(BaseSettings):
@@ -43,7 +68,7 @@ class Settings(BaseSettings):
 
     host: StrictStr = os.getenv("HOST", None)
     url: StrictStr = os.getenv("URL", None)
-    range: int = 5
+    range: int = RESULT_LIMIT
 
     database: StrictStr = os.getenv("DB_NAME")
     db_user: StrictStr = os.getenv("DB_USER")
@@ -56,10 +81,11 @@ class Settings(BaseSettings):
         "x-rapidapi-host": os.getenv("HOST", None)
     }
     querystring: Dict = {
-        "locale": "ru_RU",
-        "currency": "RUB",
-        "region": "RU",
+        "locale": LOCALE,
+        "currency": CURRENCY,
+        "region": REGION,
     }
     static_path: DirectoryPath = STATIC_PATH
+
 
 conf = Settings()

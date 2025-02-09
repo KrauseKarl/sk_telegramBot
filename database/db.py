@@ -1,6 +1,5 @@
 from database.models import *
 
-
 # Look, sync code is working!
 
 # objects = peewee_async.Manager(database)

@@ -1,6 +1,6 @@
 import httpx
 
-from config import conf
+from core.config import conf
 
 
 async def request_item_list(url, q=None, sort=None, cat_id=None) -> dict:

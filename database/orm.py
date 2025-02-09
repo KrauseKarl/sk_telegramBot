@@ -1,7 +1,7 @@
 from database.models import History, UserModel
 
 
-async def orm_make_record_detail(data: dict) -> None:
+async def orm_make_record_request(data: dict) -> None:
     History().create(**data).save()
 
 

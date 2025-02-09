@@ -5,4 +5,5 @@ private = [
     BotCommand(command="search", description="поиск товара"),
     BotCommand(command="category", description="поиск категории"),
     BotCommand(command="history", description="история запросов"),
+    BotCommand(command="favorite", description="избранное"),
 ]

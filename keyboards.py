@@ -1,8 +1,9 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from config import *
 
-main_keyboard = InlineKeyboardMarkup(
+from core.config import *
+
+menu_kb = InlineKeyboardMarkup(
     row_width=3,
     inline_keyboard=[
         [
@@ -15,7 +16,7 @@ main_keyboard = InlineKeyboardMarkup(
     ],
 )
 
-sort_keyboard = InlineKeyboardMarkup(
+sort_kb = InlineKeyboardMarkup(
     row_width=3,
     inline_keyboard=[
         [
@@ -34,7 +35,7 @@ sort_keyboard = InlineKeyboardMarkup(
 
 async def get_qnt_kb():
     keyboard = InlineKeyboardBuilder()
-    for value in BTNS:
+    for value in QNT:
         keyboard.add(InlineKeyboardButton(text=value, callback_data=value))
     return keyboard.adjust(*(4,)).as_markup()
 

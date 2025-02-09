@@ -2,9 +2,10 @@ from datetime import datetime
 
 import peewee
 import peewee_async
+from peewee import Model
 from playhouse.migrate import PostgresqlMigrator, migrate
-
-from config import conf
+from pydantic import BaseModel
+from core.config import *
 
 db = peewee_async.PooledPostgresqlDatabase(
     database=conf.database,
@@ -16,12 +17,12 @@ db = peewee_async.PooledPostgresqlDatabase(
 migrator = PostgresqlMigrator(db)
 
 
-class BaseModel(peewee.Model):
+class Base(Model):
     class Meta:
         database = db
 
 
-class UserModel(BaseModel):
+class UserModel(Base):
     """Таблица пользователей."""
 
     # id = peewee.PrimaryKeyField(primary_key=True, null=False)
@@ -35,7 +36,7 @@ class UserModel(BaseModel):
         db_table = "user"
 
 
-class History(BaseModel):
+class History(Base):
     uid = peewee.PrimaryKeyField()
     date = peewee.DateTimeField(default=datetime.now())
     command = peewee.CharField()
@@ -66,3 +67,17 @@ try:
     migrate(migrator.add_column('history', 'image', image), )
 except peewee.ProgrammingError:
     pass
+
+
+class HistoryModel(BaseModel):
+    command: str
+    search_name: str = None
+    result_qnt: int = None
+    price_range: str = None
+    title: str = None
+    price: float = None
+    reviews: int = None
+    stars: float = None
+    url: str = None
+    image: str = None
+    user: int = None
