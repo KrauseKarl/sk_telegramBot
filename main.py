@@ -30,7 +30,6 @@ dp.include_router(history)
 dp.include_router(favorite)
 
 
-
 async def main():
     create_tables()
     await bot.delete_webhook(

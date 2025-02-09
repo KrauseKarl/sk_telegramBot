@@ -19,6 +19,17 @@ class CategoryForm(StatesGroup):
     sort = State()
 
 
+class FavoriteForm(StatesGroup):
+    """Группа состояний."""
+
+    product_id = State()
+    title = State()
+    price = State()
+    reviews = State()
+    stars = State()
+    url = State()
+    image = State()
+
 # class UserState(StatesGroup):
 #     """Группа состояний."""
 #

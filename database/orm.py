@@ -1,4 +1,4 @@
-from database.models import History, UserModel
+from database.models import History, User, Favorite
 
 
 async def orm_make_record_request(data: dict) -> None:
@@ -10,7 +10,7 @@ async def orm_make_record_user(user_id: int) -> None:
 
 
 async def orm_get_or_create_user(user) -> str:
-    user, created = UserModel.get_or_create(
+    user, created = User.get_or_create(
         user_id=user.id,
         user_name=user.username,
         first_name=user.first_name,
@@ -24,3 +24,25 @@ async def orm_get_or_create_user(user) -> str:
 
 async def orm_get_history_list(user_id: int):
     return History.select().where(History.user == user_id).order_by(History.date)
+
+
+async def orm_get_or_create_favorite(data):
+    favorite, created = Favorite.get_or_create(
+        product_id=data.get("product_id"),
+        title=data.get("title"),
+        price=data.get("price"),
+        reviews=data.get("reviews"),
+        stars=data.get("stars"),
+        url=data.get("url"),
+        image=data.get("image"),
+        user=data.get("user"),
+    )
+    print(f"{favorite} | {created}")
+    if created:
+        await orm_make_record_favorite(data)
+        return favorite
+    return favorite
+
+
+async def orm_make_record_favorite(data: dict):
+    Favorite().create(**data).save()

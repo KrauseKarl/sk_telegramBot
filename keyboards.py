@@ -7,11 +7,14 @@ menu_kb = InlineKeyboardMarkup(
     row_width=3,
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="поиск товара", callback_data="search"),
-            InlineKeyboardButton(text="поиск категории", callback_data="category"),
+            InlineKeyboardButton(text="🛒 поиск товара", callback_data="search"),
+            InlineKeyboardButton(text="🧾 поиск категории", callback_data="category"),
         ],
         [
-            InlineKeyboardButton(text="история команд", callback_data="history"),
+            InlineKeyboardButton(text="📋 история команд", callback_data="history"),
+        ],
+        [
+            InlineKeyboardButton(text="⭐️ избранное", callback_data="favorite"),
         ]
     ],
 )
