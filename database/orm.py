@@ -17,7 +17,6 @@ async def orm_get_or_create_user(user) -> str:
         last_name=user.last_name
     )
     if created:
-        await orm_make_record_user(user.id)
         return "🟨 🤚 Добро пожаловать"
     return "🤝 Рады снова видеть вас"
 
@@ -37,11 +36,11 @@ async def orm_get_or_create_favorite(data):
         image=data.get("image"),
         user=data.get("user"),
     )
-    print(f"{favorite} | {created}")
-    if created:
-        await orm_make_record_favorite(data)
-        return favorite
-    return favorite
+    print(f"ORM = {favorite.uid} | {created}")
+    # if created:
+    #     await orm_make_record_favorite(data)
+    #     return favorite
+    return favorite, created
 
 
 async def orm_make_record_favorite(data: dict):

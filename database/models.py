@@ -18,6 +18,7 @@ migrator = PostgresqlMigrator(db)
 
 
 class Base(Model):
+    date = peewee.DateTimeField(default=datetime.now())
     class Meta:
         database = db
 
@@ -25,7 +26,7 @@ class Base(Model):
 class User(Base):
     """Таблица пользователей."""
 
-    user_id = peewee.IntegerField(primary_key=True)  # Первичный ключ Telegram ID
+    user_id = peewee.IntegerField(primary_key=True, unique=True)  # Первичный ключ Telegram ID
     user_name = peewee.TextField(null=True)  # Никнейм в telegram
     first_name = peewee.TextField(null=True)  # Имя в telegram
     last_name = peewee.TextField(null=True)  # Фамилия в telegram опционально.
@@ -36,7 +37,6 @@ class User(Base):
 
 class History(Base):
     uid = peewee.PrimaryKeyField()
-    date = peewee.DateTimeField(default=datetime.now())
     command = peewee.CharField()
 
     search_name = peewee.CharField(null=True)
@@ -62,9 +62,7 @@ class History(Base):
 
 class Favorite(Base):
     uid = peewee.PrimaryKeyField()
-    date = peewee.DateTimeField(default=datetime.now())
-
-    product_id = peewee.CharField(max_length=200)
+    product_id = peewee.CharField(max_length=200, unique=True)
     title = peewee.CharField(null=True, max_length=200)
     price = peewee.FloatField(null=True)
     reviews = peewee.IntegerField(null=True)

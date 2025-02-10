@@ -23,7 +23,7 @@ async def history_callback(callback: CallbackQuery) -> None:
     except CustomError as error:
         await callback.message.edit_media(
             media=await get_error_answer_media(error),
-            reply_markup=menu_kb
+            reply_markup=await menu_kb()
         )
 
 
@@ -42,7 +42,7 @@ async def history_message(message: Message) -> None:
         await message.answer_photo(
             photo=photo,
             caption=msg,
-            reply_markup=menu_kb
+            reply_markup=await menu_kb()
         )
 
 
@@ -97,5 +97,5 @@ async def history_page(callback: Message | CallbackQuery) -> None:
         await callback.message.answer_photo(
             photo=photo,
             caption=msg,
-            reply_markup=menu_kb
+            reply_markup=await menu_kb()
         )

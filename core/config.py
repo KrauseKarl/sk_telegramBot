@@ -57,6 +57,7 @@ HERO = {
     "quantity": os.path.join(DEFAULT_FOLDER, "quantity_2.png"),
     "sort": os.path.join(DEFAULT_FOLDER, "sort_2.png"),
     "search": os.path.join(DEFAULT_FOLDER, "search_2.png"),
+    "result": os.path.join(DEFAULT_FOLDER, "result_2.png"),
 }
 
 

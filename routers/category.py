@@ -1,4 +1,5 @@
 from aiogram import F, Router
+from aiogram.exceptions import AiogramError, TelegramBadRequest
 from aiogram.filters import or_f, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -32,7 +33,7 @@ async def search_category_message(
     except CustomError as error:
         await message.edit_media(
             media=await get_error_answer_media(error),
-            reply_markup=menu_kb
+            reply_markup=await qnt_kb()
         )
 
 
@@ -72,7 +73,7 @@ async def search_category_name(message: Message, state: FSMContext) -> None:
         )
     else:
         mgs = "⚠️По вашему запросу ничего не найдено.\nПопробуйте сформулировать запрос иначе."
-        await message.answer(mgs, reply_markup=menu_kb)
+        await message.answer(mgs, reply_markup=await menu_kb())
 
 
 @category.callback_query(or_f(CategoryForm.cat_id, F.data.startswith("cat_id")))
@@ -93,7 +94,7 @@ async def search_category_sort(message: Message, state: FSMContext) -> None:
     await message.answer_photo(
         photo=await get_fs_input_hero_image("category"),
         caption="Как отсортировать результат?",
-        reply_markup=sort_kb
+        reply_markup=await sort_kb()
     )
 
 
@@ -105,7 +106,7 @@ async def search_category_qnt(callback: CallbackQuery, state: FSMContext) -> Non
         media=await get_input_media_hero_image(
             "category",
             "сколько единиц товара вывести?"),
-        reply_markup=await get_qnt_kb()
+        reply_markup=await qnt_kb()
     )
 
 
@@ -147,5 +148,5 @@ async def search_category_result(callback: CallbackQuery, state: FSMContext) -> 
         History().create(**search_data).save()  # todo make orm func for orm.py
 
         await state.clear()
-    except AiogramError as err:
+    except CustomError as err:
         await callback.message.answer("⚠️ Ошибка\n{0}".format(str(err)))

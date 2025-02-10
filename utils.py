@@ -9,10 +9,11 @@ from PIL import Image
 from aiogram.types import FSInputFile, InlineKeyboardButton, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from core import *
 from core import config
 from database.models import *
-from database.orm import orm_make_record_request
-from keyboards import item_kb, menu_kb
+from database.orm import *
+from keyboards import *
 from pagination import *
 
 
@@ -83,7 +84,17 @@ async def get_detail_info(i):
     item_url = ":".join(["https", i["result"]["item"]["itemUrl"]])
     properties_list = i["result"]["item"]["properties"]["list"]
     promotion_price = i["result"]["item"]["sku"]["base"][0]["promotionPrice"]
-    size = i["result"]["item"]["sku"]["props"][0]["values"]
+
+
+    try:
+        prop = i["result"]["item"]["sku"]["props"]
+        if prop[0].get("name") in ["Size", "Размер"] and prop[0].get("name") not in ["Color", "Цвет"]:
+            size = prop[0]["values"]
+        else:
+            size = prop[1]["values"]
+    except IndexError:
+        size = None
+
     reviews = i["result"]["reviews"]["count"]
     average_star = i["result"]["reviews"]["averageStar"]
     shipping_out_days = i["result"]["delivery"]["shippingOutDays"]
@@ -135,16 +146,24 @@ async def get_detail_info(i):
 
 
 def get_color_img(i):
-    images = []
+        images = []
     # print('\ndetail_color_img = ', i["result"]["item"]["sku"]["props"])
-    try:
-        image_list = i["result"]["item"]["sku"]["props"][1]["values"]
+    # try:
+        prop = i["result"]["item"]["sku"]["props"]
+        print(f"\n\nPROP\n {prop }\n\n")
+        print(prop[0].get("name"))
+        print(prop[1].get("name"))
+        if prop[0].get("name") in ['Цвет', 'Color']:
+            image_list = prop[0]["values"]
+        else:
+            image_list = prop[1]["values"]
+        print(image_list)
         for i in image_list:
             img = ":".join(["https", i["image"]])
             images.append(img)
         return images
-    except (IndexError, KeyError):
-        return None
+    # except (IndexError, KeyError):
+    #     return None
 
 
 def detail_img(i):
@@ -269,7 +288,11 @@ async def deserialize_item_list(response: dict, user_id: int, data: dict) -> Lis
     for item in item_list:
         msg, img = card_info(item, currency)
         price = item["item"]["sku"]["def"]["promotionPrice"]
-        kb = await item_kb(item["item"]["itemId"])
+        kb = await item_kb_2(
+            "item",
+            item["item"]["itemId"],
+            text='подробно'
+        )
         price_range_list.append(price)
         data_result_list.append((msg, img, kb))
 
