@@ -9,11 +9,11 @@ from commands import private
 from database.db import *
 from database.models import *
 from routers.base import base
+from routers.category import category
 from routers.detail import detail
 from routers.favorite import favorite
 from routers.history import history
 from routers.search import search
-from routers.category import category
 
 bot = Bot(
     token=conf.bot_token.get_secret_value(),

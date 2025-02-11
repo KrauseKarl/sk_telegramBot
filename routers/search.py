@@ -1,4 +1,5 @@
 import asyncio
+
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
@@ -135,10 +136,10 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         )
         data = await state.get_data()
         await call.message.answer('🔍  результат поиска: <b>{0:.50}</b>'.format(data['product']))
-        await call.message.bot.delete_message(
-            chat_id=call.message.chat.id,
-            message_id=call.message.message_id
-        )
+        # await call.message.bot.delete_message(
+        #     chat_id=call.message.chat.id,
+        #     message_id=call.message.message_id
+        # )
         for msg, img, kb in item_list:
             await asyncio.sleep(0.5)
             await call.message.answer_photo(photo=img, caption=msg, reply_markup=kb)

@@ -52,7 +52,7 @@ async def history_page(callback: Message | CallbackQuery) -> None:
         history_list = await orm_get_history_list(callback.from_user.id)
 
         # todo make func make_paginate_history_list
-        page = int(callback.data.split("_")[2])
+        page = int(callback.data.split("_")[-1])
         paginator = Paginator(history_list, page=int(page))
         history_item = paginator.get_page()[0]
         msg = await history_info(history_item)

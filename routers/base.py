@@ -4,8 +4,8 @@ from aiogram.types import CallbackQuery, Message
 
 from database.exceptions import CustomError
 from database.orm import *
-from utils import *
 from keyboards import *
+from utils import *
 
 base = Router()
 
@@ -82,11 +82,8 @@ async def menu_call(callback: CallbackQuery) -> None:
 async def delete_call(callback: CallbackQuery) -> None:
     try:
         qnt = int(callback.data.split('_')[-1])
-        print(f"{qnt= }")
-        qnt = qnt if qnt <= 8 else 8
-        print(f"{qnt= }")
-        print(range(qnt))
-        for q in range(1, qnt+1):
+        qnt = qnt if qnt <= config.IMG_LIMIT else conf.IMG_LIMIT
+        for q in range(1, qnt + 1):
             print(callback.message.message_id-q)
             await callback.message.bot.delete_message(
                 chat_id=callback.message.chat.id,

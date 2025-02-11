@@ -26,7 +26,7 @@ async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
         await orm_make_record_request(item_data)
         # await call.message.edit_media(
         #     media=InputMediaPhoto(media=item_data['image'], caption=msg),
-        #     reply_markup=menu_kb
+        #     reply_markup=kb_menu
         # )
         # media_group = MediaGroupBuilder(caption="Media group caption")
         # # Add photo
@@ -77,16 +77,18 @@ async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
         img_qnt = len(img_color)
         fav_id = "favorite_add_{0}_{1}".format(item_id, img_qnt)
 
+        # todo check if item already in favorites don not show fav button
+
         kb = await kb_builder(
             size=(1, 2, 2),
             data_list=[
                 {"⭐️ добавить в избранное": fav_id},
-                {"свернуть": "delete_{0}_{1}".format(fav_id, img_qnt)},
-                {"отслеживать цену": "price"}
+                {"❌ закрыть": "delete_{0}_{1}".format(fav_id, img_qnt)},
+                {"📉 отслеживать цену": "price"}
             ]
         )
         await call.message.answer(msg, reply_markup=kb)
-        # await call.message.answer('меню', reply_markup=menu_kb)
+        # await call.message.answer('меню', reply_markup=kb_menu)
         # else:
         # # ALL IMAGE
         #     images = detail_img(response)
@@ -95,8 +97,8 @@ async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
         #         await call.message.answer("Все иллюстрации")
         #         for img in image_color_list:
         #             color_images = [InputMediaPhoto(media=i) for i in img]
-        #             await call.message.answer_media_group(color_images, reply_markup=menu_kb)
-        # await call.message.answer('меню', reply_markup=menu_kb)
+        #             await call.message.answer_media_group(color_images, reply_markup=kb_menu)
+        # await call.message.answer('меню', reply_markup=kb_menu)
     except CustomError as error:
         msg, photo = await get_error_answer_photo(error)
         await call.message.answer_photo(

@@ -35,6 +35,7 @@ WIDTH = 1024
 HEIGHT = 576
 THUMBNAIL = 500
 IMG_FORMAT = "png"
+IMG_LIMIT = 8
 
 SORT_SET = {"default", "priceDesc", "priceAsc", "salesDesc"}
 
@@ -50,7 +51,7 @@ SORT = {
 HERO = {
     "category": os.path.join(DEFAULT_FOLDER, "category_2.png"),
     "error": os.path.join(DEFAULT_FOLDER, "error_2.png"),
-    "favorites": os.path.join(DEFAULT_FOLDER, "favorites_2.png"),
+    "favorite": os.path.join(DEFAULT_FOLDER, "favorites_2.png"),
     "help": os.path.join(DEFAULT_FOLDER, "help_2.png"),
     "history": os.path.join(DEFAULT_FOLDER, "history_2.png"),
     "menu": os.path.join(DEFAULT_FOLDER, "menu_2.png"),

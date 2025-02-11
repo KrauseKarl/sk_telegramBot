@@ -13,10 +13,18 @@ MENU_DATA = [
     {"🛒 поиск товара": "search"},
     {"🧾 поиск категории": "category"},
     {"📋 история команд": "history"},
-    {"️⭐️ избранное": "favorite"},
+    {"️⭐️ избранное": "favorites"},
+]
+
+QNT_DATA = [
+    {"2️⃣": "2"},
+    {"3️⃣": "3"},
+    {"5️⃣": "5"},
+    {"🔟": "10"}
 ]
 
 
+# KEYBOARD BUILDER CLASS ###############################################
 class KB:
     def __init__(self):
         self.kb = InlineKeyboardBuilder()
@@ -30,12 +38,12 @@ class KB:
 
     def builder_id(self, prefix: str, uid: str, text: str, size: tuple):
         callback = "{0}_{1}".format(prefix, uid)
-        print(callback)
         button = InlineKeyboardButton(text=text, callback_data=callback)
         self.kb.add(button)
         return self.kb.adjust(*size).as_markup()
 
 
+# KEYBOARD BUILDER FUNC ###############################################
 async def kb_builder(size: tuple = None, data_list: list = None):
     kb = InlineKeyboardBuilder()
     for data in data_list:
@@ -45,29 +53,44 @@ async def kb_builder(size: tuple = None, data_list: list = None):
     return kb.adjust(*size).as_markup()
 
 
-async def item_kb_(item_id: str):
+# DEPRECATED ##########################################################
+async def __item_kb(item_id: str):
     call = "item_{0}".format(item_id)
     return kb_builder(size=(2, 2, 1,), data_list=[{"подробно": call}])
 
 
-async def _menu_kb():
+async def __kb_menu():
     return await kb_builder(size=(2, 2, 1,), data_list=MENU_DATA)
 
 
+# KEYBOARD GENERAL BUILDER ################################################
+async def builder_kb(data, size):
+    return KB().builder(data, size)
+
+
+kb_menu = builder_kb(MENU_DATA, (2,))
+kb_sort = builder_kb(SORT_DATA, (2,))
+kb_qnt = builder_kb(QNT_DATA, (2,))
+
+
 async def menu_kb():
-    return KB().builder(MENU_DATA, (2,))
+    return await builder_kb(MENU_DATA, (2,))
 
 
 async def sort_kb():
-    return await kb_builder(size=(2, 2,), data_list=SORT_DATA)
+    return await builder_kb(SORT_DATA, (2, 2,))
 
 
 async def qnt_kb():
-    return await kb_builder(size=(2, 2,), data_list=[{value: value} for value in QNT])
+    return await builder_kb(QNT_DATA, (2, 2,))
 
 
-async def item_kb_2(prefix, item_id: str, text: str):
+async def item_kb(prefix: str, item_id: str, text: str):
     return KB().builder_id(prefix, item_id, text, (1,))
+
+
+async def item_kb_2(data: list):
+    return KB().builder(data, (2,))
 
 
 # menu_kb = InlineKeyboardMarkup(

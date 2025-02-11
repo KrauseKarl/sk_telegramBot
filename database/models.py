@@ -5,6 +5,7 @@ import peewee_async
 from peewee import Model
 from playhouse.migrate import PostgresqlMigrator, migrate
 from pydantic import BaseModel
+
 from core.config import *
 
 db = peewee_async.PooledPostgresqlDatabase(

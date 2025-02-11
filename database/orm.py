@@ -1,14 +1,7 @@
-from database.models import History, User, Favorite
+from database.models import Favorite, History, User
 
 
-async def orm_make_record_request(data: dict) -> None:
-    History().create(**data).save()
-
-
-async def orm_make_record_user(user_id: int) -> None:
-    History.create(user=user_id, command='start').save()
-
-
+# USER #####################################################################
 async def orm_get_or_create_user(user) -> str:
     user, created = User.get_or_create(
         user_id=user.id,
@@ -21,8 +14,26 @@ async def orm_get_or_create_user(user) -> str:
     return "🤝 Рады снова видеть вас"
 
 
+# HISTORY #####################################################################
+async def orm_make_record_user(user_id: int) -> None:
+    History.create(user=user_id, command='start').save()
+
+
+async def orm_make_record_request(data: dict) -> None:
+    History().create(**data).save()
+
+
 async def orm_get_history_list(user_id: int):
     return History.select().where(History.user == user_id).order_by(History.date)
+
+
+# FAVORITE #####################################################################
+async def orm_create_record_favorite(data: dict):
+    Favorite().create(**data).save()
+
+
+async def orm_get_favorite_list(user_id: int):
+    return Favorite.select().where(Favorite.user == user_id).order_by(Favorite.date.desc())
 
 
 async def orm_get_or_create_favorite(data):
@@ -36,12 +47,8 @@ async def orm_get_or_create_favorite(data):
         image=data.get("image"),
         user=data.get("user"),
     )
-    print(f"ORM = {favorite.uid} | {created}")
-    # if created:
-    #     await orm_make_record_favorite(data)
-    #     return favorite
     return favorite, created
 
 
-async def orm_make_record_favorite(data: dict):
-    Favorite().create(**data).save()
+async def orm_delete_favorite(item_id: str):
+    return Favorite.delete().where(Favorite.product_id == item_id).execute()
