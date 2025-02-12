@@ -1,14 +1,15 @@
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.methods import DeleteMessage
 from aiogram.types import CallbackQuery
 from aiogram.utils.media_group import MediaGroupBuilder
 
-from database.exceptions import CustomError
-from keyboards import *
-from request import *
-from statments import FavoriteForm
-from utils import *
+from data_api.deserializers import *
+from data_api.request import *
+from database.exceptions import *
+from database.orm import *
+from telegram_api.keyboards import *
+from telegram_api.statments import *
+from utils.message_info import *
 
 detail = Router()
 
@@ -54,25 +55,25 @@ async def get_item_detail(call: CallbackQuery, state: FSMContext) -> None:
         await call.message.answer_media_group(media=media_group.build())
         await state.clear()
 
-        await state.set_state(FavoriteForm.product_id)
+        await state.set_state(FavoriteFSM.product_id)
         await state.update_data(product_id=item_id)
 
-        await state.set_state(FavoriteForm.title)
+        await state.set_state(FavoriteFSM.title)
         await state.update_data(title=item_data["title"])
 
-        await state.set_state(FavoriteForm.price)
+        await state.set_state(FavoriteFSM.price)
         await state.update_data(price=item_data["price"])
 
-        await state.set_state(FavoriteForm.reviews)
+        await state.set_state(FavoriteFSM.reviews)
         await state.update_data(reviews=item_data["reviews"])
 
-        await state.set_state(FavoriteForm.stars)
+        await state.set_state(FavoriteFSM.stars)
         await state.update_data(stars=item_data["star"])
 
-        await state.set_state(FavoriteForm.url)
+        await state.set_state(FavoriteFSM.url)
         await state.update_data(url=item_data["url"])
 
-        await state.set_state(FavoriteForm.image)
+        await state.set_state(FavoriteFSM.image)
         await state.update_data(image=item_data["image"])
         img_qnt = len(img_color)
         fav_id = "favorite_add_{0}_{1}".format(item_id, img_qnt)

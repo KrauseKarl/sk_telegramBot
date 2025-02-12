@@ -8,21 +8,13 @@ from database.models import *
 #     UserModel.create_table(True)
 #     ItemListModel.create_table(True)
 #     ItemDetailModel.create_table(True)
+
 def create_tables():
-    # MODELS = [UserModel, ItemDetailModel, ItemListModel]
     db.set_allow_sync(True)
-    # db.create_tables([MODELS], safe=True)
     User.create_table(True)
     History.create_table(True)
     Favorite.create_table(True)
     db.close()
-    # # with db.connect() as database:
-    # db.set_allow_sync(True)
-    # # db.connect()
-    # db.create_tables(UserModel)
-    # db.close()
-    # # database.create_tables(ItemListModel)
-    # # database.create_tables(ItemDetailModel)
 
 
 def drop_table():

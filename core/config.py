@@ -14,16 +14,25 @@ from pydantic_settings import BaseSettings
 #     ('custom', 'Товары/услуги по настраиваемым характеристикам поиска'),
 #     ('history', 'История поиска'),
 # )
+
 load_dotenv()
+
+# ALIEXPRESS API URLS ###################################################################
+URL_API_ITEM_LIST = "item_search_5"
+URL_API_ITEM_DETAIL = "item_detail_6"
+URL_API_CATEGORY = "category_list_1"
+
+# DIRECTORY SETTINGS ####################################################################
 STATIC_FOLDER = 'static'
 PRODUCT_IMAGE_FOLDER = 'products'
 DEFAULT_FOLDER = 'default'
 
+# PATHS TO DIRECTORIES ###################################################################
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 STATIC_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath(STATIC_FOLDER))
 IMAGE_PATH = str(Path(STATIC_PATH).resolve(strict=True).joinpath(PRODUCT_IMAGE_FOLDER))
-# DATETIME_FORMAT = '%d.%m.%Y - %H:%M:%S'
 
+# LOCALES SETTINGS #######################################################################
 LOCALE = "ru_RU"
 CURRENCY = "RUB"
 REGION = "RU"
@@ -31,12 +40,14 @@ REGION = "RU"
 RESULT_LIMIT = 5
 MESSAGE_LIMIT = 1000
 
+# IMAGE SETTINGS ##########################################################################
 WIDTH = 1024
 HEIGHT = 576
 THUMBNAIL = 500
 IMG_FORMAT = "png"
 IMG_LIMIT = 8
 
+# SORT SETTINGS ############################################################################
 SORT_SET = {"default", "priceDesc", "priceAsc", "salesDesc"}
 
 QNT = {"2", "3", "5", "10"}
@@ -69,7 +80,7 @@ class Settings(BaseSettings):
     api_key: SecretStr = os.getenv("API_KEY", None)
 
     host: StrictStr = os.getenv("HOST", None)
-    url: StrictStr = os.getenv("URL", None)
+    base_url: StrictStr = os.getenv("URL", None)
     range: int = RESULT_LIMIT
 
     database: StrictStr = os.getenv("DB_NAME")

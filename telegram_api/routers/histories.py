@@ -1,25 +1,62 @@
-from aiogram import F, Router
+from aiogram import F, Router, types
 from aiogram.filters import Command
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from pydantic import ValidationError
 
-from database.exceptions import CustomError
+from database.exceptions import *
 from database.orm import *
-from utils import *
+from utils.media import *
+from utils.message_info import *
 
 history = Router()
 
 
-# HISTORY #############################################################################################################
-@history.callback_query(F.data.startswith("history"))
-async def history_callback(callback: CallbackQuery) -> None:
+async def get_history_message(user_id: str | int):
+    """
+
+    :param user_id:
+    :return:
+    """
+    history_list = await orm_get_history_list(user_id)
+    msg, kb, img = await make_paginate_history_list(history_list)
     try:
-        history_list = await orm_get_history_list(callback.from_user.id)
-        msg, kb = await make_paginate_history_list(history_list)
-        await callback.message.edit_media(
-            media=await get_input_media_hero_image('history', msg),
-            reply_markup=kb
+        photo = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, img))
+    except (ValidationError, TypeError):
+        photo = await get_fs_input_hero_image("history")
+
+    return msg, kb, photo
+
+
+# HISTORY #############################################################################################################
+@history.message(Command("history"))
+async def history_message(message: types.Message) -> None:
+    """
+
+    :param message:
+    :return:
+    """
+    try:
+        msg, kb, img = await get_history_message(message.from_user.id)
+        await message.answer_photo(photo=img, caption=msg, reply_markup=kb)
+    except CustomError as error:
+        msg, img = await get_error_answer_photo(error)
+        await message.answer_photo(
+            photo=img, caption=msg, reply_markup=await menu_kb()
         )
+
+
+@history.callback_query(F.data.startswith("history"))
+async def history_callback(callback: types.CallbackQuery) -> None:
+    """
+
+    :param callback:
+    :return:
+    """
+    try:
+        msg, kb, img = await get_history_message(callback.from_user.id)
+        img = types.InputMediaPhoto(media=img, caption=msg)
+        await callback.message.edit_media(media=img, reply_markup=kb)
     except CustomError as error:
         await callback.message.edit_media(
             media=await get_error_answer_media(error),
@@ -27,27 +64,13 @@ async def history_callback(callback: CallbackQuery) -> None:
         )
 
 
-@history.message(Command("history"))
-async def history_message(message: Message) -> None:
-    try:
-        history_list = await orm_get_history_list(message.from_user.id)
-        msg, kb = await make_paginate_history_list(history_list)
-        await message.answer_photo(
-            photo=await get_fs_input_hero_image("history"),
-            caption=msg,
-            reply_markup=kb
-        )
-    except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await menu_kb()
-        )
-
-
 @history.callback_query(F.data.startswith("page"))
-async def history_page(callback: Message | CallbackQuery) -> None:
+async def history_page(callback: types.CallbackQuery) -> None:
+    """
+
+    :param callback:
+    :return:
+    """
     try:
         history_list = await orm_get_history_list(callback.from_user.id)
 
@@ -82,8 +105,8 @@ async def history_page(callback: Message | CallbackQuery) -> None:
         # todo make func kb_page_builder and remove to pagination.py
 
         try:
-            img = FSInputFile(path=os.path.join(config.IMAGE_PATH, history_item.image))
-            photo = InputMediaPhoto(media=img, caption=msg, show_caption_above_media=False)
+            img = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, history_item.image))
+            photo = types.InputMediaPhoto(media=img, caption=msg, show_caption_above_media=False)
         except (ValidationError, TypeError):
             photo = await get_input_media_hero_image("history", msg)
 

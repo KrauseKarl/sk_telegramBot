@@ -4,23 +4,21 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from commands import private
-# from handlers import router
 from database.db import *
 from database.models import *
-from routers.base import base
-from routers.category import category
-from routers.detail import detail
-from routers.favorite import favorite
-from routers.history import history
-from routers.search import search
+from telegram_api.commands import private
+from telegram_api.routers.bases import base
+from telegram_api.routers.categories import category
+from telegram_api.routers.details import detail
+from telegram_api.routers.favorites import favorite
+from telegram_api.routers.histories import history
+from telegram_api.routers.searches import search
 
 bot = Bot(
     token=conf.bot_token.get_secret_value(),
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 dp = Dispatcher()
-# dp.include_router(router)
 
 dp.include_router(base)
 dp.include_router(search)
