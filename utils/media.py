@@ -89,7 +89,7 @@ async def get_error_answer_photo(
     :return:
     """
     photo = await get_fs_input_hero_image("error")
-    msg = "⚠️ Произошла ошибка {0}".format(error)
+    msg = "⚠️ ОШИБКА\n\n{0}".format(error)
     return msg, photo
 
 

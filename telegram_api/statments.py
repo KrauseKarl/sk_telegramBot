@@ -5,6 +5,8 @@ class ItemFSM(state.StatesGroup):
     """Группа состояний."""
 
     product = state.State()
+    price_min = state.State()
+    price_max = state.State()
     qnt = state.State()
     sort = state.State()
 

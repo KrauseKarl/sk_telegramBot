@@ -3,7 +3,7 @@ from httpx import HTTPError
 from peewee import IntegrityError
 
 
-class CustomError(AiogramError, IntegrityError):
+class CustomError(ValueError, AiogramError, IntegrityError):
     pass
 
 
