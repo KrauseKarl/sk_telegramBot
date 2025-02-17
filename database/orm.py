@@ -52,3 +52,7 @@ async def orm_get_or_create_favorite(data):
 
 async def orm_delete_favorite(item_id: str):
     return Favorite.delete().where(Favorite.product_id == item_id).execute()
+
+
+async def orm_get_favorite(item_id: str):
+    return Favorite.select().where(Favorite.product_id == item_id).get()

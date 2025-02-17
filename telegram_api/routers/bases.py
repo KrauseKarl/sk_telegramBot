@@ -1,4 +1,5 @@
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 
@@ -22,7 +23,8 @@ async def start_command(message: Message) -> None:
     try:
         welcoming = await orm_get_or_create_user(user=message.from_user)
         msg = '{0}, {1}!'.format(welcoming, message.from_user.first_name)
-        await message.answer(msg, reply_markup=await menu_kb())
+        photo = await get_fs_input_hero_image("welcome")
+        await message.answer_photo(photo=photo, caption=msg, reply_markup=await menu_kb())
     except CustomError as error:
         msg, photo = await get_error_answer_photo(error)
         await message.answer_photo(
@@ -63,7 +65,7 @@ async def help_call(callback: CallbackQuery) -> None:
     :return:
     """
     try:
-        media = await get_input_media_hero_image("help", conf.HELP),
+        media = await get_input_media_hero_image("help", conf.HELP)
     except CustomError as error:
         media = await get_error_answer_media(error)
     await callback.message.edit_media(media=media, reply_markup=await menu_kb())
@@ -99,19 +101,21 @@ async def menu_call(callback: CallbackQuery) -> None:
     """
     try:
         media = await get_input_media_hero_image("menu")
-        # await callback.message.edit_reply_markup(
-        #     reply_markup=ReplyKeyboardMarkup(
-        #         resize_keyboard=True,
-        #         keyboard=[
-        #             [
-        #                 KeyboardButton(text='menu')
-        #             ]
-        #         ]
-        #     )
-        # )
+        await callback.message.edit_media(
+            media=media,
+            reply_markup=await menu_kb()
+        )
+    except TelegramBadRequest:
+        await callback.message.answer_photo(
+            photo=await get_fs_input_hero_image('menu'),
+            reply_markup=await menu_kb()
+        )
     except CustomError as error:
-        media = await get_error_answer_media(error),
-    await callback.message.edit_media(media=media, reply_markup=await menu_kb())
+        media = await get_error_answer_media(error)
+        await callback.message.edit_media(
+            media=media,
+            reply_markup=await menu_kb()
+        )
 
 
 @base.callback_query(F.data.startswith("delete_"))

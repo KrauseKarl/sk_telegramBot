@@ -26,11 +26,13 @@ URL_API_CATEGORY = "category_list_1"
 STATIC_FOLDER = 'static'
 PRODUCT_IMAGE_FOLDER = 'products'
 DEFAULT_FOLDER = 'default'
+CACHE_FOLDER = "cache"
 
 # PATHS TO DIRECTORIES ###################################################################
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 STATIC_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath(STATIC_FOLDER))
 IMAGE_PATH = str(Path(STATIC_PATH).resolve(strict=True).joinpath(PRODUCT_IMAGE_FOLDER))
+CACHE_PATH = str(Path(STATIC_PATH).resolve(strict=True).joinpath(CACHE_FOLDER))
 
 # LOCALES SETTINGS #######################################################################
 LOCALE = "ru_RU"
@@ -73,6 +75,7 @@ HERO = {
     "sort": os.path.join(DEFAULT_FOLDER, "sort_2.png"),
     "search": os.path.join(DEFAULT_FOLDER, "search_2.png"),
     "result": os.path.join(DEFAULT_FOLDER, "result_2.png"),
+    "welcome": os.path.join(DEFAULT_FOLDER, "welcome_2.png"),
 }
 
 

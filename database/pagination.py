@@ -4,6 +4,7 @@ from typing import List
 from database.models import *
 from telegram_api.keyboards import *
 from utils.message_info import *
+from utils.message_info import favorite_info
 
 
 # PAGINATOR CLASS ###############################################################
@@ -102,17 +103,28 @@ async def make_paginate_favorite_list(
             ]
         )
         return msg, kb, None
+    else:
+        paginator = Paginator(favorite_list, page=page)
+        one_items = paginator.get_page()[0]
+        print(one_items)
+        msg = await favorite_info(one_items)
+        msg = msg + "\n{0} из {1}".format(page, paginator.pages)
+        if len(favorite_list) == 1:
+            kb = await kb_builder(
+                size=(1,),
+                data_list=[
+                    {"🏠 назад": "menu"}
+                ]
+            )
+        else:
+            kb = await kb_builder(
+                size=(1,),
+                data_list=[
+                    {"След. ▶": "fav_page_next_{0}".format(int(page) + 1)},
+                    {"🏠 меню": "menu"},
+                ]
+            )
+        return msg, kb, one_items.image
 
-    paginator = Paginator(favorite_list, page=page)
-    one_items = paginator.get_page()[0]
-    kb = await kb_builder(
-        size=(1,),
-        data_list=[
-            {"След. ▶": "fav_page_next_{0}".format(int(page) + 1)},
-            {"🏠 меню": "menu"},
-        ]
-    )
-    msg = await favorite_info(one_items)
-    msg = msg + "\n{0} из {1}".format(page, paginator.pages)
 
-    return msg, kb, one_items.image
+

@@ -45,11 +45,11 @@ async def parse_url(url: str) -> str:
 async def make_default_size_image(
         url: str
 ) -> tuple[Optional[str], Optional[str]]:
-    """
-    Изменяет размер (1024х576) изображения товара и
-    сохраняет в директории `static/products`
-    """
-    try:
+        """
+        Изменяет размер (1024х576) изображения товара и
+        сохраняет в директории `static/products`
+        """
+    # try:
         file_name = await parse_url(url)
         full_path = os.path.join(config.IMAGE_PATH, file_name)
 
@@ -75,9 +75,9 @@ async def make_default_size_image(
         img.close()
 
         return full_path, file_name
-    except Exception as error:
-        # todo add logger
-        return None, None
+    # except Exception as error:
+    #     # todo add logger
+    #     return None, None
 
 
 async def get_error_answer_photo(

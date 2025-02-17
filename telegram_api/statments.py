@@ -1,6 +1,10 @@
 from aiogram.fsm import state
 
 
+class Cache(state.StatesGroup):
+    key = state.State()
+
+
 class ItemFSM(state.StatesGroup):
     """Группа состояний."""
 

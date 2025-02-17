@@ -4,6 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
+from data_api.deserializers import redis_flush_keys
 from database.db import *
 from database.models import *
 from telegram_api.commands import private
@@ -16,7 +17,7 @@ from telegram_api.routers.searches import search
 
 bot = Bot(
     token=conf.bot_token.get_secret_value(),
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML, show_caption_above_media=True)
 )
 dp = Dispatcher()
 
@@ -38,6 +39,7 @@ async def main():
         scope=types.BotCommandScopeAllPrivateChats()
     )
     await dp.start_polling(bot)
+
     drop_table()
 
 
@@ -45,6 +47,7 @@ if __name__ == "__main__":
     try:
         # logging.basicConfig(level=logging.INFO, stream=sys.stdout)
         print("✅ *** BOT START")
+
         asyncio.run(main())
     except KeyboardInterrupt:
         print("❌ BOT STOP")

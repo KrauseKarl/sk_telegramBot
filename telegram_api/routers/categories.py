@@ -78,7 +78,7 @@ async def search_category_name(
 
     await message.answer("⌛ searching <u>{0}</u>".format(message.text))
 
-    result = await request_item_list(url=config.URL_API_CATEGORY)
+    result = await request_api(url=config.URL_API_CATEGORY)
 
     item_list = result["result"]["resultList"]
     await state.clear()
