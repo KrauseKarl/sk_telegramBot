@@ -20,12 +20,12 @@ async def redis_flush_keys() -> aioredis.Redis:
         client = await aioredis.Redis()
         ping = await client.ping()
         keys = await client.keys()
-        print(f"🟡{keys}")
+        print(f"🟡{sorted(keys)}")
         if ping is True:
             await client.flushall()
             print("🚫 Redis keys deleted")
             keys = await client.keys()
-            print(f"🟡{keys}")
+            print(f"🟡{sorted(keys)}")
             return client
     except AuthenticationError:
         print("AuthenticationError")
@@ -62,8 +62,8 @@ async def set_routes_to_cache(key: str, value: str) -> bool:
     )
     try:
         keys = await client.keys()
-        for k in keys:
-            print(f"🟡 {k}")
+        for k in sorted(keys):
+            print(f"🟧 {k}")
     except:
         pass
     return state

@@ -1,3 +1,5 @@
+import random
+
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -377,10 +379,6 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 #         await call.message.answer_photo(photo=photo, caption=msg)
 
 # 🟥 callback_kb= 'item_list_aa8a5340-7512-4ecc-b471-4cda077687e9_2'
-class ItemList(CallbackData, prefix='itList'):
-    key: str
-    api_page: str
-    page: str
 
 
 # class NumbersCallbackFactory(CallbackData, prefix="fabnum"):
@@ -400,9 +398,31 @@ class ItemList(CallbackData, prefix='itList'):
 #     await query.answer(...)
 #     ...
 #     print("bar =", callback_data.bar)
+async def request_api_fake(page: str | int):
+    path = os.path.join(config.BASE_DIR, "_json_example", "list_{0}.json".format(page))
+    with open(path, 'r') as file:
+        data = json.load(file)
+    return data
 
-@search.callback_query(ItemList.filter(F.prefix == 'itList'))  # F.data.startswith("itList"))
-async def item_list_page(callback: types.CallbackQuery, state: FSMContext) -> None:
+
+class ItemList(CallbackData, prefix='redis'):
+    key: str
+    api_page: str
+    # paginate_page: str
+
+
+class ItemCBD(CallbackData, prefix='itList'):
+    key: str
+    api_page: int | str
+    paginate_page: int | str
+
+
+@search.callback_query(ItemCBD.filter())  # F.data.startswith("itList"))
+async def item_list_page(
+        callback: types.CallbackQuery,
+        state: FSMContext,
+        callback_data: ItemCBD
+) -> None:
     """
     Some.
     :param state:
@@ -410,20 +430,24 @@ async def item_list_page(callback: types.CallbackQuery, state: FSMContext) -> No
     :return:
     """
     try:
-        print('🟠SEARCH PAGINATION LIST ENDPOINT')
+        print(f'🟠SEARCH PAGINATION LIST ENDPOINT\n🟠{callback.data= }')
         await callback.answer("🟠 SEARCH PAGINATION")
-        print('🟠 callback', callback.data)
-        cache_key = callback.data.split("_")[-2]
 
-        paginator_page = int(callback.data.split("_")[-1])
-        key = callback.data.split("_")[-2].split("#")[0]
-        len_list = callback.data.split("_")[-2].split("#")[-1].split(":")[0]
-        api_page = callback.data.split("_")[-2].split(":")[-1]
-        print(f"🟠🟠🟠 {cache_key}")
-        print(f"🟠🟡 {key=}")
-        print(f"🟠🟡 {len_list= }")
-        print(f"🟠🟡 {api_page= }")
-        print(f"🟠🟡 {paginator_page= }")
+        #  itList : 86fa2539fafd4476b66b27ac725e372b : 1 : 1
+
+        key = callback_data.key                             # 86fa2539fafd4476b66b27ac725e372b
+        paginator_page = int(callback_data.paginate_page)   # 1
+        api_page = callback_data.api_page                   # 1
+
+        cache_key = ItemList(key=key, api_page=api_page).pack()
+
+        # cache_key = callback.data.split("_")[-2]
+        # paginator_page = int(callback.data.split("_")[-1])
+        # key = callback.data.split("_")[0].split("")
+        # len_list = callback.data.split("_")[-2].split("#")[-1].split(":")[0]
+        # api_page = callback.data.split("_")[-2].split(":")[-1]
+
+        print(f"🟠🟠🟠 {cache_key}\n🟠🟡 {api_page= }\n🟠🟡 {paginator_page= }")
 
         item_list_cache = await get_routes_from_cache(cache_key)
         if item_list_cache is None:
@@ -435,39 +459,29 @@ async def item_list_page(callback: types.CallbackQuery, state: FSMContext) -> No
         try:
             one_item = paginator.get_page()[0]
 
-            next_kb = "{prefix}_{key}_{page}".format(
-                prefix='itList', key=cache_key, page=paginator_page + 1
-            )
-            last_kb = "{prefix}_{key}_{page}".format(
-                prefix='itList', key=cache_key, page=paginator.pages
-            )
-            first_kb = "{prefix}_{key}_{page}".format(
-                prefix='itList', key=cache_key, page=1
-            )
-            prev_kb = "{prefix}_{key}_{page}".format(
-                prefix='itList', key=cache_key, page=paginator_page - 1
-            )
+            next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator_page + 1)).pack()
+            last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
+            first_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(1)).pack()
+            prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator_page - 1)).pack()
 
         except IndexError:
             print("🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥 IndexError | get new request_api")
             data = await state.get_data()
             api_page = str(int(api_page) + 1)
-            result = await request_api(
-                query=data.get("product"),
-                sort=data.get("sort"),
-                start_price=data.get("price_min"),
-                end_price=data.get("price_max"),
-                url=config.URL_API_ITEM_LIST,
-                page=api_page
-            )
+            # result = await request_api(
+            #     query=data.get("product"),
+            #     sort=data.get("sort"),
+            #     start_price=data.get("price_min"),
+            #     end_price=data.get("price_max"),
+            #     url=config.URL_API_ITEM_LIST,
+            #     page=api_page
+            # )
+            #######################################
+            result = await request_api_fake(page=api_page)
+            #######################################
             page = 1
             item_list_cache = result["result"]["resultList"]
-            prev_len_list = int(len_list)
-            cache_key_new = "{key}#{len}:{api}".format(
-                key=key,
-                len=prev_len_list,
-                api=api_page
-            )
+            cache_key_new = ItemList(key=key, api_page=api_page).pack()
             print(f"🟪\t{len(item_list_cache)= }")
             print(f"🟪\t{api_page= }")
             print(f"🟪\t{cache_key= }")
@@ -478,45 +492,22 @@ async def item_list_page(callback: types.CallbackQuery, state: FSMContext) -> No
             if cache_data is None:
                 value = json.dumps(item_list_cache, ensure_ascii=False, indent=4)
                 await set_routes_to_cache(key=cache_key, value=value)
-
             paginator = Paginator(array=item_list_cache, page=1)
             one_item = paginator.get_page()[0]
-
-            next_kb = "{prefix}_{key}_{page}".format(
-                prefix='itList', key=cache_key, page=paginator_page + 1
-            )
-            last_kb = "{prefix}_{key}_{page}".format(
-                prefix='itList', key=cache_key, page=paginator.pages
-            )
-            first_kb = "{prefix}_{key}_{page}".format(
-                prefix='itList', key=cache_key, page=1
-            )
-            prev_kb = "{prefix}_{key}_{page}".format(
-                prefix='itList', key=cache_key, page=paginator_page - 1
-            )
+            next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=page + 1).pack()
+            last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=paginator.pages).pack()
+            first_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(1)).pack()
+            prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=paginator_page).pack()
 
         if paginator_page == 1:
-            prev_api_page = str(int(api_page) - 1)
-            current_key, current_len_list = cache_key.split("#")
-            prev_len_list = int(current_len_list.split(":")[0])
-            prev_request_page = f"itList_{current_key}#{prev_len_list}:{prev_api_page}_{prev_len_list}"
-
+            prev_request_page = ItemList(key=key, api_page=str(int(api_page) - 1)).pack()
             print(f'***🟠🟠🟠 {prev_request_page= } ')
-            pag_p = prev_request_page.split("_")[-1]
-            keys = prev_request_page.split("_")[-2].split(":")[0].split("#")[0]
-            lens = prev_request_page.split("_")[-2].split(":")[0].split("#")[-1]
-            api_p = prev_request_page.split("_")[-2].split(":")[-1]
-
-            print(f'‼️ {keys= }')
-            print(f'‼️ {lens= }')
-            print(f'‼️ {api_p= }')
-            print(f'‼️ {pag_p= }')
 
             kb = await kb_builder(
                 size=(2, 1, 2),
                 data_list=[
-                    {"🟠◀ Пред. стр.": prev_request_page},
-                    {"След. ▶": next_kb},
+                    {"🟠️⬅️ Пред. стр.": prev_request_page},
+                    {"След. ➡️": next_kb},
                     {"После. ": last_kb},
                     {"подробно": "item_{0}".format(one_item['item']['itemId'])},
                     {"menu": "menu"}
@@ -527,8 +518,10 @@ async def item_list_page(callback: types.CallbackQuery, state: FSMContext) -> No
             kb = await kb_builder(
                 size=(2, 2, 2),
                 data_list=[
-                    {"⬅️ Пред.": prev_kb}, {"След. ➡️": next_kb},
-                    {"⏪ Первая ": first_kb}, {" После. ⏩": last_kb},
+                    {"⬅️ Пред.": prev_kb},
+                    {"След. ➡️": next_kb},
+                    {"⏪ Первая ": first_kb},
+                    {" После. ⏩": last_kb},
                     {"подробно": "item_{0}".format(one_item['item']['itemId'])},
                     {"menu": "menu"}
                 ]
@@ -538,7 +531,7 @@ async def item_list_page(callback: types.CallbackQuery, state: FSMContext) -> No
         msg += "👀\t{0}\n".format(one_item["item"]["sales"])
         msg += "💰\t{0} RUB\n".format(one_item["item"]["sku"]["def"]["promotionPrice"])
         msg += "{0}\n\n".format(one_item["item"]["itemUrl"])
-        msg += "{0} из {1} [{2}]".format(paginator_page, paginator.pages, api_page)
+        msg += "{0} из {1} стр. {2}".format(paginator_page, paginator.pages, api_page)
 
         img = ":".join(["https", one_item["item"]["image"]])
 
@@ -573,26 +566,29 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         data = await state.get_data()
 
         api_page = 1
-        result = await request_api(
-            query=data.get("product"),
-            sort=data.get("sort"),
-            start_price=data.get("price_min"),
-            end_price=data.get("price_max"),
-            url=config.URL_API_ITEM_LIST,
-            page=str(api_page)
-        )
+        # result = await request_api(
+        #     query=data.get("product"),
+        #     sort=data.get("sort"),
+        #     start_price=data.get("price_min"),
+        #     end_price=data.get("price_max"),
+        #     url=config.URL_API_ITEM_LIST,
+        #     page=str(api_page)
+        # )
+        ########################################
+        result = await request_api_fake(page=1)
+        #######################################
         response_list = result["result"]["resultList"]
 
         paginator_page = 1
         key = str(uuid.uuid4().hex)
         len_list = len(response_list)
         # itList     1         03dc5720-51e0-4d95-8d84-e4c9caf5f7a7#37:1      1
-        cache_key = "{key}#{len}:{api_page}".format(
-            key=key,
-            len=len_list,
-            api_page=1
-        )
-
+        # cache_key = "{key}#{len}:{api_page}".format(
+        #     key=key,
+        #     len=len_list,
+        #     api_page=1
+        # )
+        cache_key = ItemList(key=key, api_page="1").pack()
         cache_data = await get_routes_from_cache(cache_key)
 
         if cache_data is None:
@@ -604,14 +600,9 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         paginator = Paginator(array=item_list_cache, page=paginator_page)
         one_item = paginator.get_page()[0]
 
-        callback_kb = "{prefix}_{key}_{paginator_page}".format(
-            prefix="itList",
-            key=cache_key,
-            paginator_page=1
-        )
+        callback_kb = ItemCBD(key=key, api_page="1", paginate_page="1").pack()
 
         print(f"🟩🟩 {cache_key= }")
-        print(f'🟩🟨 {len(response_list)=}')
         print(f"🟩🟥 {callback_kb= }")
 
         msg = "{0:.50}\n".format(one_item["item"]["title"])
@@ -619,7 +610,6 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         msg += "💰\t{0} RUB\n".format(one_item["item"]["sku"]["def"]["promotionPrice"])
         msg += "{0}\n\n".format(one_item["item"]["itemUrl"])
         msg += "{0} из {1} [{2}]".format(1, paginator.pages, api_page)
-
         img = ":".join(["https", one_item["item"]["image"]])
 
         kb = await kb_builder(
