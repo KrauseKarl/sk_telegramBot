@@ -87,7 +87,7 @@ async def kb_builder(
 
 
 # KEYBOARD GENERAL BUILDER ################################################
-async def builder_kb(data, size):
+async def builder_kb(data: list, size: tuple):
     """
 
     :param data:
@@ -139,3 +139,7 @@ async def item_kb_2(data: list):
     :return:
     """
     return KB().builder(data, (2,))
+
+
+async def error_kb():
+    return await builder_kb([{"🏠 back menu": "menu"}], (1,))

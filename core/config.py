@@ -49,6 +49,9 @@ THUMBNAIL = 500
 IMG_FORMAT = "png"
 IMG_LIMIT = 8
 
+# REDIS ####################################################################################
+CACHE_LIVE_TIME = 60 * 60
+
 # SORT SETTINGS ############################################################################
 SORT_SET = {"default", "priceDesc", "priceAsc", "salesDesc"}
 

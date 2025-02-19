@@ -1,4 +1,4 @@
-import random
+import uuid
 
 from aiogram import Router, F
 from aiogram.filters import Command
@@ -6,10 +6,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, ReplyKeyboardMarkup, KeyboardButton
 
 from data_api.deserializers import *
-from data_api.request import *
+# from data_api.request import *
 from database.exceptions import *
 from telegram_api.statments import *
 from utils.media import *
+from redis_api.handlers import *
 
 search = Router()
 
@@ -115,7 +116,7 @@ async def search_price_range(message: Message, state: FSMContext) -> None:
     :return:
     """
     try:
-
+        # st = RedisStorage()
         await redis_flush_keys()
         prev_message = int(message.message_id) - 1
         await message.bot.delete_message(
@@ -147,7 +148,7 @@ async def search_price_range(message: Message, state: FSMContext) -> None:
         await message.answer_photo(
             photo=photo,
             caption=msg,
-            reply_markup=await menu_kb()
+            reply_markup=await error_kb()
         )
 
 
@@ -405,7 +406,7 @@ async def request_api_fake(page: str | int):
     return data
 
 
-class ItemList(CallbackData, prefix='redis'):
+class CacheKey(CallbackData, prefix='redis'):
     key: str
     api_page: str
     # paginate_page: str
@@ -425,119 +426,253 @@ async def item_list_page(
 ) -> None:
     """
     Some.
+    :param callback_data:
     :param state:
     :param callback:
     :return:
     """
     try:
-        print(f'🟠SEARCH PAGINATION LIST ENDPOINT\n🟠{callback.data= }')
+        print(f'🟠SEARCH PAGINATION LIST ENDPOINT🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠🟠\n🟠{callback.data= }')
         await callback.answer("🟠 SEARCH PAGINATION")
 
         #  itList : 86fa2539fafd4476b66b27ac725e372b : 1 : 1
+        key = callback_data.key
+        paginate_page = int(callback_data.paginate_page)
+        prev_paginate_page = str(paginate_page - 1)
+        api_page = callback_data.api_page
 
-        key = callback_data.key                             # 86fa2539fafd4476b66b27ac725e372b
-        paginator_page = int(callback_data.paginate_page)   # 1
-        api_page = callback_data.api_page                   # 1
+        cache_key = CacheKey(key=key, api_page=api_page).pack()
+        print(f"\n🟠 {cache_key}\n🟠 {api_page= }\n🟠 {paginate_page= }\n")
 
-        cache_key = ItemList(key=key, api_page=api_page).pack()
-
-        # cache_key = callback.data.split("_")[-2]
-        # paginator_page = int(callback.data.split("_")[-1])
-        # key = callback.data.split("_")[0].split("")
-        # len_list = callback.data.split("_")[-2].split("#")[-1].split(":")[0]
-        # api_page = callback.data.split("_")[-2].split(":")[-1]
-
-        print(f"🟠🟠🟠 {cache_key}\n🟠🟡 {api_page= }\n🟠🟡 {paginator_page= }")
-
-        item_list_cache = await get_routes_from_cache(cache_key)
-        if item_list_cache is None:
-            await callback.answer(
-                '❌ Redis can not find data with that `key`',
-                show_alert=True
-            )
-        paginator = Paginator(array=item_list_cache, page=paginator_page)
-        try:
+        item_list_cache = await redis_get_data_from_cache(cache_key)
+        print("__________🟩", paginate_page, len(item_list_cache), int(paginate_page) <= len(item_list_cache), '🟩______________')
+        if int(paginate_page) <= len(item_list_cache):
+            print("🟩🟩 CACHE DATA", int(paginate_page) <= len(item_list_cache))
+            paginator = Paginator(array=item_list_cache, page=paginate_page)
             one_item = paginator.get_page()[0]
-
-            next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator_page + 1)).pack()
-            last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
-            first_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(1)).pack()
-            prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator_page - 1)).pack()
-
-        except IndexError:
-            print("🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥 IndexError | get new request_api")
-            data = await state.get_data()
-            api_page = str(int(api_page) + 1)
-            # result = await request_api(
-            #     query=data.get("product"),
-            #     sort=data.get("sort"),
-            #     start_price=data.get("price_min"),
-            #     end_price=data.get("price_max"),
-            #     url=config.URL_API_ITEM_LIST,
-            #     page=api_page
-            # )
-            #######################################
+        else:
+            print("🟥🟥 NEW REQUIEST", int(paginate_page) <= len(item_list_cache))
+            new_api_page = str(int(api_page) + 1)
             result = await request_api_fake(page=api_page)
-            #######################################
-            page = 1
             item_list_cache = result["result"]["resultList"]
-            cache_key_new = ItemList(key=key, api_page=api_page).pack()
-            print(f"🟪\t{len(item_list_cache)= }")
-            print(f"🟪\t{api_page= }")
-            print(f"🟪\t{cache_key= }")
-            print(f"🟪\t{cache_key_new= }")
-
-            cache_key = cache_key_new
-            cache_data = await get_routes_from_cache(cache_key)
+            new_cache_key = CacheKey(key=key, api_page=new_api_page).pack()
+            print(f"🟪\t{new_cache_key= }🟪\t{new_api_page= }\n🟪\t{len(item_list_cache)= }\n")
+            paginate_page = 1
+            api_page = new_api_page
+            cache_key = new_cache_key
+            cache_data = await redis_get_data_from_cache(cache_key)
             if cache_data is None:
-                value = json.dumps(item_list_cache, ensure_ascii=False, indent=4)
-                await set_routes_to_cache(key=cache_key, value=value)
-            paginator = Paginator(array=item_list_cache, page=1)
+                await redis_set_data_to_cache(key=cache_key, value=item_list_cache)
+            paginator = Paginator(array=item_list_cache, page=paginate_page)
             one_item = paginator.get_page()[0]
-            next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=page + 1).pack()
-            last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=paginator.pages).pack()
+
+        ##########################################################################################
+        keyboard_list = []
+        ##########################################################################################
+        if int(api_page) == 1 and int(paginate_page) == 1:
+            print("⭐️ 1й запрос и 1 я страница")
+            # ✅ next = 2
+            next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=2).pack()
+            # ✅ last = paginator.pages
+            last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
+            # ❌ prev None
+            # ❌ fist None
+            keyboard_list.extend([{"След. ➡️": next_kb}, {"После. ⏩": last_kb}])
+            print(f"🟩 [❌] ❌ НАЗАД  ВПЕРЕД {next_kb} [{last_kb}]")
+
+        elif int(api_page) > 1 and int(paginate_page) == 1:
+            print("⭐️ Следующий запрос и 1я страница")
+            # ✅ next = 2
+            next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=2).pack()
+            # ✅ last = paginator.pages
+            last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
+            # ✅ prev = "itList:cache_key:api_page-1:prev(paginator.pages)" ! after 2nd request to redis by pre_cache_key
+            prev_kb = ItemCBD(key=key, api_page=str(int(api_page) - 1), paginate_page=prev_paginate_page).pack()
+            # ❌ fist None
+            print(f"🟩 [❌]  {prev_kb} НАЗАД  ВПЕРЕД {next_kb} [{last_kb}]")
+            keyboard_list.extend([{"След. ➡️": next_kb}, {"⬅️ Пред.": prev_kb}, {" После. ⏩": last_kb}])
+
+        elif int(paginate_page) > 1 and int(paginate_page) < paginator.pages:
+            print("⭐️ следующая страница")
+            # ✅ next = paginate_page + 1 if paginate_page + 1 < paginator.pages else paginator.pages
+            next_page = str(paginate_page + 1 if paginate_page + 1 < paginator.pages else paginator.pages + 1)
+            next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=next_page).pack()
+            # ✅ last = paginator.pages
+            last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
+            # ✅ prev = paginate_page - 1  if paginate_page - 1 > 1 else 1
+            prev_page = str(paginate_page - 1 if paginate_page - 1 > 1 else 1 )
+            prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=prev_page).pack()
+            # ✅ fist = 1
             first_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(1)).pack()
-            prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=paginator_page).pack()
+            keyboard_list.extend(
+                [{"След. ➡️": next_kb}, {"⬅️ Пред.": prev_kb}, {"⏪ Первая ": first_kb}, {" После. ⏩": last_kb}])
+            print(f"🟩 [{first_kb}]  {prev_kb} НАЗАД  ВПЕРЕД {next_kb} [{last_kb}]")
 
-        if paginator_page == 1:
-            prev_request_page = ItemList(key=key, api_page=str(int(api_page) - 1)).pack()
-            print(f'***🟠🟠🟠 {prev_request_page= } ')
+        elif int(paginate_page) == paginator.pages:
+            print("⭐️ последняя страница")
+            # ✅ next = request to api with api_page + 1
+            next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginate_page + 1)).pack()
+            # ❌ last None
+            # ✅ prev paginate_page - 1 if paginate_page - 1 != 0  else 1
+            prev_page = str(paginate_page - 1 if paginate_page - 1 != 0 else 1)
+            prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=prev_page).pack()
+            # ✅ fist = 1
+            first_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(1)).pack()
+            keyboard_list.extend([{"След. ➡️": next_kb}, {"⬅️ Пред.": prev_kb},   {"⏪ Первая ": first_kb}])
+            print(f"🟩 [{first_kb}]  {prev_kb} НАЗАД  ВПЕРЕД {next_kb} [❌]")
+        else:
+            print('\n❌❌❌❌❌❌KB ERROR ❌❌❌❌❌❌❌\n')
+        ##########################################################################################
+        keyboard_list.extend([{"подробно": "item_{0}".format(one_item['item']['itemId'])}, {"menu": "menu"}])
+        ##########################################################################################
 
-            kb = await kb_builder(
-                size=(2, 1, 2),
-                data_list=[
-                    {"🟠️⬅️ Пред. стр.": prev_request_page},
-                    {"След. ➡️": next_kb},
-                    {"После. ": last_kb},
-                    {"подробно": "item_{0}".format(one_item['item']['itemId'])},
-                    {"menu": "menu"}
-                ]
-            )
-
-        else:  # page > 1:
-            kb = await kb_builder(
-                size=(2, 2, 2),
-                data_list=[
-                    {"⬅️ Пред.": prev_kb},
-                    {"След. ➡️": next_kb},
-                    {"⏪ Первая ": first_kb},
-                    {" После. ⏩": last_kb},
-                    {"подробно": "item_{0}".format(one_item['item']['itemId'])},
-                    {"menu": "menu"}
-                ]
-            )
+        # try:
+        #
+        #     if int(paginate_page) == 1:
+        #         next_page = str(paginator.pages if paginate_page + 1 > paginator.pages else paginate_page + 1)
+        #         next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=next_page).pack()
+        #
+        #         prev_page = str(1 if paginate_page - 1 < 1 else paginate_page - 1)
+        #         prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginate_page - 1)).pack()
+        #         print(f"🟩🟩🟩\nНАЗАД {prev_kb}<<  >>{next_kb} ВПЕРЕД\n🟩🟩🟩")
+        #
+        #         if int(prev_page) != 1:
+        #             first_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(1)).pack()
+        #             print(f"🟩🟩🟩\nпервая {first_kb } [{paginator.pages}]\n🟩🟩🟩")
+        #
+        #         if int(next_page) < int(paginator.pages):
+        #             last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
+        #             print(f"🟩🟩🟩\nпоследняя {last_kb= } [{paginator.pages}]\n🟩🟩🟩")
+        #
+        #     if int(api_page) > 1 and int(paginate_page) == 1:
+        #         prev_cache_key = CacheKey(key=key, api_page=str(int(api_page) - 1)).pack()
+        #         last_prev_page_item = len(await redis_get_data_from_cache(prev_cache_key))
+        #         prev_request_page = ItemCBD(
+        #             key=key,
+        #             api_page=str(int(api_page) - 1),
+        #             paginate_page=last_prev_page_item
+        #         ).pack()
+        #         last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
+        #         print(f'***🟠🟠🟠 {prev_cache_key= } ')
+        #         print(f'***🟠🟠🟠 {prev_request_page= } ')
+        #
+        #         kb = await kb_builder(
+        #             size=(2, 1, 2),
+        #             data_list=[
+        #                 {"🟠️⬅️ Пред. стр.": prev_request_page},
+        #                 {"След. ➡️": next_kb},
+        #                 {"После. ": last_kb},
+        #                 {"подробно": "item_{0}".format(one_item['item']['itemId'])},
+        #                 {"menu": "menu"}
+        #             ]
+        #         )
+        #
+        # except IndexError:
+        #
+        #     print("🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥 IndexError | get new request_api")
+        #     api_page = str(int(api_page) + 1)
+        #     ############################################################################################################
+        #     # data = await state.get_data()
+        #     # result = await request_api(
+        #     #     query=data.get("product"),
+        #     #     sort=data.get("sort"),
+        #     #     start_price=data.get("price_min"),
+        #     #     end_price=data.get("price_max"),
+        #     #     url=config.URL_API_ITEM_LIST,
+        #     #     page=api_page
+        #     # )
+        #     ############################################################################################################
+        #     result = await request_api_fake(page=api_page)
+        #     #######################################
+        #
+        #     pre_paginate_page = paginator_page
+        #     paginator_page = 1
+        #
+        #     item_list_cache = result["result"]["resultList"]
+        #     cache_key_new = CacheKey(key=key, api_page=api_page).pack()
+        #
+        #     print(f"🟪\t{len(item_list_cache)= }\n🟪\t{api_page= }\n🟪\t{cache_key= }\n🟪\t{cache_key_new= }")
+        #
+        #     cache_key = cache_key_new
+        #     cache_data = await redis_get_data_from_cache(cache_key)
+        #
+        #     if cache_data is None:
+        #         value = json.dumps(item_list_cache, ensure_ascii=False, indent=4)
+        #         await redis_set_data_to_cache(key=cache_key, value=value)
+        #     paginator = Paginator(array=item_list_cache, page=1)
+        #     one_item = paginator.get_page()[0]
+        #
+        #     next_page = str(paginator.pages if paginator_page + 1 > paginator.pages else paginator_page + 1)
+        #     next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=next_page).pack()
+        #
+        #     prev_page = str(1 if paginator_page - 1 < 1 else paginator_page - 1)
+        #     prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator_page - 1)).pack()
+        #     print(f"🟥🟥🟥\nНАЗАД {prev_kb}<<  >>{next_kb} ВПЕРЕД\n🟥🟥🟥")
+        #     if int(prev_page) != 1:
+        #         first_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(1)).pack()
+        #         print(f"🟥🟥🟥\nпервая {first_kb} [{paginator.pages}]\n🟥🟥🟥")
+        #     if int(next_page) < int(paginator.pages):
+        #         last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
+        #         print(f"🟥🟥🟥\nпоследняя {last_kb= } [{paginator.pages}]\n🟥🟥🟥")
+        #
+        #
+        # if int(paginator_page) == 1:
+        #     if int(api_page) != 1:
+        #
+        #         prev_cache_key = CacheKey(key=key, api_page=str(int(api_page) - 1)).pack()
+        #         last_prev_page_item = len(await redis_get_data_from_cache(prev_cache_key))
+        #         prev_request_page = ItemCBD(
+        #             key=key,
+        #             api_page=str(int(api_page) - 1),
+        #             paginate_page=last_prev_page_item
+        #         ).pack()
+        #
+        #         print(f'***🟠🟠🟠 {prev_cache_key= } ')
+        #         print(f'***🟠🟠🟠 {prev_request_page= } ')
+        #
+        #         kb = await kb_builder(
+        #             size=(2, 1, 2),
+        #             data_list=[
+        #                 {"🟠️⬅️ Пред. стр.": prev_request_page},
+        #                 {"След. ➡️": next_kb},
+        #                 {"После. ": last_kb},
+        #                 {"подробно": "item_{0}".format(one_item['item']['itemId'])},
+        #                 {"menu": "menu"}
+        #             ]
+        #         )
+        #     else:
+        #         kb = await kb_builder(
+        #             size=(2, 1, 2),
+        #             data_list=[
+        #                 {"След. ➡️": next_kb},
+        #                 {"После. ": last_kb},
+        #                 {"подробно": "item_{0}".format(one_item['item']['itemId'])},
+        #                 {"menu": "menu"}
+        #             ]
+        #         )
+        #
+        # else:  # page > 1:
+        #     kb = await kb_builder(
+        #         size=(2, 2, 2),
+        #         data_list=[
+        #             {"⬅️ Пред.": prev_kb},
+        #             {"След. ➡️": next_kb},
+        #             {"⏪ Первая ": first_kb},
+        #             {" После. ⏩": last_kb},
+        #             {"подробно": "item_{0}".format(one_item['item']['itemId'])},
+        #             {"menu": "menu"}
+        #         ]
+        #     )
 
         msg = "{0:.50}\n".format(one_item["item"]["title"])
         msg += "👀\t{0}\n".format(one_item["item"]["sales"])
         msg += "💰\t{0} RUB\n".format(one_item["item"]["sku"]["def"]["promotionPrice"])
         msg += "{0}\n\n".format(one_item["item"]["itemUrl"])
-        msg += "{0} из {1} стр. {2}".format(paginator_page, paginator.pages, api_page)
-
+        msg += "{0} из {1} стр. {2}".format(paginate_page, paginator.pages, api_page)
         img = ":".join(["https", one_item["item"]["image"]])
-
         photo = types.InputMediaPhoto(media=img, caption=msg, show_caption_above_media=False)
 
-        print(f"⬅️{prev_kb= }\n➡️{next_kb= }\n[{paginator_page= }]\n🔵item ID{one_item['item']['itemId']= }")
+        kb = await builder_kb(keyboard_list, (2, 2, 1,))
 
         await callback.message.edit_media(media=photo, reply_markup=kb)
 
@@ -563,9 +698,9 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
 
     try:
         await state.update_data(sort=call.data)
-        data = await state.get_data()
-
         api_page = 1
+        ################################################################################################################
+        # data = await state.get_data()
         # result = await request_api(
         #     query=data.get("product"),
         #     sort=data.get("sort"),
@@ -574,28 +709,21 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         #     url=config.URL_API_ITEM_LIST,
         #     page=str(api_page)
         # )
-        ########################################
+        ################################################################################################################
         result = await request_api_fake(page=1)
         #######################################
         response_list = result["result"]["resultList"]
 
         paginator_page = 1
-        key = str(uuid.uuid4().hex)
+        key = str(uuid.uuid4().hex)[:6]
         len_list = len(response_list)
-        # itList     1         03dc5720-51e0-4d95-8d84-e4c9caf5f7a7#37:1      1
-        # cache_key = "{key}#{len}:{api_page}".format(
-        #     key=key,
-        #     len=len_list,
-        #     api_page=1
-        # )
-        cache_key = ItemList(key=key, api_page="1").pack()
-        cache_data = await get_routes_from_cache(cache_key)
+        cache_key = CacheKey(key=key, api_page="1").pack()
+        print(f"🟩🟩 {cache_key= }")
 
+        cache_data = await redis_get_data_from_cache(cache_key)
         if cache_data is None:
-            value = json.dumps(response_list, ensure_ascii=False, indent=4)
-            await set_routes_to_cache(key=cache_key, value=value)
-
-        item_list_cache = await get_routes_from_cache(cache_key)
+            await redis_set_data_to_cache(key=cache_key, value=response_list)
+        item_list_cache = await redis_get_data_from_cache(cache_key)
 
         paginator = Paginator(array=item_list_cache, page=paginator_page)
         one_item = paginator.get_page()[0]
@@ -612,10 +740,16 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         msg += "{0} из {1} [{2}]".format(1, paginator.pages, api_page)
         img = ":".join(["https", one_item["item"]["image"]])
 
+        next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=2).pack()
+        last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=paginator.pages).pack()
+
         kb = await kb_builder(
-            size=(1,),
+            size=(1, 2, 1),
             data_list=[
-                {"След. ▶": callback_kb}
+                {"подробно": "item_{0}".format(one_item['item']['itemId'])},
+                {"След. ➡️": next_kb},
+                {"После. ⏩": last_kb},
+                {"🏠 menu": "menu"}
             ]
         )
 
@@ -666,25 +800,30 @@ async def search_delete_callback(callback: CallbackQuery) -> None:
     )
 
 
-@search.message(Command("cache"))
-async def get_key_cache(message: Message, state: FSMContext):
-    await state.set_state(Cache.key)
-    await message.answer('🟥🟨🟩 Введите ключ')
-
-
-@search.message(Cache.key)
-async def get_cache(message: Message, state: FSMContext):
-    await state.update_data(key=message.text)
-    _list = await get_routes_from_cache(message.text)
-    print(f"\n{type(_list)= }\n")
-    # await message.answer('done')
-    # data = json.loads()
-    # # _path = os.path.join(config.CACHE_PATH, f'{message.text}.json')
-    # #
-    # # with open(_path, 'r') as file:
-    # #     data = json.load(file)
-    #
-    item_list = await deserialize_item_cache(_list)
-    #
-    for msg, img, kb in item_list:
-        await message.answer_photo(photo=img, caption=msg, reply_markup=kb)
+# @search.message(Command("cache"))
+# async def get_key_cache(message: Message, state: FSMContext):
+#     await state.set_state(Cache.key)
+#     await message.answer('🟥🟨🟩 Введите ключ')
+#
+#
+# @search.message(Cache.key)
+# async def get_cache(message: Message, state: FSMContext):
+#     await state.update_data(key=message.text)
+#
+#     ##############################################
+#     # _list = await get_routes_from_cache(message.text)
+#     _list = await storage.get_cache(message.text)
+#     ##############################################
+#
+#     print(f"\n{type(_list)= }\n")
+#     # await message.answer('done')
+#     # data = json.loads()
+#     # # _path = os.path.join(config.CACHE_PATH, f'{message.text}.json')
+#     # #
+#     # # with open(_path, 'r') as file:
+#     # #     data = json.load(file)
+#     #
+#     item_list = await deserialize_item_cache(_list)
+#     #
+#     for msg, img, kb in item_list:
+#         await message.answer_photo(photo=img, caption=msg, reply_markup=kb)

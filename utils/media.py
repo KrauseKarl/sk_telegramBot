@@ -5,7 +5,7 @@ from typing import List, Optional
 from urllib.parse import unquote, urlparse
 from urllib.request import urlretrieve
 
-from aiogram.types import FSInputFile, InputMediaPhoto
+from aiogram.types import FSInputFile, InputMediaPhoto, InlineKeyboardMarkup
 from PIL import Image
 
 from core import config
@@ -89,7 +89,7 @@ async def get_error_answer_photo(
     :return:
     """
     photo = await get_fs_input_hero_image("error")
-    msg = "⚠️ ОШИБКА\n\n{0}".format(error)
+    msg = "⚠️ ОШИБКА\n{0}".format(error)
     return msg, photo
 
 
