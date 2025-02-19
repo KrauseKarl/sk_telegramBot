@@ -438,7 +438,6 @@ async def item_list_page(
         #  itList : 86fa2539fafd4476b66b27ac725e372b : 1 : 1
         key = callback_data.key
         paginate_page = int(callback_data.paginate_page)
-        prev_paginate_page = str(paginate_page - 1)
         api_page = callback_data.api_page
 
         cache_key = CacheKey(key=key, api_page=api_page).pack()
@@ -481,12 +480,15 @@ async def item_list_page(
             print(f"🟩 [❌] ❌ НАЗАД  ВПЕРЕД {next_kb} [{last_kb}]")
 
         elif int(api_page) > 1 and int(paginate_page) == 1:
-            print("⭐️ Следующий запрос и 1я страница")
+            print("⭐️❌❌❌❌❌❌❌❌❌❌❌❌ Следующий запрос и 1я страница")
             # ✅ next = 2
             next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=2).pack()
             # ✅ last = paginator.pages
             last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
             # ✅ prev = "itList:cache_key:api_page-1:prev(paginator.pages)" ! after 2nd request to redis by pre_cache_key
+            prev_paginate_page =  len(await redis_get_data_from_cache(CacheKey(key=key, api_page=str(int(api_page) - 1)).pack()))
+            print(f"####{prev_paginate_page= }")
+
             prev_kb = ItemCBD(key=key, api_page=str(int(api_page) - 1), paginate_page=prev_paginate_page).pack()
             # ❌ fist None
             print(f"🟩 [❌]  {prev_kb} НАЗАД  ВПЕРЕД {next_kb} [{last_kb}]")
