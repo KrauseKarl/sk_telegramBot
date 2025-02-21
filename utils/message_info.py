@@ -171,25 +171,26 @@ async def history_info(item) -> str:
     :param item:
     :return:
     """
-    msg = "⚙️ команда:\t<b>{0}</b>\n".format(item.command)
-    msg += "📅 {0}\n".format(item.date.strftime('%d %b %Y'))
+    msg = "⚙️ команда:\t<b>{0}</b>\n\n".format(item.command)
+    msg += "📅 {0}\t".format(item.date.strftime('%d %b %Y'))
     msg += "🕐 {0}\n".format(item.date.strftime('%H:%M:%S'))
     if item.search_name:
-        msg = msg + "🔎 поиск:\t{0:.5}\n".format(item.search_name)
-    if item.result_qnt:
-        msg = msg + "🔟 количество:\t{0}\n".format(item.result_qnt)
-    if item.price_range:
-        msg = msg + "⚪️ диапазон цен:\t{0}\n".format(item.price_range)
+        msg = msg + "🔎 поиск:\t{0:.20}\n".format(item.search_name)
+    if item.price_min and item.price_max:
+        msg = msg + "⚪️ диапазон цен:\t{0}-{1}\n".format(item.price_min,  item.price_max)
     if item.title:
         msg = msg + "✅ {:.30}\n".format(item.title)
     if item.price:
         msg = msg + "🟠 {0} RUB\n".format(item.price)
     if item.reviews:
-        msg = msg + "👀 {0}\n".format(item.reviews)
+        msg = msg + "👀 промоторы {0}\n".format(item.reviews)
     if item.stars:
-        msg = msg + "⭐️{0}\n".format(item.stars)
+        msg = msg + "⭐️рейтинг {0}\n".format(item.stars)
     if item.url:
         msg = msg + "{0}\n".format(item.url.split("//")[1])
+    if item.sort:
+        msg = msg + "📊 отсортировано: {0}\n".format(item.sort)
+
     return msg
 
 

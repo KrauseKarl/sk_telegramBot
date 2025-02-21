@@ -1,13 +1,16 @@
 import os
 
 from aiogram import F, Router
+from aiogram.filters import and_f
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from pydantic import ValidationError
 
-from data_api.deserializers import *
-from data_api.request import *
+from api_aliexpress.deserializers import *
+from api_aliexpress.request import *
+from api_telegram.callback_data import *
+from api_telegram.statments import ItemFSM
 from database.exceptions import *
 from database.orm import *
 from utils.media import *
@@ -17,7 +20,7 @@ favorite = Router()
 
 
 async def create_favorite_instance(
-        callback: types.CallbackQuery, state: FSMContext
+        callback: types.CallbackQuery, state: FSMContext, callback_data: FavoriteCBD
 ):
     """
 
@@ -25,36 +28,37 @@ async def create_favorite_instance(
     :param state:
     :return:
     """
-    if callback.data.startswith("favorite_add"):
-        item_id = str(callback.data).split("_")[2]
-        img_qnt = str(callback.data).split("_")[-1]
-        data = await state.get_data()
-        data['user'] = callback.from_user.id
-        kb = await kb_builder(
-            size=(2,),
-            data_list=[
-                {"свернуть": "delete_{0}_{1}".format(item_id, img_qnt)},
-                {"отслеживать цену": "price"}
-            ]
-        )
-    else:  # callback.data.startswith("fav_pre_add"):
-        item_id = str(callback.data).split("_")[-1]
-        response = await request_api(url=config.URL_API_ITEM_DETAIL, item_id=item_id)
-        item_data = await deserialize_item_detail(response, callback.from_user.id)
-        data = dict()
-        data["product_id"] = item_id
-        data["user"] = callback.from_user.id
-        data["title"] = item_data["title"]
-        data["price"] = item_data["price"]
-        data["reviews"] = item_data["reviews"]
-        data["star"] = item_data["star"]
-        data["url"] = item_data["url"]
-        data["image"] = item_data["image"]
-        kb = await builder_kb(
-            data=[{"👀 подробно": "{0}_{1}".format("item", item_id)}], size=(1,)
-        )
+    # if callback.data.startswith("favorite_add"):
+    #     item_id = str(callback.data).split("_")[2]
+    #     img_qnt = str(callback.data).split("_")[-1]
+    #     data = await state.get_data()
+    #     data['user'] = callback.from_user.id
+    #     kb = await kb_builder(
+    #         size=(2,),
+    #         data_list=[
+    #             {"свернуть": "delete_{0}_{1}".format(item_id, img_qnt)},
+    #             {"отслеживать цену": "price"}
+    #         ]
+    #     )
+    # else:  # callback.data.startswith("fav_pre_add"):
+    # item_id = str(callback.data).split("_")[-1]
+    item_id = callback_data.item_id
+    response = await request_api(url=config.URL_API_ITEM_DETAIL, item_id=item_id)
+    item_data = await deserialize_item_detail(response, callback.from_user.id)
+    data = dict()
+    data["product_id"] = item_id
+    data["user"] = callback.from_user.id
+    data["title"] = item_data["title"]
+    data["price"] = item_data["price"]
+    data["reviews"] = item_data["reviews"]
+    data["star"] = item_data["star"]
+    data["url"] = item_data["url"]
+    data["image"] = item_data["image"]
+    # kb = await builder_kb(
+    #     data=[{"👀 подробно": "{0}_{1}".format("item", item_id)}], size=(1,)
+    # )
 
-    return data, kb
+    return data #, kb
 
 
 @favorite.callback_query(F.data.startswith("fav_delete_"))
@@ -148,24 +152,30 @@ async def delete_favorite(callback: types.CallbackQuery) -> None:
         reply_markup=kb.adjust(2, 2, 1).as_markup())
 
 
-@favorite.callback_query(
-    F.data.startswith("favorite_add") | F.data.startswith("fav_pre_add")
+@favorite.callback_query(FavoriteCBD.filter(F.action == FavAction.list)
+# F.data.startswith("favorite_add") | F.data.startswith("fav_pre_add")
 )
-async def add_favorite(callback: types.CallbackQuery, state: FSMContext) -> None:
+async def add_favorite(callback: types.CallbackQuery, state: FSMContext, callback_data: FavoriteCBD) -> None:
     """
 
     :param callback:
     :param state:
     :return:
     """
-    print('FAVORITE ADD ENDPOINT')
+    print('🟪 FAVORITE ADD ENDPOINT')
+    print(f"🟪 {callback.data}")
+    print(f"🟪 {callback_data.item_id}")
+    print(f"🟪 {callback_data.action}")
+    # print(f"🟪 {callback_data.page}")
+
     try:
-        data, kb = await create_favorite_instance(callback, state)
+        # data, kb = await create_favorite_instance(callback, state)
+        data = await create_favorite_instance(callback, state)
         # todo add logger
         item, created = await orm_get_or_create_favorite(data)
         # todo add logger
-        await callback.answer('⭐️ добавлен в избранное', show_alert=True)
-        await callback.message.edit_reply_markup(reply_markup=kb)
+        await callback.answer('✅ добавлен в избранное', show_alert=True)
+        # await callback.message.edit_reply_markup(reply_markup=kb)
     except FreeAPIExceededError as error:
         await callback.answer(show_alert=True, text="⚠️ ОШИБКА\n\n{0}".format(error))
     except IntegrityError as error:

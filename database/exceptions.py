@@ -1,9 +1,13 @@
-from aiogram.exceptions import AiogramError
+from aiogram.exceptions import AiogramError, TelegramBadRequest
 from httpx import HTTPError
 from peewee import IntegrityError
 
 
-class CustomError(ValueError, AiogramError, IntegrityError):
+class DBError(IntegrityError):
+    pass
+
+
+class CustomError(AiogramError, DBError):
     pass
 
 

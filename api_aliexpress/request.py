@@ -1,8 +1,39 @@
+import json
+import os
+
 import httpx
 
 from core import config
 from core.config import conf
-from database.exceptions import FreeAPIExceededError
+from database.exceptions import *
+
+
+async def save_data_json(data, query, page):
+    file_name = "{0}_{1}.json".format(query.replace(' ', "_").lower(), page)
+    file_path = os.path.join(
+        config.BASE_DIR,
+        "_json_example",
+        "_real_data",
+        file_name
+    )
+    with open(file_path, "w") as file:
+        json.dump(data, file, ensure_ascii=False, indent=4)
+
+
+async def request_api_fake(page: str | int, query: str = None):
+    try:
+        file_name = "{0}_{1}.json".format(query.replace(" ", "_").lower(), page)
+        path = os.path.join(config.BASE_DIR, "_json_example", "_real_data", file_name)
+        print( f"{path= }")
+        with open(path, 'r') as file:
+            data = json.load(file)
+        return data
+    except FileNotFoundError:
+        path = os.path.join(config.BASE_DIR, "_json_example", "_fake", "list_{0}.json".format(page))
+        with open(path, 'r') as file:
+            data = json.load(file)
+        return data
+        # raise CustomError('⚠️ JSON file not found.')
 
 
 async def request_api(
@@ -34,9 +65,8 @@ async def request_api(
         conf.querystring["page"] = page
 
     # todo delete after develop
-    print("☀️" * 10)
-    print("REQUEST TO ALIEXPRESS API - {}".format(conf.querystring.items()))
-    print("☀️" * 10)
+    print("☀️☀️☀️☀️☀️REQUEST TO ALIEXPRESS API - {}".format(conf.querystring.items()))
+
     # todo delete after develop
     try:
         async with httpx.AsyncClient() as client:
@@ -46,19 +76,19 @@ async def request_api(
                 params=conf.querystring
             )
         result = response.json()
+        await save_data_json(result, query, page)
     except httpx.ReadTimeout as error:
         raise FreeAPIExceededError(
-            message="HTTP ERROR\n{0}".format(error)
+            message="⚠️ HTTP ERROR\n{0}".format(error)
         )
 
     if "message" in result:
-        print(f"❌❌❌ лимит API превышен")
+        print(f"❌ лимит API превышен")
         raise FreeAPIExceededError(
-            message="❌ лимит API превышен\n{0}".format(
+            message="⚠️ лимит API превышен\n{0}".format(
                 result.get('message')
             )
         )
-    print(f"✅✅✅ лимит API в норме")
     return result
 
 # async def request_item_list(url: str, q=None, sort=None, cat_id=None) -> dict:

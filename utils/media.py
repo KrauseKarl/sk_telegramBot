@@ -5,7 +5,7 @@ from typing import List, Optional
 from urllib.parse import unquote, urlparse
 from urllib.request import urlretrieve
 
-from aiogram.types import FSInputFile, InputMediaPhoto, InlineKeyboardMarkup
+from aiogram.types import FSInputFile, InlineKeyboardMarkup, InputMediaPhoto
 from PIL import Image
 
 from core import config

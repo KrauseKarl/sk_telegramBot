@@ -43,6 +43,9 @@ class History(Base):
     search_name = peewee.CharField(null=True)
     result_qnt = peewee.IntegerField(null=True)
     price_range = peewee.TextField(null=True)
+    price_min = peewee.TextField(null=True)
+    price_max = peewee.TextField(null=True)
+    sort = peewee.TextField(null=True)
     title = peewee.CharField(null=True, max_length=200)
 
     price = peewee.FloatField(null=True)
@@ -93,6 +96,8 @@ class HistoryModel(BaseModel):
     search_name: str = None
     result_qnt: int = None
     price_range: str = None
+    price_min: str | int = None
+    price_max: str | int = None
     title: str = None
     price: float = None
     reviews: int = None
@@ -100,6 +105,7 @@ class HistoryModel(BaseModel):
     url: str = None
     image: str = None
     user: int = None
+    sort: str = None
 
 
 class FavoriteModel(BaseModel):

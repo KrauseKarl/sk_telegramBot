@@ -2,13 +2,14 @@ from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, or_f
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import (CallbackQuery, InlineKeyboardButton, KeyboardButton,
+                           Message, ReplyKeyboardMarkup)
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data_api.request import *
+from api_aliexpress.request import *
+from api_telegram.statments import *
 from database.exceptions import CustomError
 from database.orm import orm_make_record_request
-from telegram_api.statments import *
 from utils.media import *
 from utils.message_info import *
 

@@ -1,9 +1,9 @@
 import json
+
 from aiogram.filters.callback_data import CallbackData
 
-
+from api_redis.handlers import *
 from database.orm import *
-from redis_api.handlers import *
 from utils.media import *
 from utils.message_info import card_info, get_price_range
 

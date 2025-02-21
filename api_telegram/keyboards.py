@@ -1,6 +1,7 @@
 from typing import Any, Coroutine
 
 from aiogram import types
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils import keyboard
 
 from core.config import *
@@ -143,3 +144,16 @@ async def item_kb_2(data: list):
 
 async def error_kb():
     return await builder_kb([{"🏠 back menu": "menu"}], (1,))
+
+
+async def main_keyboard():
+    kb_list = [[KeyboardButton(text="Menu")]]
+    # if user_telegram_id in admins:
+    #     kb_list.append([KeyboardButton(text="⚙️ Админ панель")])
+    kb = ReplyKeyboardMarkup(
+        keyboard=kb_list,
+        resize_keyboard=True,
+        # one_time_keyboard=True
+        input_field_placeholder='stars'
+    )
+    return kb

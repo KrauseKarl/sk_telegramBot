@@ -17,6 +17,8 @@ from pydantic_settings import BaseSettings
 
 load_dotenv()
 
+FAKE_MODE = True # False
+
 # ALIEXPRESS API URLS ###################################################################
 URL_API_ITEM_LIST = "item_search_5"
 URL_API_ITEM_DETAIL = "item_detail_6"
@@ -54,7 +56,12 @@ CACHE_LIVE_TIME = 60 * 60
 
 # SORT SETTINGS ############################################################################
 SORT_SET = {"default", "priceDesc", "priceAsc", "salesDesc"}
-
+SORT_DICT = {
+    "default": "по умолчанию",
+    "priceDesc": "сначала дороже",
+    "priceAsc": "сначала дешевле",
+    "salesDesc": "по популярности",
+}
 QNT = {"2", "3", "5", "10"}
 
 SORT = {

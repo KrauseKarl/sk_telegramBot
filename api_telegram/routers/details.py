@@ -3,12 +3,12 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from aiogram.utils.media_group import MediaGroupBuilder
 
-from data_api.deserializers import *
-from data_api.request import *
+from api_aliexpress.deserializers import *
+from api_aliexpress.request import *
+from api_telegram.keyboards import *
+from api_telegram.statments import *
 from database.exceptions import *
 from database.orm import *
-from telegram_api.keyboards import *
-from telegram_api.statments import *
 from utils.message_info import *
 
 detail = Router()

@@ -1,10 +1,10 @@
 import math
 from typing import List
 
+from api_telegram.keyboards import *
 from database.models import *
-from telegram_api.keyboards import *
 from utils.message_info import *
-from utils.message_info import favorite_info
+from utils.message_info import favorite_info, history_info
 
 
 # PAGINATOR CLASS ###############################################################

@@ -3,10 +3,10 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart
 from aiogram.types import CallbackQuery, Message
 
+from api_telegram.keyboards import *
 from core import config
 from database.exceptions import CustomError
 from database.orm import *
-from telegram_api.keyboards import *
 from utils.media import *
 
 base = Router()
