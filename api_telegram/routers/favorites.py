@@ -20,7 +20,9 @@ favorite = Router()
 
 
 async def create_favorite_instance(
-        callback: types.CallbackQuery, state: FSMContext, callback_data: FavoriteCBD
+        callback: types.CallbackQuery,
+        state: FSMContext,
+        callback_data: FavoriteAddCBD
 ):
     """
 
@@ -45,32 +47,48 @@ async def create_favorite_instance(
     item_id = callback_data.item_id
     response = await request_api(url=config.URL_API_ITEM_DETAIL, item_id=item_id)
     item_data = await deserialize_item_detail(response, callback.from_user.id)
-    data = dict()
-    data["product_id"] = item_id
-    data["user"] = callback.from_user.id
-    data["title"] = item_data["title"]
-    data["price"] = item_data["price"]
-    data["reviews"] = item_data["reviews"]
-    data["star"] = item_data["star"]
-    data["url"] = item_data["url"]
-    data["image"] = item_data["image"]
-    # kb = await builder_kb(
-    #     data=[{"👀 подробно": "{0}_{1}".format("item", item_id)}], size=(1,)
-    # )
+    item_data["product_id"] = item_id
+    key = callback_data.key
+    api_page = callback_data.api_page
+    _prev = callback_data.prev
+    _next = callback_data.next
+    _first = callback_data.first
+    _last = callback_data.last
 
-    return data #, kb
+    prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=_prev).pack()
+    next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=_next).pack()
+    first_kb = ItemCBD(key=key, api_page=api_page, paginate_page=_first).pack()
+    last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=_last).pack()
+    detail = DetailCBD(item_id=item_id).pack()
+
+    kb = await builder_kb(
+        data=[
+            {"⬅️ Пред.": prev_kb},
+            {"След. ➡️": next_kb},
+            {"⏪ Первая": first_kb},
+            {"После. ⏩": last_kb},
+            {"ℹ️ подробно": detail},
+            {"🌐": "menu"},
+            {"🏠 menu": "menu"}
+
+        ],
+        size=(2, 2, 2)
+    )
+
+    return item_data, kb
 
 
-@favorite.callback_query(F.data.startswith("fav_delete_"))
-async def delete_favorite(callback: types.CallbackQuery) -> None:
+@favorite.callback_query(FavoriteDeleteCBD.filter(F.action == FavAction.delete))
+async def delete_favorite(callback: types.CallbackQuery, callback_data: FavoriteDeleteCBD) -> None:
     """
 
+    :param callback_data:
     :param callback:
     :return:
     """
     await callback.answer()
-    item_id = str(callback.data).split("_")[-1]
-    page = int(callback.data.split("_")[-2])
+    item_id = callback_data.item_id
+    page = int(callback_data.page)
 
     print(f'FAVORITE DELETE ENDPOINT\n{item_id= }\n{page}')
 
@@ -132,9 +150,14 @@ async def delete_favorite(callback: types.CallbackQuery) -> None:
         print(f"page  paginator.get_page {paginator.get_page()= }")
     msg = await favorite_info(one_item)
     msg = msg + "{0} из {1}".format(page, paginator.pages)
-    kb.add(InlineKeyboardButton(
-        text='❌ удалить',
-        callback_data="fav_delete_{1}_{0}".format(one_item.product_id, page - 1))
+    kb.add(
+        InlineKeyboardButton(
+            text='❌ удалить',
+            callback_data=FavoriteDeleteCBD(
+                action=FavAction.delete,
+                item_id=one_item.product_id, page=str(page - 1)
+            ).pack()
+        )
     )
     kb.add(InlineKeyboardButton(text='🏠 меню', callback_data="menu"))
 
@@ -152,57 +175,62 @@ async def delete_favorite(callback: types.CallbackQuery) -> None:
         reply_markup=kb.adjust(2, 2, 1).as_markup())
 
 
-@favorite.callback_query(FavoriteCBD.filter(F.action == FavAction.list)
-# F.data.startswith("favorite_add") | F.data.startswith("fav_pre_add")
-)
-async def add_favorite(callback: types.CallbackQuery, state: FSMContext, callback_data: FavoriteCBD) -> None:
+@favorite.callback_query(FavoriteAddCBD.filter(F.action == FavAction.list))
+async def add_favorite(callback: types.CallbackQuery, state: FSMContext, callback_data: FavoriteAddCBD) -> None:
     """
 
+    :param callback_data:
     :param callback:
     :param state:
     :return:
     """
     print('🟪 FAVORITE ADD ENDPOINT')
-    print(f"🟪 {callback.data}")
-    print(f"🟪 {callback_data.item_id}")
-    print(f"🟪 {callback_data.action}")
-    # print(f"🟪 {callback_data.page}")
+    print(f"🟪 data = {callback.data}")
 
     try:
-        # data, kb = await create_favorite_instance(callback, state)
-        data = await create_favorite_instance(callback, state)
+        data, kb = await create_favorite_instance(callback, state, callback_data)
+        # data = await create_favorite_instance(callback, state, callback_data)
         # todo add logger
         item, created = await orm_get_or_create_favorite(data)
         # todo add logger
-        await callback.answer('✅ добавлен в избранное', show_alert=True)
-        # await callback.message.edit_reply_markup(reply_markup=kb)
+        # await callback.answer('✅ добавлен в избранное', show_alert=True)
+        await callback.message.edit_reply_markup(reply_markup=kb)
     except FreeAPIExceededError as error:
         await callback.answer(show_alert=True, text="⚠️ ОШИБКА\n\n{0}".format(error))
     except IntegrityError as error:
         await callback.answer("⚠️ уже добавлено в избранное", show_alert=True)
 
 
-@favorite.callback_query(
-    F.data.startswith("favorites") | F.data.startswith("fav_page")
-)
-async def favorite_page(callback: types.CallbackQuery) -> None:
+# F.data.startswith("favorites") | F.data.startswith("fav_page")
+@favorite.callback_query(FavoritePageCBD.filter(F.action == FavAction.page))
+async def get_favorite_list(
+        callback: types.CallbackQuery,
+        callback_data: FavoritePageCBD
+) -> None:
     """
 
+    :param callback_data:
     :param callback:
     :return:
     """
-    print('FAVORITE ENDPOINT')
+    print('___1 🟪🟪🟪 FAVORITE ENDPOINT')
     await callback.answer()
     try:
         data_list = await orm_get_favorite_list(callback.from_user.id)
-        print(f"{data_list= } | {len(data_list)}")
+        print(f"___2 🟪{len(data_list) = }")
+
         if len(data_list) == 1:
             msg, kb, img = await make_paginate_favorite_list(data_list)
-
         else:
-            if callback.data.startswith("fav_page"):
+            if callback_data.page == FavPagination.first:
+                msg, kb, img = await make_paginate_favorite_list(data_list)
+            else:
+                # if callback.data.startswith("fav_page"):
                 # todo make func make_paginate_history_list
-                page = int(callback.data.split("_")[-1])
+                # page = int(callback.data.split("_")[-1])
+                page = callback_data.pages
+                print(f"___3 🟪 {page= }")
+
                 paginator = Paginator(data_list, page=int(page))
                 one_item = paginator.get_page()[0]
                 msg = await favorite_info(one_item)
@@ -210,35 +238,46 @@ async def favorite_page(callback: types.CallbackQuery) -> None:
 
                 # todo make func kb_page_builder and remove to pagination.py
                 kb = InlineKeyboardBuilder()
-                if callback.data.startswith("fav_page_next"):
-                    callback_previous = "fav_page_previous_{0}".format(page - 1)
+                if callback_data.page == FavPagination.next:
+                    callback_previous = FavoritePageCBD(
+                        action=FavAction.page,
+                        page=FavPagination.prev,
+                        pages=page - 1
+                    ).pack()
                     kb.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
                     if page != paginator.pages:
-                        callback_next = "fav_page_next_{0}".format(page + 1)
+                        callback_next = FavoritePageCBD(
+                            action=FavAction.page,
+                            page=FavPagination.next,
+                            pages=page + 1
+                        ).pack()
                         kb.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
-                        # if paginator.pages > 10:
-                        #     callback_next = "page_next_{0}".format(page + 10)
-                        #     kb.add(InlineKeyboardButton(text='След. 10 ▶', callback_data=callback_next))
-                elif callback.data.startswith("fav_page_previous"):
-                    if page != 1:
-                        callback_previous = "fav_page_previous_{0}".format(page - 1)
-                        kb.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
-                        # if page > 10:
-                        #     callback_previous = "page_previous_{0}".format(page - 10)
-                        #     kb.add(InlineKeyboardButton(text="◀ Пред. 10", callback_data=callback_previous))
-                    callback_next = "fav_page_next_{0}".format(page + 1)
-                    kb.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
 
-                kb.add(InlineKeyboardButton(
-                    text='❌ удалить',
-                    callback_data="fav_delete_{1}_{0}".format(one_item.product_id, page - 1))
-                )
-                kb.add(InlineKeyboardButton(text='главное меню', callback_data="menu"))
+                elif callback_data.page == FavPagination.prev:
+                    if page != 1:
+                        callback_previous = FavoritePageCBD(
+                            action=FavAction.page,
+                            page=FavPagination.prev,
+                            pages=page - 1
+                        ).pack()
+                        kb.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
+                    callback_next = FavoritePageCBD(
+                        action=FavAction.page,
+                        page=FavPagination.prev,
+                        pages=page + 1
+                    ).pack()
+                    kb.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
+                delete_data = FavoriteDeleteCBD(
+                    action=FavAction.delete,
+                    item_id=one_item.product_id,
+                    page=str(page - 1)
+                ).pack()
+
+                kb.add(InlineKeyboardButton(text='❌ удалить', callback_data=delete_data))
+                kb.add(InlineKeyboardButton(text='🏠 меню', callback_data="menu"))
                 # todo make func kb_page_builder and remove to pagination.py
                 img = one_item.image
-                kb = kb.adjust(2, 2, 1).as_markup()
-            else:
-                msg, kb, img = await make_paginate_favorite_list(data_list)
+                kb = kb.adjust(2, 2, 2).as_markup()
 
         try:
             img = types.FSInputFile(

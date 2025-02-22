@@ -29,19 +29,19 @@ async def deserialize_item_detail(
     data["reviews"] = reviews.get("count")
     data["star"] = reviews.get("averageStar")
     data["url"] = ":".join(["https", item.get("itemUrl")])
-    # try:
-    #     image_url = ":".join(["https", item["images"][0]])
-    #     path, file_name = await make_default_size_image(image_url)
-    # except KeyError:
-    #     file_name = None
-    # data["image"] = file_name
-
     try:
         image_url = ":".join(["https", item["images"][0]])
+        path, file_name = await make_default_size_image(image_url)
     except KeyError:
-        image_url = None
+        file_name = None
+    data["image"] = file_name
 
-    data["image"] = image_url
+    # try:
+    #     image_url = ":".join(["https", item["images"][0]])
+    # except KeyError:
+    #     image_url = None
+    #
+    # data["image"] = image_url
 
     return data
 

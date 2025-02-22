@@ -99,32 +99,40 @@ async def make_paginate_favorite_list(
         kb = await kb_builder(
             size=(1,),
             data_list=[
-                {"🏠 назад": "menu"}
+                {"🏠 меню": "menu"}
             ]
         )
         return msg, kb, None
     else:
         paginator = Paginator(favorite_list, page=page)
-        one_items = paginator.get_page()[0]
-        print(one_items)
-        msg = await favorite_info(one_items)
+        item = paginator.get_page()[0]
+        msg = await favorite_info(item)
         msg = msg + "\n{0} из {1}".format(page, paginator.pages)
         if len(favorite_list) == 1:
             kb = await kb_builder(
                 size=(1,),
                 data_list=[
-                    {"🏠 назад": "menu"}
+                    {"🏠 меню": "menu"}
                 ]
             )
         else:
+            next_page = FavoritePageCBD(
+                action=FavAction.page,
+                page=FavPagination.next,
+                pages=int(page) + 1
+            ).pack()
+            delete = FavoriteDeleteCBD(
+                action=FavAction.delete,
+                item_id=item.product_id,
+                page=str(page - 1)
+            ).pack()
+
             kb = await kb_builder(
-                size=(1,),
+                size=(1, 2),
                 data_list=[
-                    {"След. ▶": "fav_page_next_{0}".format(int(page) + 1)},
+                    {"След. ▶": next_page},
+                    {"❌ удалить": delete},
                     {"🏠 меню": "menu"},
                 ]
             )
-        return msg, kb, one_items.image
-
-
-
+        return msg, kb, item.image

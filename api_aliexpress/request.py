@@ -1,3 +1,4 @@
+import inspect
 import json
 import os
 
@@ -8,23 +9,35 @@ from core.config import conf
 from database.exceptions import *
 
 
-async def save_data_json(data, query, page):
-    file_name = "{0}_{1}.json".format(query.replace(' ', "_").lower(), page)
-    file_path = os.path.join(
-        config.BASE_DIR,
-        "_json_example",
-        "_real_data",
-        file_name
-    )
-    with open(file_path, "w") as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
+async def save_data_json(data, page: str = None, query: str = None, item_id: str = None):
+
+    try:
+        file_name = "{0}_{1}.json".format(query.replace(' ', "_").lower(), page)
+        file_path = os.path.join(
+            config.BASE_DIR,
+            "_json_example",
+            "_real_data",
+            file_name
+        )
+        with open(file_path, "w") as file:
+            json.dump(data, file, ensure_ascii=False, indent=4)
+    except AttributeError:
+        file_name = "{0}.json".format(item_id)
+        file_path = os.path.join(
+            config.BASE_DIR,
+            "_json_example",
+            "_favorite",
+            file_name
+        )
+        with open(file_path, "w") as file:
+            json.dump(data, file, ensure_ascii=False, indent=4)
 
 
 async def request_api_fake(page: str | int, query: str = None):
     try:
         file_name = "{0}_{1}.json".format(query.replace(" ", "_").lower(), page)
         path = os.path.join(config.BASE_DIR, "_json_example", "_real_data", file_name)
-        print( f"{path= }")
+        print(f"{path= }")
         with open(path, 'r') as file:
             data = json.load(file)
         return data
@@ -48,7 +61,6 @@ async def request_api(
 
 ) -> dict:
     full_url = "/".join([conf.base_url, url])
-
     if query:
         conf.querystring["q"] = query
     if item_id:
@@ -64,10 +76,6 @@ async def request_api(
     if page:
         conf.querystring["page"] = page
 
-    # todo delete after develop
-    print("☀️☀️☀️☀️☀️REQUEST TO ALIEXPRESS API - {}".format(conf.querystring.items()))
-
-    # todo delete after develop
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
@@ -76,7 +84,18 @@ async def request_api(
                 params=conf.querystring
             )
         result = response.json()
-        await save_data_json(result, query, page)
+
+        ##################################################################
+        # todo delete after develop
+        print("☀️☀️☀️☀️☀️REQUEST TO ALIEXPRESS API - {}".format(conf.querystring.items()))
+
+        if page and query:
+            await save_data_json(data=result, query=query, page=page)
+        if item_id:
+            await save_data_json(data=result, item_id=item_id)
+        # todo delete after develop
+        ##################################################################
+
     except httpx.ReadTimeout as error:
         raise FreeAPIExceededError(
             message="⚠️ HTTP ERROR\n{0}".format(error)

@@ -52,8 +52,7 @@ async def search_name_message(message: Message, state: FSMContext) -> None:
         await state.set_state(ItemFSM.product)
         await message.answer_photo(
             photo=await get_fs_input_hero_image("search"),
-            caption="🛍️ Введите название товара.",
-            reply_markup=await menu_kb()
+            caption="🛍️ Введите название товара."
         )
     except CustomError as error:
         await message.edit_media(
@@ -404,7 +403,7 @@ async def item_list_page(
     :return:
     """
     try:
-        print("*" * 50)
+        print("*" * 120)
 
         data = await state.get_data()
         print(f'⬜️🟧{data= }')
@@ -546,16 +545,30 @@ async def item_list_page(
         #     text=FavAction.list.value.title(),
         #     callback_data=FavoriteCBD(action=FavAction.list, item_id="123"),
         # )
+        favorite_2 = FavoriteAddCBD(
+            action=FavAction.list,
+            item_id=str(one_item['item']['itemId']),
+            key=key,
+            api_page=api_page,
+            next=str(paginate_page + 1),
+            prev=str(paginate_page - 1),
+            first=str(1),
+            last=str(paginator.pages)
+        ).pack()
+        # favorite = FavoriteAddCBD(action=FavAction.list, item_id=str(one_item['item']['itemId'])).pack()
+        detail = DetailCBD(item_id=str(one_item['item']['itemId'])).pack()
         keyboard_list.extend(
             [
-                {"ℹ️ подробно": "item_{0}".format(one_item['item']['itemId'])},
-                {"⭐️ в избранное": FavoriteCBD(action=FavAction.list, item_id=str(one_item['item']['itemId'])).pack()},
+                {"ℹ️ подробно": detail},
+                {"⭐️ в избранное": favorite_2},
                 {"🌐": "menu"},
                 {"🏠 menu": "menu"}
             ]
         )
         ##########################################################################################
-
+        # print(f"⬜️⬜️⬜️ {favorite= }")
+        print(f"⬜️⚛️⚛️️ {favorite_2= }")
+        print(f"⬜️🟥⚛️️ {detail= }")
         ##########################################################################################
         mg = ''
         # FIRST
@@ -573,7 +586,7 @@ async def item_list_page(
         print('⬜️ KEYBOARD {}'.format(mg))
         ##########################################################################################
 
-        print("*" * 50)
+        print("*" * 120)
 
         # todo message builder
         msg = "{0:.50}\n".format(one_item["item"]["title"])
@@ -585,18 +598,18 @@ async def item_list_page(
         photo = types.InputMediaPhoto(media=img, caption=msg, show_caption_above_media=False)
         # todo message builder
 
-        kb = await builder_kb(keyboard_list, (2,))
+        kb = await builder_kb(keyboard_list, (2,2,4))
 
         await callback.message.edit_media(media=photo, reply_markup=kb)
 
     except CustomError as error:
-        # msg, photo = await get_error_answer_photo(error)
-        # await callback.message.answer_photo(
-        #     photo=photo,
-        #     caption=msg,
-        #     reply_markup=await error_kb()
-        # )
-        await callback.answer(text=str(error), show_alert=True)
+        msg, photo = await get_error_answer_photo(error)
+        await callback.message.answer_photo(
+            photo=photo,
+            caption=msg,
+            reply_markup=await error_kb()
+        )
+        # await callback.answer(text=str(error), show_alert=True)
 
 
 @search.callback_query(ItemFSM.sort)
@@ -616,6 +629,7 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         api_page = 1
         ################################################################################################################
         data = await state.get_data()
+        await state.clear()
 
         await state.set_state(CacheFSM.product)
         await state.update_data(product=data.get("product"))
@@ -696,8 +710,8 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
                 price_max=data.get('price_max'),
                 search_name=data['product'],
                 sort=config.SORT_DICT[data['sort']]
-            ).model_dump())  # todo make orm func for orm.py
-        await state.clear()
+            ).model_dump())
+
         photo = types.InputMediaPhoto(media=img, caption=msg, show_caption_above_media=False)
         await call.message.edit_media(media=photo, reply_markup=kb)
 

@@ -16,51 +16,42 @@ class ItemCBD(CallbackData, prefix='itList'):
     paginate_page: int | str
 
 
-# class Action(str, Enum):
-#     ban = "ban"
-#     kick = "kick"
-#     warn = "warn"
-#
-# class AdminAction(CallbackData, prefix="adm"):
-#     action: Action
-#     chat_id: int
-#     user_id: int
-#
-# ...
-# # Inside handler
-# builder = InlineKeyboardBuilder()
-# for action in Action:
-#     builder.button(
-#         text=action.value.title(),
-#         callback_data=AdminAction(action=action, chat_id=chat_id, user_id=user_id),
-#     )
+class DetailCBD(CallbackData, prefix='itDetail'):
+    item_id: str
+
 
 class FavAction(str, Enum):
-    list = "add_list"
-    detail = "add_detail"
+    list = "add_from_list"
+    detail = "add_from_detail"
+    delete = "delete_from_favorites"
     page = "page"
 
 
-class FavoriteCBD(CallbackData, prefix='favorite'):
+class FavoriteAddCBD(CallbackData, prefix='favorite'):
+    action: FavAction
+    item_id: str = None
+    key: str
+    api_page: str
+    next: str
+    prev: str
+    first: str
+    last: str
+
+
+class FavoriteDeleteCBD(CallbackData, prefix='favorite'):
     action: FavAction
     item_id: str
-    page: str = None
+    page: str
 
 
-builder = InlineKeyboardBuilder()
+class FavPagination(str, Enum):
+    next = "next_page"
+    prev = "prev_page"
+    last = "lats_page"
+    first = "first_page"
 
-builder.button(
-    text=FavAction.list.value.title(),
-    callback_data=FavoriteCBD(action=FavAction.list, item_id="123"),
-)
-builder.button(
-    text=FavAction.detail.value.title(),
-    callback_data=FavoriteCBD(action=FavAction.detail, item_id="123"),
-)
-builder.button(
-    text=FavAction.page.value.title(),
-    callback_data=FavoriteCBD(action=FavAction.page, item_id="123", page='2'),
-)
-#   callback_data=AdminAction(action=FavAction., chat_id=chat_id, user_id=user_id),
-#   callback_data=AdminAction(action=action, chat_id=chat_id, user_id=user_id),
-#   callback_data=AdminAction(action=action, chat_id=chat_id, user_id=user_id),
+
+class FavoritePageCBD(CallbackData, prefix='favorite'):
+    action: FavAction
+    page: FavPagination
+    pages: int = 1

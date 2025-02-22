@@ -4,6 +4,7 @@ from aiogram import types
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils import keyboard
 
+from api_telegram.callback_data import *
 from core.config import *
 
 SORT_DATA = [
@@ -16,7 +17,7 @@ MENU_DATA = [
     {"🛒 поиск товара": "search"},
     {"🧾 поиск категории": "category"},
     {"📋 история команд": "history"},
-    {"️⭐️ избранное": "favorites"},
+    {"️⭐️ избранное": FavoritePageCBD(action=FavAction.page, page=FavPagination.first).pack()},
 ]
 
 QNT_DATA = [
