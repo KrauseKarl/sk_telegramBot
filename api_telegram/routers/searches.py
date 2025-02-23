@@ -375,18 +375,18 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 #     value: Optional[int] = None
 #
 #     builder.button(
-#         text="-2", callback_data=NumbersCallbackFactory(action="change", value=-2)
+#         text="-2", data=NumbersCallbackFactory(action="change", value=-2)
 #     )
 # InlineKeyboardButton(
 #     text="demo",
-#     callback_data=MyCallback(foo="demo", bar="42").pack()  # value should be packed to string
+#     data=MyCallback(foo="demo", bar="42").pack()  # value should be packed to string
 # )
 #
 # @router.callback_query(MyCallback.filter(F.foo == "demo"))
-# async def my_callback_foo(query: CallbackQuery, callback_data: MyCallback):
+# async def my_callback_foo(query: CallbackQuery, data: MyCallback):
 #     await query.answer(...)
 #     ...
-#     print("bar =", callback_data.bar)
+#     print("bar =", data.bar)
 
 
 @search.callback_query(ItemCBD.filter())  # F.data.startswith("itList"))
@@ -543,7 +543,7 @@ async def item_list_page(
         ##########################################################################################
         # builder.button(
         #     text=FavAction.list.value.title(),
-        #     callback_data=FavoriteCBD(action=FavAction.list, item_id="123"),
+        #     data=FavoriteCBD(action=FavAction.list, item_id="123"),
         # )
         favorite_2 = FavoriteAddCBD(
             action=FavAction.list,

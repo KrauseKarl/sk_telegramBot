@@ -1,31 +1,15 @@
 from aiogram import F, Router, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from pydantic import ValidationError
 
+from api_telegram.crud.histories import *
 from database.exceptions import *
 from database.orm import *
 from utils.media import *
 from utils.message_info import *
 
 history = Router()
-
-
-async def get_history_message(user_id: str | int):
-    """
-
-    :param user_id:
-    :return:
-    """
-    history_list = await orm_get_history_list(user_id)
-    msg, kb, img = await make_paginate_history_list(history_list)
-    try:
-        photo = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, img))
-    except (ValidationError, TypeError):
-        photo = await get_fs_input_hero_image("history")
-
-    return msg, kb, photo
 
 
 # HISTORY #############################################################################################################
@@ -91,14 +75,14 @@ async def history_page(callback: types.CallbackQuery) -> None:
                 kb.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
                 # if paginator.pages > 10:
                 #     callback_next = "page_next_{0}".format(page + 10)
-                #     kb.add(InlineKeyboardButton(text='След. 10 ▶', callback_data=callback_next))
+                #     kb.add(InlineKeyboardButton(text='След. 10 ▶', data=callback_next))
         elif callback.data.startswith("page_previous"):
             if page != 1:
                 callback_previous = "page_previous_{0}".format(page - 1)
                 kb.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
                 # if page > 10:
                 #     callback_previous = "page_previous_{0}".format(page - 10)
-                #     kb.add(InlineKeyboardButton(text="◀ Пред. 10", callback_data=callback_previous))
+                #     kb.add(InlineKeyboardButton(text="◀ Пред. 10", data=callback_previous))
             callback_next = "page_next_{0}".format(page + 1)
             kb.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
         kb.add(InlineKeyboardButton(text='главное меню', callback_data="menu"))
@@ -110,7 +94,6 @@ async def history_page(callback: types.CallbackQuery) -> None:
         except (ValidationError, TypeError):
             photo = await get_input_media_hero_image("history", msg)
 
-        # todo make func make_paginate_history_list
         await callback.message.edit_media(
             media=photo,
             reply_markup=kb.adjust(2, 2, 1).as_markup())

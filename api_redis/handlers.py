@@ -15,7 +15,7 @@ async def redis_connect() -> aioredis.Redis:
         if ping is True:
             return client
     except aioredis.client.ConnectionError:
-        raise CustomError('⚠️📶 REDIS не может установить связь.')
+        raise CustomError('❌📶 REDIS не может установить связь.')
 
 
 async def redis_flush_keys() -> aioredis.Redis:

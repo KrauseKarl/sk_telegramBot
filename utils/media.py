@@ -45,39 +45,50 @@ async def parse_url(url: str) -> str:
 async def make_default_size_image(
         url: str
 ) -> tuple[Optional[str], Optional[str]]:
-        """
-        Изменяет размер (1024х576) изображения товара и
-        сохраняет в директории `static/products`
-        """
+    """
+    Изменяет размер (1024х576) изображения товара и
+    сохраняет в директории `static/products`
+    """
     # try:
-        file_name = await parse_url(url)
-        full_path = os.path.join(config.IMAGE_PATH, file_name)
+    file_name = await parse_url(url)
+    full_path = os.path.join(config.IMAGE_PATH, file_name)
 
-        fd = urllib.request.urlopen(url)
-        input_img_file = io.BytesIO(fd.read())
+    fd = urllib.request.urlopen(url)
+    input_img_file = io.BytesIO(fd.read())
 
-        img = Image.open(input_img_file)
-        img.thumbnail((config.THUMBNAIL, config.HEIGHT))
-        img.save(fp=full_path, format=config.IMG_FORMAT)
-        img_w, img_h = img.size
+    img = Image.open(input_img_file)
+    img.thumbnail((config.THUMBNAIL, config.HEIGHT))
+    img.save(fp=full_path, format=config.IMG_FORMAT)
+    img_w, img_h = img.size
 
-        bg = Image.new('RGB', (config.WIDTH, config.HEIGHT))
-        bg_w, bg_h = bg.size
-        offset = ((bg_w - img_w) // 2, (bg_h - img_h) // 2)
-        bg.paste(im=img, box=offset)
-        bg.save(
-            fp=full_path,
-            format=config.IMG_FORMAT,
-            optimize=True, quality=25
-        )
+    bg = Image.new('RGB', (config.WIDTH, config.HEIGHT))
+    bg_w, bg_h = bg.size
+    offset = ((bg_w - img_w) // 2, (bg_h - img_h) // 2)
+    bg.paste(im=img, box=offset)
+    bg.save(
+        fp=full_path,
+        format=config.IMG_FORMAT,
+        optimize=True, quality=25
+    )
 
-        bg.close()
-        img.close()
+    bg.close()
+    img.close()
 
-        return full_path, file_name
-    # except Exception as error:
-    #     # todo add logger
-    #     return None, None
+    return full_path, file_name
+
+
+# except Exception as error:
+#     # todo add logger
+#     return None, None
+
+async def delete_img_from_static(obj: Favorite) -> bool:
+    try:
+        img_path = os.path.join(config.IMAGE_PATH, obj.image)
+        if os.path.isfile(img_path):
+            os.remove(img_path)
+            return True
+    except TypeError:
+        return False
 
 
 async def get_error_answer_photo(

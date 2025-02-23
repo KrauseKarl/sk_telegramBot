@@ -128,7 +128,7 @@ async def search_category_name(
         # if len(msg) > 2:
         #     button = InlineKeyboardButton(
         #         text="⭕️ {0}".format(cat_title),
-        #         callback_data=data
+        #         data=data
         #     )
         #     kb.add(button)
 
