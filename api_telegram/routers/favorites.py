@@ -1,4 +1,5 @@
 from aiogram import F, Router
+from aiogram.filters import or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, CallbackQuery
 
@@ -96,7 +97,10 @@ async def delete_favorite(call: CallbackQuery, data: FavoriteDeleteCBD) -> None:
         reply_markup=kb.adjust(2, 2, 1).as_markup())
 
 
-@favorite.callback_query(FavoriteAddCBD.filter(F.action == FavAction.list))
+@favorite.callback_query(or_f(
+    FavoriteAddCBD.filter(F.action == FavAction.list),
+    FavoriteAddCBD.filter(F.action == FavAction.detail),
+))
 async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -> None:
     """
 

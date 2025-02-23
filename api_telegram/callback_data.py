@@ -16,18 +16,43 @@ class ItemCBD(CallbackData, prefix='itList'):
     paginate_page: int | str
 
 
+class DetailAction(str, Enum):
+    view = "view"
+    back = "back"
+
+
 class DetailCBD(CallbackData, prefix='itDetail'):
-    item_id: str
+    action: DetailAction
+    item_id: str = None
+    key: str
+    api_page: str
+    paginate_page: str
+    next: str
+    prev: str
+    first: str
+    last: str
 
 
 class FavAction(str, Enum):
-    list = "add_from_list"
-    detail = "add_from_detail"
-    delete = "delete_from_favorites"
+    list = "add_list"
+    detail = "add_detail"
+    delete = "delete"
     page = "page"
 
 
 class FavoriteAddCBD(CallbackData, prefix='favorite'):
+    action: FavAction
+    item_id: str = None
+    key: str
+    api_page: str
+    paginate_page: str
+    next: str
+    prev: str
+    first: str
+    last: str
+
+
+class FavoriteAddDetailCBD(CallbackData, prefix='favorite'):
     action: FavAction
     item_id: str = None
     key: str

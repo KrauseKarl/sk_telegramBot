@@ -1,7 +1,7 @@
 import uuid
 
 from aiogram import F, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, or_f
 from aiogram.fsm.context import FSMContext
 from aiogram.types import (
     CallbackQuery,
@@ -389,11 +389,11 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 #     print("bar =", data.bar)
 
 
-@search.callback_query(ItemCBD.filter())  # F.data.startswith("itList"))
+@search.callback_query(or_f(ItemCBD.filter(), DetailCBD.filter(F.action == DetailAction.back)))
 async def item_list_page(
         callback: types.CallbackQuery,
         state: FSMContext,
-        callback_data: ItemCBD
+        callback_data: ItemCBD | DetailCBD
 ) -> None:
     """
     Some.
@@ -402,13 +402,15 @@ async def item_list_page(
     :param callback:
     :return:
     """
+
+
     try:
         print("*" * 120)
 
         data = await state.get_data()
-        print(f'⬜️🟧{data= }')
 
         print(f'⬜️🟧 ENDPOINT SEARCH PAGINATION\n⬜️🟧CALLBACK {callback.data}')
+        print(f'⬜️🟧 state {data= }')
         # await callback.answer("🟠 SEARCH PAGINATION")
         key = callback_data.key
         paginate_page = int(callback_data.paginate_page)
@@ -420,7 +422,7 @@ async def item_list_page(
         if int(paginate_page) <= len(item_list_cache):
             print(f"⬜️DATA FROM 🟩 CACHE ")
             paginator = Paginator(array=item_list_cache, page=paginate_page)
-            one_item = paginator.get_page()[0]
+            item = paginator.get_page()[0]
         else:
             print(f"⬜️DATA FROM 🟥 REQUIEST")
             new_api_page = str(int(api_page) + 1)
@@ -451,7 +453,7 @@ async def item_list_page(
             if cache_data is None:
                 await redis_set_data_to_cache(key=cache_key, value=item_list_cache)
             paginator = Paginator(array=item_list_cache, page=paginate_page)
-            one_item = paginator.get_page()[0]
+            item = paginator.get_page()[0]
 
         print(
             f"⬜️🟫 {paginate_page} of {len(item_list_cache)}\tPAGE < LEN(LIST) {int(paginate_page) <= len(item_list_cache)}")
@@ -545,30 +547,39 @@ async def item_list_page(
         #     text=FavAction.list.value.title(),
         #     data=FavoriteCBD(action=FavAction.list, item_id="123"),
         # )
-        favorite_2 = FavoriteAddCBD(
+        add_to_favorite = FavoriteAddCBD(
             action=FavAction.list,
-            item_id=str(one_item['item']['itemId']),
+            item_id=str(item['item']['itemId']),
             key=key,
             api_page=api_page,
+            paginate_page=str(paginate_page),
             next=str(paginate_page + 1),
             prev=str(paginate_page - 1),
             first=str(1),
             last=str(paginator.pages)
         ).pack()
-        # favorite = FavoriteAddCBD(action=FavAction.list, item_id=str(one_item['item']['itemId'])).pack()
-        detail = DetailCBD(item_id=str(one_item['item']['itemId'])).pack()
+        view_detail = DetailCBD(
+            action=DetailAction.view,
+            item_id=str(item['item']['itemId']),
+            key=key,
+            api_page=api_page,
+            paginate_page=str(paginate_page),
+            next=str(paginate_page + 1),
+            prev=str(paginate_page - 1),
+            first=str(1),
+            last=str(paginator.pages)
+        ).pack()
         keyboard_list.extend(
             [
-                {"ℹ️ подробно": detail},
-                {"⭐️ в избранное": favorite_2},
+                {"ℹ️ подробно": view_detail},
+                {"⭐️ в избранное": add_to_favorite},
                 {"🌐": "menu"},
                 {"🏠 menu": "menu"}
             ]
         )
         ##########################################################################################
-        # print(f"⬜️⬜️⬜️ {favorite= }")
-        print(f"⬜️⚛️⚛️️ {favorite_2= }")
-        print(f"⬜️🟥⚛️️ {detail= }")
+        print(f"⬜️⚛️⚛️️ {add_to_favorite= }")
+        print(f"⬜️🟥⚛️️ {view_detail= }")
         ##########################################################################################
         mg = ''
         # FIRST
@@ -589,16 +600,16 @@ async def item_list_page(
         print("*" * 120)
 
         # todo message builder
-        msg = "{0:.50}\n".format(one_item["item"]["title"])
-        msg += "👀\t{0}\n".format(one_item["item"]["sales"])
-        msg += "💰\t{0} RUB\n".format(one_item["item"]["sku"]["def"]["promotionPrice"])
-        msg += "{0}\n\n".format(one_item["item"]["itemUrl"])
+        msg = "{0:.50}\n".format(item["item"]["title"])
+        msg += "👀\t{0}\n".format(item["item"]["sales"])
+        msg += "💰\t{0} RUB\n".format(item["item"]["sku"]["def"]["promotionPrice"])
+        msg += "{0}\n\n".format(item["item"]["itemUrl"])
         msg += "{0} из {1} стр. {2}".format(paginate_page, paginator.pages, api_page)
-        img = ":".join(["https", one_item["item"]["image"]])
+        img = ":".join(["https", item["item"]["image"]])
         photo = types.InputMediaPhoto(media=img, caption=msg, show_caption_above_media=False)
         # todo message builder
 
-        kb = await builder_kb(keyboard_list, (2,2,4))
+        kb = await builder_kb(keyboard_list, (2, 2, 4))
 
         await callback.message.edit_media(media=photo, reply_markup=kb)
 
@@ -671,7 +682,7 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         item_list_cache = await redis_get_data_from_cache(cache_key)
 
         paginator = Paginator(array=item_list_cache, page=paginator_page)
-        one_item = paginator.get_page()[0]
+        item = paginator.get_page()[0]
 
         callback_kb = ItemCBD(key=key, api_page="1", paginate_page="1").pack()
 
@@ -681,12 +692,12 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         print(f"⬛️🟨 {cache_key= }")
         print(f"⬛️🟨 {callback_kb= }")
         print(f"⬛️🟨 {price_range_list= }")
-        msg = "{0:.50}\n".format(one_item["item"]["title"])
-        msg += "👀\t{0}\n".format(one_item["item"]["sales"])
-        msg += "💰\t{0} RUB\n".format(one_item["item"]["sku"]["def"]["promotionPrice"])
-        msg += "{0}\n\n".format(one_item["item"]["itemUrl"])
+        msg = "{0:.50}\n".format(item["item"]["title"])
+        msg += "👀\t{0}\n".format(item["item"]["sales"])
+        msg += "💰\t{0} RUB\n".format(item["item"]["sku"]["def"]["promotionPrice"])
+        msg += "{0}\n\n".format(item["item"]["itemUrl"])
         msg += "{0} из {1} стр. {2}".format(1, paginator.pages, api_page)
-        img = ":".join(["https", one_item["item"]["image"]])
+        img = ":".join(["https", item["item"]["image"]])
 
         next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=2).pack()
         last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=paginator.pages).pack()
@@ -696,7 +707,7 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
             data_list=[
                 {"След. ➡️": next_kb},
                 {"После. ⏩": last_kb},
-                {"ℹ️ подробно": "item_{0}".format(one_item['item']['itemId'])},
+                {"ℹ️ подробно": "item_{0}".format(item['item']['itemId'])},
                 {"🏠 menu": "menu"}
             ]
         )
