@@ -1,3 +1,5 @@
+from peewee import DoesNotExist
+
 from database.models import Favorite, History, User
 
 
@@ -55,4 +57,5 @@ async def orm_delete_favorite(item_id: str):
 
 
 async def orm_get_favorite(item_id: str):
-    return Favorite.select().where(Favorite.product_id == item_id).get()
+    return Favorite.select().where(Favorite.product_id == item_id).get_or_none()
+

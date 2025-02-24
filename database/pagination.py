@@ -1,10 +1,9 @@
 import math
 from typing import List
 
-from api_telegram.keyboards import *
+from api_telegram.callback_data import *
 from database.models import *
 from utils.message_info import *
-from utils.message_info import favorite_info, history_info
 
 
 # PAGINATOR CLASS ###############################################################
@@ -61,78 +60,5 @@ def pages(paginator: Paginator):
 
 
 # HISTORY LIST PAGINATOR  ##############################################################
-async def make_paginate_history_list(
-        history_list: List[History], page: int = 1
-):
-    if len(history_list) == 0:
-        msg = "⭕️у вас нет истории просмотров"
-        kb = await kb_builder(
-            size=(1,),
-            data_list=[
-                {"🏠 назад": "menu"}
-            ]
-        )
-        return msg, kb, None
-
-    kb = await kb_builder(
-        size=(1,),
-        data_list=[
-            {"След. ▶": "page_fav_next_{0}".format(int(page) + 1)},
-            {"🏠 меню": "menu"},
-        ]
-    )
-
-    paginator = Paginator(history_list, page=page)
-    one_items = paginator.get_page()[0]
-    msg = await history_info(one_items)
-    msg = msg + "\n{0} из {1}".format(page, paginator.pages)
-
-    return msg, kb, one_items.image
-
 
 # FAVORITES LIST PAGINATOR  ##############################################################
-async def make_paginate_favorite_list(
-        favorite_list: List[Favorite], page: int = 1
-):
-    if len(favorite_list) == 0:
-        msg = "⭕️ у вас пока нет избранных товаров"
-        kb = await kb_builder(
-            size=(1,),
-            data_list=[
-                {"🏠 меню": "menu"}
-            ]
-        )
-        return msg, kb, None
-    else:
-        paginator = Paginator(favorite_list, page=page)
-        item = paginator.get_page()[0]
-        msg = await favorite_info(item)
-        msg = msg + "\n{0} из {1}".format(page, paginator.pages)
-        if len(favorite_list) == 1:
-            kb = await kb_builder(
-                size=(1,),
-                data_list=[
-                    {"🏠 меню": "menu"}
-                ]
-            )
-        else:
-            next_page = FavoritePageCBD(
-                action=FavAction.page,
-                page=FavPagination.next,
-                pages=int(page) + 1
-            ).pack()
-            delete = FavoriteDeleteCBD(
-                action=FavAction.delete,
-                item_id=item.product_id,
-                page=str(page - 1)
-            ).pack()
-
-            kb = await kb_builder(
-                size=(1, 2),
-                data_list=[
-                    {"След. ▶": next_page},
-                    {"❌ удалить": delete},
-                    {"🏠 меню": "menu"},
-                ]
-            )
-        return msg, kb, item.image

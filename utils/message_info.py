@@ -1,5 +1,8 @@
 from typing import Optional
 
+from aiogram import types
+
+from database.orm import *
 from database.pagination import *
 
 
@@ -31,6 +34,23 @@ def card_info(item, currency) -> tuple[str, str]:
     msg = msg + "{0}\n".format(currency)
     msg = msg + "\n{0}".format(":".join(["https", item["item"]["itemUrl"]]))
     return msg, image
+
+
+async def create_tg_answer(item, paginate_page, paginator, api_page):
+
+    item_is_favorite = await orm_get_favorite(item['item']['itemId'])
+
+    msg = "<b>{0:.50}</b>\n".format(item["item"]["title"])
+    msg += "💰\t\tцена:\t\t<b>{0}</b> RUB\n".format(item["item"]["sku"]["def"]["promotionPrice"])
+    msg += "👀\t\tпросмотры:\t\t<b>{0}</b>\n".format(item["item"]["sales"])
+    msg += "🌐\t\t{0}\n\n".format(item["item"]["itemUrl"])
+    msg += "<b>{0}</b> из {1} стр. {2}".format(paginate_page, paginator.pages, api_page)
+    img = ":".join(["https", item["item"]["image"]])
+
+    if item_is_favorite:
+        msg += "\t\t⭐️\tв избранном"
+
+    return types.InputMediaPhoto(media=img, caption=msg, show_caption_above_media=False)
 
 
 def detail_info(i) -> str:
@@ -177,7 +197,7 @@ async def history_info(item) -> str:
     if item.search_name:
         msg = msg + "🔎 поиск:\t{0:.20}\n".format(item.search_name)
     if item.price_min and item.price_max:
-        msg = msg + "⚪️ диапазон цен:\t{0}-{1}\n".format(item.price_min,  item.price_max)
+        msg = msg + "⚪️ диапазон цен:\t{0}-{1}\n".format(item.price_min, item.price_max)
     if item.title:
         msg = msg + "✅ {:.30}\n".format(item.title)
     if item.price:

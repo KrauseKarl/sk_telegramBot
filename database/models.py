@@ -20,6 +20,7 @@ migrator = PostgresqlMigrator(db)
 
 class Base(Model):
     date = peewee.DateTimeField(default=datetime.now())
+
     class Meta:
         database = db
 
@@ -83,6 +84,7 @@ class Favorite(Base):
     class Meta:
         db_table = "favorite"
 
+
 #
 # try:
 #     image = peewee.CharField(null=True)
@@ -96,8 +98,8 @@ class HistoryModel(BaseModel):
     search_name: str = None
     result_qnt: int = None
     price_range: str = None
-    price_min: str | int = None
-    price_max: str | int = None
+    price_min: str | int | None = None
+    price_max: str | int | None = None
     title: str = None
     price: float = None
     reviews: int = None
