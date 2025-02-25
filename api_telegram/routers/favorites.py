@@ -133,15 +133,20 @@ async def delete_favorite(call: CallbackQuery, callback_data: FavoriteDeleteCBD)
 
     if len(data_list) == 1:
         if page == len(data_list):
-            msg = "у вас пока нет избранных товаров"
+            pass
+            # msg = "у вас пока нет избранных товаров"
     else:
         if len(data_list) == 2:
             if page == 1:
                 page = page + 1
                 current_page = 1
+                next_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.next, page=str(page)).pack()
+                keyboard_list.append({"След. ➡️": next_button})
             elif page == len(data_list):
                 page = page - 1
                 current_page = page
+                prev_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.prev, page=str(page)).pack()
+                keyboard_list.append({"⬅️ Пред.": prev_button})
         elif len(data_list) > 2:
             if page == 1:
                 page = page + 1
