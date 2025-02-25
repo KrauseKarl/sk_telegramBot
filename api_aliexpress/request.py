@@ -10,7 +10,6 @@ from database.exceptions import *
 
 
 async def save_data_json(data, page: str = None, query: str = None, item_id: str = None):
-
     try:
         file_name = "{0}_{1}.json".format(query.replace(' ', "_").lower(), page)
         file_path = os.path.join(
@@ -47,6 +46,25 @@ async def request_api_fake(page: str | int, query: str = None):
             data = json.load(file)
         return data
         # raise CustomError('⚠️ JSON file not found.')
+
+
+async def request_api_fake_favorite(itemid, query: str = 'футболка_мужская', page=1):
+    file_name = "{0}_{1}.json".format(query.replace(" ", "_").lower(), page)
+    path = os.path.join(config.BASE_DIR, "_json_example", "_real_data", file_name)
+    response = dict()
+    response["result"] = dict()
+
+    with open(path, 'r') as file:
+        data = json.load(file)
+
+    for i in data["result"]["resultList"]:
+
+        if str(i['item']['itemId']) == str(itemid):
+            print(i['item']['itemId'], str(i['item']['itemId']) == str(itemid))
+            response["result"] = i
+            print(response)
+            return response
+
 
 
 async def request_api(

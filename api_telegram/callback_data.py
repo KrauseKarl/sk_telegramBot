@@ -78,5 +78,5 @@ class FavPagination(str, Enum):
 
 class FavoritePageCBD(CallbackData, prefix='favorite'):
     action: FavAction
-    page: FavPagination
-    pages: int = 1
+    navigate: FavPagination
+    page: int = 1

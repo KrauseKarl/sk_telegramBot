@@ -5,6 +5,8 @@ from api_aliexpress.request import *
 from api_telegram.callback_data import *
 from api_telegram.keyboards import *
 from core import config
+from utils.message_info import favorite_info
+
 
 # if callback.data.startswith("favorite_add"):
 #     item_id = str(callback.data).split("_")[2]
@@ -35,11 +37,17 @@ async def create_favorite_instance(call: CallbackQuery, data: FavoriteAddCBD):
     if item:
         raise IntegrityError("⚠️ уже добавлено в избранное")
     print(f'🌳🌳🌳 GET RESPONSE')
-    response = await request_api(
-        url=config.URL_API_ITEM_DETAIL,
-        item_id=data.item_id
-    )
-    item_data = await deserialize_item_detail(response, call.from_user.id)
+    #####################################################
+    if config.FAKE_MODE:
+        response = await request_api_fake_favorite(data.item_id)
+        item_data = await deserialize_item_detail_fake(response, call.from_user.id)
+    else:
+        response = await request_api(
+            url=config.URL_API_ITEM_DETAIL,
+            item_id=data.item_id
+        )
+        item_data = await deserialize_item_detail(response, call.from_user.id)
+    ##########################################################
     item_data["product_id"] = data.item_id
 
     await orm_get_or_create_favorite(item_data)
@@ -96,10 +104,9 @@ async def create_favorite_instance(call: CallbackQuery, data: FavoriteAddCBD):
     return item_data, kb
 
 
-
 async def delete_favorite_instance(item_id: str) -> bool:
     favorite_obj = await orm_get_favorite(item_id)
-    await delete_img_from_static(favorite_obj)
+    # await delete_img_from_static(favorite_obj)
     await orm_delete_favorite(item_id)
     return True
 
@@ -109,12 +116,7 @@ async def make_paginate_favorite_list(
 ):
     if len(favorite_list) == 0:
         msg = "⭕️ у вас пока нет избранных товаров"
-        kb = await kb_builder(
-            size=(1,),
-            data_list=[
-                {"🏠 меню": "menu"}
-            ]
-        )
+        kb = await kb_builder(data_list=[{"🏠 меню": "menu"}], size=(1,))
         return msg, kb, None
     else:
         paginator = Paginator(favorite_list, page=page)
@@ -129,6 +131,7 @@ async def make_paginate_favorite_list(
                 ]
             )
         else:
+
             next_page = FavoritePageCBD(
                 action=FavAction.page,
                 page=FavPagination.next,

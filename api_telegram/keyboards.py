@@ -7,22 +7,26 @@ from aiogram.utils import keyboard
 from api_redis.handlers import redis_get_data_from_cache
 from api_telegram.callback_data import *
 from core.config import *
-from database.orm import orm_get_favorite
+from database.orm import orm_get_favorite, orm_get_favorite_list
 from database.pagination import Paginator
 
 if TYPE_CHECKING:
     from database.pagination import Paginator
+
 SORT_DATA = [
-    {"по умолчанию": "default"},
+    {"📶 по умолчанию": "default"},
     {"💰 по продажам": "salesDesc"},
     {"⬇️ по убыванию": "priceDesc"},
-    {"️ ⬆️по возрастанию": "priceAsc"},
+    {"️⬆️по возрастанию": "priceAsc"},
 ]
 MENU_DATA = [
     {"🛒 поиск товара": "search"},
     # {"🧾 поиск категории": "category"},
     {"📋 история команд": "history"},
-    {"️⭐️ избранное": FavoritePageCBD(action=FavAction.page, page=FavPagination.first).pack()},
+    {"️⭐️ избранное": FavoritePageCBD(
+        action=FavAction.page,
+        navigate=FavPagination.first
+    ).pack()},
 ]
 
 QNT_DATA = [
@@ -151,10 +155,7 @@ async def item_kb_2(data: list):
 async def price_range_kb():
     return await kb_builder(
         (2,),
-        [
-            {"✅ да": "price_min"},
-            {"🚫 пропустить": "price_skip"},
-        ]
+        [{"✅ да": "price_min"}, {"🚫 пропустить": "price_skip"}]
     )
 
 
@@ -162,17 +163,17 @@ async def error_kb():
     return await builder_kb([{"🏠 back menu": "menu"}], (1,))
 
 
-async def main_keyboard():
-    kb_list = [[KeyboardButton(text="Menu")]]
-    # if user_telegram_id in admins:
-    #     kb_list.append([KeyboardButton(text="⚙️ Админ панель")])
-    kb = ReplyKeyboardMarkup(
-        keyboard=kb_list,
-        resize_keyboard=True,
-        # one_time_keyboard=True
-        input_field_placeholder='stars'
-    )
-    return kb
+# async def main_keyboard():
+#     kb_list = [[KeyboardButton(text="Menu")]]
+#     # if user_telegram_id in admins:
+#     #     kb_list.append([KeyboardButton(text="⚙️ Админ панель")])
+#     kb = ReplyKeyboardMarkup(
+#         keyboard=kb_list,
+#         resize_keyboard=True,
+#         # one_time_keyboard=True
+#         input_field_placeholder='stars'
+#     )
+#     return kb
 
 
 async def get_paginate_item_kb(
@@ -186,8 +187,7 @@ async def get_paginate_item_kb(
     markup_size = []
 
     if int(api_page) == 1 and int(paginate_page) == 1:
-        # "1-й запрос и 1-я страница"
-        print("⬜️⭐🟠🟠🟠1й запрос и 1 я страница ")
+        # "1-й запрос и 1-я страница" print("⌨️1й запрос и 1я страница ")
         next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=int(paginate_page) + 1).pack()
         last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
         keyboard_list.extend(
@@ -198,8 +198,7 @@ async def get_paginate_item_kb(
         )
         markup_size = [1, 1]
     elif int(api_page) > 1 and int(paginate_page) == 1:
-        print("⬜️⭐️🟢🟢🟢Следующий запрос и 1я страница")
-        # "Следующий запрос  и 1-я страница"
+        # "Следующий запрос и 1-я страница" # print("⌨️Следующий запрос и 1я страница")
         next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=2).pack()
         last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
         prev_paginate_page = len(
@@ -214,8 +213,7 @@ async def get_paginate_item_kb(
         )
         markup_size = [2, 1]
     elif paginator.pages > int(paginate_page) > 1:
-        print("⬜️⭐️ 🟣🟣🟣 следующая страница")
-        # "следующая страница"
+        # "следующая страница" # print("⌨️ следующая страница")
         next_page = str(paginate_page + 1 if paginate_page + 1 < paginator.pages else paginator.pages + 1)
         next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=next_page).pack()
         last_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginator.pages)).pack()
@@ -224,7 +222,6 @@ async def get_paginate_item_kb(
         first_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(1)).pack()
         keyboard_list.extend(
             [
-
                 {"⬅️ Пред.": prev_kb},
                 {"След. ➡️": next_kb},
                 {"⏪ Первая": first_kb},
@@ -233,8 +230,7 @@ async def get_paginate_item_kb(
         )
         markup_size = [2, 2]
     elif int(paginate_page) == paginator.pages:
-        print("⬜️⭐️ ⚪️⚪️⚪️последняя страница ")
-        # "последняя страница"
+        # "последняя страница"  print("⌨️ последняя страница ")
         next_kb = ItemCBD(key=key, api_page=api_page, paginate_page=str(paginate_page + 1)).pack()
         prev_page = str(paginate_page - 1 if paginate_page - 1 != 0 else 1)
         prev_kb = ItemCBD(key=key, api_page=api_page, paginate_page=prev_page).pack()
@@ -286,3 +282,80 @@ async def get_paginate_item_kb(
         markup_size.append(4)
 
     return await builder_kb(keyboard_list, size=tuple(markup_size))
+
+
+async def get_paginate_favorite_kb(
+        page: int,
+        paginator,
+        item_id,
+        navigate: str,
+        len_data: int
+):
+    """
+
+    :param page:
+    :param paginator:
+    :param item_id:
+    :param navigate:
+    :param len_data:
+    :return:
+    """
+    delete_button = FavoriteDeleteCBD(action=FavAction.delete, item_id=item_id, page=str(page)).pack()
+    keyboard_list = [{"❌ удалить": delete_button}]
+    prev_button = None
+    next_button = None
+
+    if len_data > 1:
+        if navigate == FavPagination.first:
+            next_button = FavoritePageCBD(
+                action=FavAction.page, navigate=FavPagination.next, page=page + 1
+            ).pack()
+        elif navigate == FavPagination.next:
+            prev_button = FavoritePageCBD(
+                action=FavAction.page, navigate=FavPagination.prev, page=page - 1
+            ).pack()
+            if page < int(paginator.pages):
+                next_button = FavoritePageCBD(
+                    action=FavAction.page, navigate=FavPagination.next, page=page + 1
+                ).pack()
+        elif navigate == FavPagination.prev:
+            if page > 1:
+                prev_button = FavoritePageCBD(
+                    action=FavAction.page, navigate=FavPagination.prev, page=page - 1
+                ).pack()
+            next_button = FavoritePageCBD(
+                action=FavAction.page, navigate=FavPagination.prev, page=page + 1
+            ).pack()
+    if next_button:
+        keyboard_list.insert(0, {"След. ➡️": next_button})
+    if prev_button:
+        keyboard_list.insert(0, {"⬅️ Пред.": prev_button})
+
+    return keyboard_list
+
+
+async def get_paginate_favorite_delete(
+        page: int,
+        paginator: Paginator,
+        item_id
+):
+    keyboard_list = []
+    if page == 0:
+        page += 1
+        if len(paginator.get_page()) == 0:
+           pass
+        next_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.next, page=page + 1).pack()
+        keyboard_list.append({"След. ➡️": next_button})
+    elif page == 1:
+        next_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.next, page=page + 1).pack()
+        keyboard_list.append({"След. ➡️": next_button})
+    else:
+        if int(paginator.pages) > 1:
+            prev_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.prev, page=page - 1).pack()
+            keyboard_list.append({"⬅️ Пред.": prev_button})
+            next_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.next, page=page + 1).pack()
+            keyboard_list.append({"След. ➡️": next_button})
+    delete_button = FavoriteDeleteCBD(action=FavAction.delete, item_id=item_id, page=str(page - 1)).pack()
+    keyboard_list.append({"❌ удалить": delete_button})
+
+    return keyboard_list

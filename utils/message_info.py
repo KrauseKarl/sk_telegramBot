@@ -223,7 +223,7 @@ async def favorite_info(item) -> str:
     msg = "📅\t{0}\n".format(item.date.strftime('%d %b %Y'))
     msg = msg + "🕐\t{0}\n".format(item.date.strftime('%H:%M:%S'))
     msg = msg + "🆔\t<u>id</u>:\t{0}\n".format(item.product_id)
-    msg = msg + "✅\t{:.100}\n".format(item.title)
+    msg = msg + "✅\t{:.50}\n".format(item.title)
     msg = msg + "🟠\t<i>цена</i>:\t{0}\tRUB\n".format(item.price)
     msg = msg + "👀\t<i>просмотров</i>:\t{0}\n".format(item.reviews)
     msg = msg + "⭐️\t<i>рейтинг</i>:\t{0}\n".format(item.stars)

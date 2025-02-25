@@ -3,9 +3,37 @@ import json
 from aiogram.filters.callback_data import CallbackData
 
 from api_redis.handlers import *
+from api_telegram.keyboards import builder_kb
 from database.orm import *
 from utils.media import *
 from utils.message_info import card_info, get_price_range
+
+
+async def deserialize_item_detail_fake(
+        response: dict, user_id: int
+) -> Optional[dict]:
+    """
+
+    :param response:
+    :param user_id:
+    :return:
+    """
+    data = dict()
+
+    item = response["result"]["item"]
+    data["user"] = user_id
+    data["command"] = "item detail"
+    data["title"] = item.get("title")
+    data["price"] =  None
+    data["reviews"] = None
+    data["star"] = None
+    data["url"] = ":".join(["https", item.get("itemUrl")])
+    try:
+        data["image"] = ":".join(["https", item["image"]])
+    except KeyError:
+        data["image"] = None
+
+    return data
 
 
 async def deserialize_item_detail(

@@ -17,83 +17,56 @@ from utils.message_info import *
 favorite = Router()
 
 
-@favorite.callback_query(FavoriteDeleteCBD.filter(F.action == FavAction.delete))
-async def delete_favorite(call: CallbackQuery, data: FavoriteDeleteCBD) -> None:
+@favorite.callback_query(FavoritePageCBD.filter(F.action == FavAction.page))
+async def get_favorite_list(call: CallbackQuery, callback_data: FavoritePageCBD) -> None:
     """
 
+    :param callback_data:
     :param call:
-    :param data:
     :return:
     """
-    await call.answer()
-    item_id = data.item_id
-    page = int(data.page)
-    print(f'FAVORITE DELETE ENDPOINT\n{item_id= }\n{page}')
-    await delete_favorite_instance(item_id)
-    await call.answer('✅️ товар удален из избранного', show_alert=True)
-
-    # data_list = await orm_get_favorite_list(call.from_user.id)
-    # paginator = Paginator(data_list, page=int(page))
-
-    # todo make func kb_page_builder and remove to pagination.py
-    kb = InlineKeyboardBuilder()
-    if page == 0:
-        page += 1
-        data_list = await orm_get_favorite_list(call.from_user.id)
-        paginator = Paginator(data_list, page=int(page))
-        if len(paginator.get_page()) == 0:
-            msg = "у вас пока нет избранных товаров"
-            photo = await get_input_media_hero_image("favorite", msg)
-            kb.add(InlineKeyboardButton(text='🏠 назад', callback_data="menu"))
-            await call.message.edit_media(
-                media=photo,
-                reply_markup=kb.adjust(2, 2, 1).as_markup()
-            )
-        item = paginator.get_page()[0]
-        callback_next = "fav_page_next_{0}".format(page)
-        kb.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
-    elif page == 1:
-        data_list = await orm_get_favorite_list(call.from_user.id)
-        paginator = Paginator(data_list, page=int(page))
-        item = paginator.get_page()[0]
-        callback_next = "fav_page_next_{0}".format(page)
-        kb.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
-    else:
-        data_list = await orm_get_favorite_list(call.from_user.id)
-        paginator = Paginator(data_list, page=int(page))
-        if paginator.pages > 1:
-            callback_previous = "fav_page_previous_{0}".format(page - 1)
-            kb.add(InlineKeyboardButton(text="◀ Пред.", callback_data=callback_previous))
-            callback_next = "fav_page_next_{0}".format(page + 1)
-            kb.add(InlineKeyboardButton(text='След. ▶', callback_data=callback_next))
-        item = paginator.get_page()[0]
-    # todo make func kb_page_builder and remove to pagination.py
-
-    msg = await favorite_info(item)
-    msg = msg + "{0} из {1}".format(page, paginator.pages)
-    kb.add(
-        InlineKeyboardButton(
-            text='❌ удалить',
-            callback_data=FavoriteDeleteCBD(
-                action=FavAction.delete,
-                item_id=item.product_id, page=str(page - 1)
-            ).pack()
-        )
-    )
-    kb.add(InlineKeyboardButton(text='🏠 меню', callback_data="menu"))
-
+    print('🟪 FAVORITE ENDPOINT')
     try:
-        img = types.FSInputFile(
-            path=os.path.join(config.IMAGE_PATH, item.image)
+        data_list = await orm_get_favorite_list(call.from_user.id)
+        msg = "⭕️ у вас пока нет избранных товаров"
+        img = None
+        keyboard_list = []
+        if len(data_list) > 0:
+            paginator = Paginator(data_list, page=callback_data.page)
+            item = paginator.get_page()[0]
+            img = item.image
+            msg = await favorite_info(item)
+            keyboard_list.extend(
+                await get_paginate_favorite_kb(
+                    page=int(callback_data.page),
+                    paginator=paginator,
+                    item_id=item.product_id,
+                    navigate=callback_data.navigate,
+                    len_data=len(data_list)
+                )
+            )
+            msg = msg + "\n{0} из {1}".format(callback_data.page, paginator.pages)
+        keyboard_list.append({"🏠 menu": "menu"})
+
+        kb = await kb_builder(data_list=keyboard_list, size=(2,))
+        try:
+            # img = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, img))
+            photo = types.InputMediaPhoto(media=img, caption=msg)
+        except (ValidationError, TypeError):
+            photo = await get_input_media_hero_image("favorite", msg)
+        await call.message.edit_media(
+            media=photo,
+            reply_markup=kb)
+
+    except TelegramBadRequest as error:
+        await call.answer(f"⚠️ {str(error)}")
+    except CustomError as error:
+        msg, photo = await get_error_answer_photo(error)
+        await call.message.answer_photo(
+            photo=photo,
+            caption=msg,
+            reply_markup=await menu_kb()
         )
-        photo = types.InputMediaPhoto(
-            media=img, caption=msg, show_caption_above_media=False
-        )
-    except (ValidationError, TypeError):
-        photo = await get_input_media_hero_image("favorite", msg)
-    await call.message.edit_media(
-        media=photo,
-        reply_markup=kb.adjust(2, 2, 1).as_markup())
 
 
 @favorite.callback_query(or_f(
@@ -112,8 +85,6 @@ async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -
 
         data, kb = await create_favorite_instance(callback, callback_data)
         # todo add logger
-
-        # todo add logger
         msg = '{0:.50}\n\n✅\tдобавлено в избранное'.format(data.get("title"))
         await callback.answer(text=msg, show_alert=True)
         await callback.message.edit_reply_markup(reply_markup=kb)
@@ -126,105 +97,101 @@ async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -
         await callback.answer(str(error), show_alert=True)
 
 
-# F.data.startswith("favorites") | F.data.startswith("fav_page")
-@favorite.callback_query(FavoritePageCBD.filter(F.action == FavAction.page))
-async def get_favorite_list(call: CallbackQuery, callback_data: FavoritePageCBD) -> None:
+@favorite.callback_query(FavoriteDeleteCBD.filter(F.action == FavAction.delete))
+async def delete_favorite(call: CallbackQuery, callback_data: FavoriteDeleteCBD) -> None:
     """
 
-    :param callback_data:
     :param call:
+    :param callback_data:
     :return:
     """
-    print('___1 🟪🟪🟪 FAVORITE ENDPOINT')
+    msg = "у вас пока нет избранных товаров"
+    keyboard_list = []
+    img = None
+    print(f'___FAVORITE DELETE ENDPOINT\n___item_id ={callback_data.item_id}\n___page = {callback_data.page}')
+    data_list = await orm_get_favorite_list(call.from_user.id)
+    print('____LEN DATA LIST', len(data_list))
+    page = int(callback_data.page)
+    current_page = 1
+    #       [1] -> [x] -> NONE
+    #       1st page 1 item_list > msg = "у вас пока нет избранных товаров"           add kb=["^"] no items
+
+    #       [__1__][2] -> [x][__2->1__]-> [__1__]                                     kb = None
+    #       1st page 2 item_list > (go to next)   after_del_page  = page + 1          kb=["^", "X"]
+
+    #       [__1__][2][3][4][5] -> [x][__2->1__][3->2 4->3 5->4] -> [__1__][2][3][4]   add kb = [">"]
+    #       1st page 5 item_list > (go to next)   after_del_page  = page + 1          kb=["^", "X",  ">"]
+
+    #       [1][__2__] -> [1][x] -> [__1__]                                            kb = None
+    #       -1st page 2 item_list > (back to prev) after_del_page  = page - 1          kb=["^", "X"]
+
+    #       [1][2][3][4][__5__] -> [1][2][3][4][x] -> [1][2][3][__4__]                 kb=["<"]
+    #       -1st page 5 item_list > (back to prev) after_del_page  = page - 1          kb=["^", "X", "<"]
+
+    # [1][2][__3__][4][5] -> [1][2][x][4->3][5->4] -> [1][__2__][3][4]           kb=["<", ">"]
+    #  3rd page 5 item_list > (back to prev) after_del_page  = page - 1          kb=["^", "X", "<", ">"]
+
+    if len(data_list) == 1:
+        if page == len(data_list):
+            msg = "у вас пока нет избранных товаров"
+    else:
+        if len(data_list) == 2:
+            if page == 1:
+                page = page + 1
+                current_page = 1
+            elif page == len(data_list):
+                page = page - 1
+                current_page = page
+        elif len(data_list) > 2:
+            if page == 1:
+                page = page + 1
+                current_page = 1
+                next_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.next, page=str(page)).pack()
+                keyboard_list.append({"След. ➡️": next_button})
+            elif 1 < page < len(data_list):
+                page = page - 1
+                current_page = page
+                prev_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.prev, page=str(page)).pack()
+                keyboard_list.append({"⬅️ Пред.": prev_button})
+                next_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.next, page=str(page)).pack()
+                keyboard_list.append({"След. ➡️": next_button})
+            elif page == len(data_list):
+                page = page - 1
+                current_page = page
+                prev_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.prev, page=str(page)).pack()
+                keyboard_list.append({"⬅️ Пред.": prev_button})
+
+        delete_button = FavoriteDeleteCBD(action=FavAction.delete, item_id=callback_data.item_id, page=str(page)).pack()
+        keyboard_list.append({"❌ удалить": delete_button})
+
+        await delete_favorite_instance(callback_data.item_id)
+
+        data_list = await orm_get_favorite_list(call.from_user.id)
+        paginator = Paginator(data_list, page=int(page))
+
+        try:
+            item = paginator.get_page()[0]
+            img = item.image
+            msg = await favorite_info(item)
+            msg = msg + "{0} из {1}".format(current_page, paginator.pages)
+            # keyboard_list = await get_paginate_favorite_delete(
+            #     page=int(callback_data.page),
+            #     paginator=paginator,
+            #     item_id=callback_data.item_id
+            # )
+        except IndexError:
+            img = None
+    keyboard_list.append({"🏠 menu": "menu"})
+    kb = await kb_builder(data_list=keyboard_list, size=(2, 2))
+
+
 
     try:
-        data_list = await orm_get_favorite_list(call.from_user.id)
-        print(f"___2 🟪{len(data_list) = }")
-        print(f"___2 🟪{callback_data= }")
-        if len(data_list) == 1:
-            msg, kb, img = await make_paginate_favorite_list(data_list)
-        else:
-            if callback_data.page == FavPagination.first:
-                msg, kb, img = await make_paginate_favorite_list(data_list)
-            else:
-                # if callback.data.startswith("fav_page"):
-                # todo make func make_paginate_history_list
-                # page = int(callback.data.split("_")[-1])
-                page = callback_data.pages
-                print(f"___3 🟪 {page= }")
-
-                paginator = Paginator(data_list, page=int(page))
-                item = paginator.get_page()[0]
-                msg = await favorite_info(item)
-                msg = msg + "{0} из {1}".format(page, paginator.pages)
-
-                # todo make func kb_page_builder and remove to pagination.py
-                kb = InlineKeyboardBuilder()
-                if callback_data.page == FavPagination.next:
-                    kb.add(InlineKeyboardButton(
-                        text="◀ Пред.",
-                        callback_data=FavoritePageCBD(
-                            action=FavAction.page,
-                            page=FavPagination.prev,
-                            pages=page - 1
-                        ).pack()))
-                    if int(callback_data.page) < int(paginator.pages):
-                        kb.add(InlineKeyboardButton(
-                            text='След. ▶',
-                            callback_data=FavoritePageCBD(
-                                action=FavAction.page,
-                                page=FavPagination.next,
-                                pages=page + 1
-                            ).pack()))
-                elif callback_data.page == FavPagination.prev:
-                    if int(callback_data.page) > 1:
-                        kb.add(InlineKeyboardButton(text="◀ Пред.", callback_data=FavoritePageCBD(
-                            action=FavAction.page,
-                            page=FavPagination.prev,
-                            pages=page - 1
-                        ).pack()))
-                    kb.add(InlineKeyboardButton(
-                        text='След. ▶',
-                        callback_data=FavoritePageCBD(
-                            action=FavAction.page,
-                            page=FavPagination.prev,
-                            pages=page + 1
-                        ).pack()
-                    )
-                    )
-                kb.add(InlineKeyboardButton(text='🌐 web', callback_data="web"))
-                kb.add(InlineKeyboardButton(text='🏠 меню', callback_data="menu"))
-                kb.add(InlineKeyboardButton(
-                    text='❌ удалить',
-                    callback_data=FavoriteDeleteCBD(
-                        action=FavAction.delete,
-                        item_id=item.product_id,
-                        page=str(page - 1)
-                    ).pack()))
-                kb = kb.adjust(2, 3).as_markup()
-                # todo make func kb_page_builder and remove to pagination.py
-
-                img = item.image
-        try:
-            # img = types.FSInputFile(
-            #     path=os.path.join(config.IMAGE_PATH, img)
-            # )
-            photo = types.InputMediaPhoto(
-                media=img, caption=msg, show_caption_above_media=False
-            )
-        except (ValidationError, TypeError):
-            photo = await get_input_media_hero_image("favorite", msg)
-
-        # todo make func make_paginate_list
-        await call.message.edit_media(
-            media=photo,
-            reply_markup=kb)
-    except TelegramBadRequest as error:
-        await call.answer(f"⚠️ {str(error)}")
-    except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await call.message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await menu_kb()
-        )
+        # img = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, item.image))
+        photo = types.InputMediaPhoto(media=img, caption=msg)
+    except (ValidationError, TypeError):
+        photo = await get_input_media_hero_image("favorite", msg)
+    await call.answer('✅️ товар удален из избранного', show_alert=True)
+    await call.message.edit_media(
+        media=photo,
+        reply_markup=kb)
