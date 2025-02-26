@@ -24,8 +24,8 @@ async def deserialize_item_detail_fake(
     data["user"] = user_id
     data["command"] = "item detail"
     data["title"] = item.get("title")
-    data["price"] =  None
-    data["reviews"] = None
+    data["price"] = item["sku"]["def"]["price"]
+    data["reviews"] = item.get("sales")
     data["star"] = None
     data["url"] = ":".join(["https", item.get("itemUrl")])
     try:

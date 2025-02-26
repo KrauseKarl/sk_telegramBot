@@ -30,25 +30,19 @@ async def get_favorite_list(call: CallbackQuery, callback_data: FavoritePageCBD)
         data_list = await orm_get_favorite_list(call.from_user.id)
         msg = "⭕️ у вас пока нет избранных товаров"
         img = None
-        keyboard_list = []
+
         if len(data_list) > 0:
             paginator = Paginator(data_list, page=callback_data.page)
             item = paginator.get_page()[0]
             img = item.image
             msg = await favorite_info(item)
-            keyboard_list.extend(
-                await get_paginate_favorite_kb(
+            kb = await paginate_favorite_list_kb(
                     page=int(callback_data.page),
-                    paginator=paginator,
                     item_id=item.product_id,
                     navigate=callback_data.navigate,
-                    len_data=len(data_list)
+                    len_data=paginator.len
                 )
-            )
             msg = msg + "\n{0} из {1}".format(callback_data.page, paginator.pages)
-        keyboard_list.append({"🏠 menu": "menu"})
-
-        kb = await kb_builder(data_list=keyboard_list, size=(2,))
         try:
             # img = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, img))
             photo = types.InputMediaPhoto(media=img, caption=msg)
@@ -82,16 +76,23 @@ async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -
     """
     print('🟪 FAVORITE ADD ENDPOINT\n🟪 data = {call.data}')
     try:
+        page = callback_data.page
+        total_pages = callback_data.last
+        api_page = callback_data.api_page
+        item_id = callback_data.item_id
 
         data, kb = await create_favorite_instance(callback, callback_data)
+        card = await refresh_tg_answer(data, item_id, page, total_pages, api_page)
         # todo add logger
+
         msg = '{0:.50}\n\n✅\tдобавлено в избранное'.format(data.get("title"))
         await callback.answer(text=msg, show_alert=True)
-        await callback.message.edit_reply_markup(reply_markup=kb)
+
+        # await callback.message.edit_reply_markup(reply_markup=kb)
+        await callback.message.edit_media(media=card, reply_markup=kb)
 
     except FreeAPIExceededError as error:
         await callback.answer(show_alert=True, text="⚠️ ОШИБКА\n\n{0}".format(error))
-
     except IntegrityError as error:
         # todo add logger and record `error`
         await callback.answer(str(error), show_alert=True)
@@ -105,98 +106,96 @@ async def delete_favorite(call: CallbackQuery, callback_data: FavoriteDeleteCBD)
     :param callback_data:
     :return:
     """
-    msg = "у вас пока нет избранных товаров"
-    keyboard_list = []
-    img = None
-    print(f'___FAVORITE DELETE ENDPOINT\n___item_id ={callback_data.item_id}\n___page = {callback_data.page}')
-    data_list = await orm_get_favorite_list(call.from_user.id)
-    print('____LEN DATA LIST', len(data_list))
+
+    msg = ""
     page = int(callback_data.page)
     current_page = 1
-    #       [1] -> [x] -> NONE
-    #       1st page 1 item_list > msg = "у вас пока нет избранных товаров"           add kb=["^"] no items
 
-    #       [__1__][2] -> [x][__2->1__]-> [__1__]                                     kb = None
-    #       1st page 2 item_list > (go to next)   after_del_page  = page + 1          kb=["^", "X"]
-
-    #       [__1__][2][3][4][5] -> [x][__2->1__][3->2 4->3 5->4] -> [__1__][2][3][4]   add kb = [">"]
-    #       1st page 5 item_list > (go to next)   after_del_page  = page + 1          kb=["^", "X",  ">"]
-
-    #       [1][__2__] -> [1][x] -> [__1__]                                            kb = None
-    #       -1st page 2 item_list > (back to prev) after_del_page  = page - 1          kb=["^", "X"]
-
-    #       [1][2][3][4][__5__] -> [1][2][3][4][x] -> [1][2][3][__4__]                 kb=["<"]
-    #       -1st page 5 item_list > (back to prev) after_del_page  = page - 1          kb=["^", "X", "<"]
-
-    # [1][2][__3__][4][5] -> [1][2][x][4->3][5->4] -> [1][__2__][3][4]           kb=["<", ">"]
-    #  3rd page 5 item_list > (back to prev) after_del_page  = page - 1          kb=["^", "X", "<", ">"]
-
-    if len(data_list) == 1:
-        if page == len(data_list):
-            pass
-            # msg = "у вас пока нет избранных товаров"
+    await delete_favorite_instance(callback_data.item_id)
+    print(f"PAGE {callback_data.page}")
+    print(f"ACT  {callback_data.action}")
+    print(f"ID   {callback_data.item_id}")
+    data_list = await orm_get_favorite_list(call.from_user.id)
+    paginator = Paginator(data_list, page=int(page))
+    kb = PaginationKB()
+    btn = FavoritePaginationBtn(item_id=callback_data.item_id)
+    print(f"❌len  {paginator.len}")
+    print(f"❌page  {page}")
+    print(f"❌page  page > paginator.len =  {page > paginator.len}")
+    ########################################################################################################
+    if paginator.len == 1:
+        # keyboard_list.append({"⬅️": await prev_btn(page)})
+        msg = "❤️1 page = 1 items"
     else:
-        if len(data_list) == 2:
+        if paginator.len == 2:
             if page == 1:
-                page = page + 1
-                current_page = 1
-                next_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.next, page=str(page)).pack()
-                keyboard_list.append({"След. ➡️": next_button})
-            elif page == len(data_list):
-                page = page - 1
+                page = 1
                 current_page = page
-                prev_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.prev, page=str(page)).pack()
-                keyboard_list.append({"⬅️ Пред.": prev_button})
-        elif len(data_list) > 2:
+                kb.add_button({"➡️": btn.next_bt(page)})
+                msg = '🧡first page 2 items'
+            elif page == paginator.len:
+                page -= 1
+                current_page = 1
+                kb.add_button({"⬅️": btn.prev_bt(page)})
+                msg = '💛last page 2 items'
+            elif page > paginator.len:
+                page = paginator.len
+                current_page = page
+                kb.add_button({"⬅️": btn.prev_bt(page - 1)})
+                msg = '🤎 last page 2 items'
+
+        elif paginator.len > 2:
             if page == 1:
-                page = page + 1
+                page += 1
                 current_page = 1
-                next_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.next, page=str(page)).pack()
-                keyboard_list.append({"След. ➡️": next_button})
-            elif 1 < page < len(data_list):
-                page = page - 1
+                kb.add_button({"➡️": btn.next_bt(page)})
+                msg = '💚first page many items'
+            elif 1 < page < paginator.len:
+                page -= 1
                 current_page = page
-                prev_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.prev, page=str(page)).pack()
-                keyboard_list.append({"⬅️ Пред.": prev_button})
-                next_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.next, page=str(page)).pack()
-                keyboard_list.append({"След. ➡️": next_button})
-            elif page == len(data_list):
-                page = page - 1
+                # keyboard_list.append({"⬅️": await prev_btn(page)})
+                # keyboard_list.append({"➡️": await next_btn(page)})
+                buttons = [{"⬅️": btn.prev_bt(page)}, {"➡️": btn.next_bt(page)}]
+                kb.add_buttons(buttons)
+
+                msg = '💙middle page many items'
+            elif page == paginator.len:
+                page -= 1
                 current_page = page
-                prev_button = FavoritePageCBD(action=FavAction.page, navigate=FavPagination.prev, page=str(page)).pack()
-                keyboard_list.append({"⬅️ Пред.": prev_button})
-
-        delete_button = FavoriteDeleteCBD(action=FavAction.delete, item_id=callback_data.item_id, page=str(page)).pack()
-        keyboard_list.append({"❌ удалить": delete_button})
-
-        await delete_favorite_instance(callback_data.item_id)
-
-        data_list = await orm_get_favorite_list(call.from_user.id)
-        paginator = Paginator(data_list, page=int(page))
-
-        try:
-            item = paginator.get_page()[0]
-            img = item.image
-            msg = await favorite_info(item)
-            msg = msg + "{0} из {1}".format(current_page, paginator.pages)
-            # keyboard_list = await get_paginate_favorite_delete(
-            #     page=int(callback_data.page),
-            #     paginator=paginator,
-            #     item_id=callback_data.item_id
-            # )
-        except IndexError:
-            img = None
-    keyboard_list.append({"🏠 menu": "menu"})
-    kb = await kb_builder(data_list=keyboard_list, size=(2, 2))
-
-
+                # keyboard_list.append({"⬅️": await prev_btn(page)})
+                kb.add_button({"⬅️": btn.prev_bt(page)})
+                msg = '🤍 last page many items == '
+            elif page > paginator.len:
+                page -= 1
+                current_page = page
+                # keyboard_list.append({"⬅️": await prev_btn(page)})
+                kb.add_button({"⬅️": btn.prev_bt(page - 1)})
+                msg = '💜 last page many items'
+        ########################################################################################################
+    # print(f'✅️ {msg = } page [{page=}]  current [{current_page}] prev [{prev_button}] next [{next_button}]')
+    ########################################################################################################
+    try:
+        paginator = Paginator(data_list, page=int(current_page))
+        item_id = paginator.get_page()[0].product_id
+        kb.add_button({"❌ удалить": btn.delete_btn(current_page, item_id)})
+    except:
+        pass
+    ########################################################################################################
+    try:
+        item = paginator.get_page()[0]
+        msg = await favorite_info(item)
+        msg = msg + paginator.display_page()
+        img = item.image if item.image else None
+    except IndexError:
+        img = None
+    kb.add_button({"🏠 меню": "menu"}).add_markups([2, 2])
 
     try:
         # img = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, item.image))
         photo = types.InputMediaPhoto(media=img, caption=msg)
     except (ValidationError, TypeError):
         photo = await get_input_media_hero_image("favorite", msg)
+
     await call.answer('✅️ товар удален из избранного', show_alert=True)
-    await call.message.edit_media(
-        media=photo,
-        reply_markup=kb)
+
+    await call.message.edit_media(media=photo, reply_markup=kb.create_kb())

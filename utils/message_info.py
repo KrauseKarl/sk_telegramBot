@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from aiogram import types
 
@@ -36,21 +36,31 @@ def card_info(item, currency) -> tuple[str, str]:
     return msg, image
 
 
-async def create_tg_answer(item, paginate_page, paginator, api_page):
+async def create_tg_answer(item, page, api_page, total_pages):
 
-    item_is_favorite = await orm_get_favorite(item['item']['itemId'])
+    msg = "<b>{0:.50}</b>\n".format(item["title"])
+    msg += "💰\t\tцена:\t\t<b>{0}</b> RUB\n".format(item["sku"]["def"]["promotionPrice"])
+    msg += "👀\t\tзаказы:\t\t<b>{0}</b>\n".format(item["sales"])
+    msg += "🌐\t\t{0}\n\n".format(item["itemUrl"])
+    msg += "<b>{0}</b> из {1} стр. {2}\t".format(page, total_pages, api_page)
+    img = ":".join(["https", item["image"]])
+    is_favorite = await orm_get_favorite(item['itemId'])
+    if is_favorite:
+        msg += "👍\tв избранном"
+    return types.InputMediaPhoto(media=img, caption=msg)
 
-    msg = "<b>{0:.50}</b>\n".format(item["item"]["title"])
-    msg += "💰\t\tцена:\t\t<b>{0}</b> RUB\n".format(item["item"]["sku"]["def"]["promotionPrice"])
-    msg += "👀\t\tпросмотры:\t\t<b>{0}</b>\n".format(item["item"]["sales"])
-    msg += "🌐\t\t{0}\n\n".format(item["item"]["itemUrl"])
-    msg += "<b>{0}</b> из {1} стр. {2}".format(paginate_page, paginator.pages, api_page)
-    img = ":".join(["https", item["item"]["image"]])
 
-    if item_is_favorite:
-        msg += "\t\t⭐️\tв избранном"
+async def refresh_tg_answer(item, item_id, page, api_page, total_pages):
 
-    return types.InputMediaPhoto(media=img, caption=msg, show_caption_above_media=False)
+    msg = "<b>{0:.50}</b>\n".format(item["title"])
+    msg += "💰\t\tцена:\t\t<b>{0}</b> RUB\n".format(item["price"])
+    msg += "👀\t\tзаказы:\t\t<b>{0}</b>\n".format(item["reviews"])
+    msg += "🌐\t\t{0}\n\n".format(item["url"])
+    msg += "<b>{0}</b> из {1} стр. {2}\t".format(page, total_pages, api_page)
+    is_favorite = await orm_get_favorite(item['itemId'])
+    if is_favorite:
+        msg += "👍\tв избранном"
+    return types.InputMediaPhoto(media=item["image"], caption=msg)
 
 
 def detail_info(i) -> str:

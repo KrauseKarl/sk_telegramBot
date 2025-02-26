@@ -6,14 +6,13 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 class CacheKey(CallbackData, prefix='redis'):
     key: str
-    api_page: str
-    # paginate_page: str
+    api_page: str | int
 
 
 class ItemCBD(CallbackData, prefix='itList'):
     key: str
     api_page: int | str
-    paginate_page: int | str
+    page: int | str
 
 
 class DetailAction(str, Enum):
@@ -25,8 +24,8 @@ class DetailCBD(CallbackData, prefix='itDetail'):
     action: DetailAction
     item_id: str = None
     key: str
-    api_page: str
-    paginate_page: str
+    api_page: int | str
+    page: str
     next: str
     prev: str
     first: str
@@ -40,16 +39,30 @@ class FavAction(str, Enum):
     page = "page"
 
 
-class FavoriteAddCBD(CallbackData, prefix='favorite'):
+class FavPagination(str, Enum):
+    next = "next_page"
+    prev = "prev_page"
+    last = "lats_page"
+    first = "first_page"
+
+
+class FavoritePageCBD(CallbackData, prefix='favorite'):
     action: FavAction
-    item_id: str = None
-    key: str
-    api_page: str
-    paginate_page: str
-    next: str
-    prev: str
-    first: str
-    last: str
+    navigate: FavPagination
+    page: int = 1
+
+
+# class FavoriteAddCBD(CallbackData, prefix='favorite'):
+#     action: FavAction
+#     item_id: str = None
+#     key: str
+#     api_page: str
+#     next: str
+#     prev: str
+#     first: str
+#     last: str
+#
+#     page: str
 
 
 class FavoriteAddDetailCBD(CallbackData, prefix='favorite'):
@@ -63,20 +76,11 @@ class FavoriteAddDetailCBD(CallbackData, prefix='favorite'):
     last: str
 
 
+class FavoriteAddCBD(FavoriteAddDetailCBD, prefix='favorite'):
+    page: str
+
+
 class FavoriteDeleteCBD(CallbackData, prefix='favorite'):
     action: FavAction
     item_id: str
     page: str
-
-
-class FavPagination(str, Enum):
-    next = "next_page"
-    prev = "prev_page"
-    last = "lats_page"
-    first = "first_page"
-
-
-class FavoritePageCBD(CallbackData, prefix='favorite'):
-    action: FavAction
-    navigate: FavPagination
-    page: int = 1

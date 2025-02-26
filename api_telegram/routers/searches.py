@@ -384,7 +384,9 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 #     print("bar =", data.bar)
 
 
-@search.callback_query(or_f(ItemCBD.filter(), DetailCBD.filter(F.action == DetailAction.back)))
+@search.callback_query(
+    or_f(ItemCBD.filter(), DetailCBD.filter(F.action == DetailAction.back))
+)
 async def item_list_page(
         callback: types.CallbackQuery,
         state: FSMContext,
@@ -403,20 +405,20 @@ async def item_list_page(
         print('⬜️🟧 ENDPOINT SEARCH PAGINATION')
         print(f'⬜️🟧 {data= }')
         key = callback_data.key
-        page = int(callback_data.paginate_page)
+        page = int(callback_data.page)
         api_page = callback_data.api_page
 
         paginator = await get_paginate_item(data, callback_data)
         item = paginator.get_page()[0]
 
-        kb = await get_paginate_item_kb(
-            item=item,
+        kb = await paginate_item_list_kb(
+            item_id=str(item['item']['itemId']),
             key=key,
             api_page=api_page,
-            paginate_page=int(page),
-            paginator=paginator
+            page=int(page),
+            len_data=paginator.len
         )
-        photo = await create_tg_answer(item, page, paginator, api_page)
+        photo = await create_tg_answer(item["item"], page, api_page, paginator.pages)
         await callback.message.edit_media(media=photo, reply_markup=kb)
 
     except CustomError as error:
@@ -447,7 +449,7 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         data = await save_query_in_cache_state(state)
         print(f'️⬛️🟨 {data= }')
         ################################################################################################################
-        call_data = ItemCBD(key=key, api_page="0", paginate_page=str(paginator_page))
+        call_data = ItemCBD(key=key, api_page="0", page=str(paginator_page))
         paginator = await get_paginate_item(data, call_data)
         # if config.FAKE_MODE:
         #     result = await request_api_fake(page=paginator_page, query=data.get("product"))
@@ -472,24 +474,24 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         item = paginator.get_page()[0]
         # sort_price_set = set(sorted([item["item"]["sku"]["def"]["promotionPrice"] for item in item_list_cache]))
         # price_range_list = '{0} - {1}'.format(min(sort_price_set), max(sort_price_set))
-        kb = await get_paginate_item_kb(
-            item=item,
+        kb = await paginate_item_list_kb(
+            item_id=str(item['item']['itemId']),
             key=key,
             api_page=str(api_page),
-            paginate_page=int(paginator_page),
-            paginator=paginator
+            page=int(paginator_page),
+            len_data=paginator.len
         )
         await orm_make_record_request(
             HistoryModel(
                 user=call.from_user.id,
                 command='search',
                 # price_range=''.format(data.get('price_min'), data.get('price_max')),
-                price_min=data.get('price_min') if data.get('price_min') else None,
-                price_max=data.get('price_max') if data.get('price_max') else None,
-                search_name=data['product'],
-                sort=config.SORT_DICT[data['sort']]
+                price_min=data.get('price_min', None),
+                price_max=data.get('price_max', None),
+                search_name=data.get('product', None),
+                sort=config.SORT_DICT[data.get('sort', "default")]
             ).model_dump())
-        photo = await create_tg_answer(item, paginator_page, paginator, api_page)
+        photo = await create_tg_answer(item["item"], paginator_page, paginator.len, api_page)
         await call.message.edit_media(media=photo, reply_markup=kb)
 
     except CustomError as error:
