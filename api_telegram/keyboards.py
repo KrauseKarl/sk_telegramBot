@@ -188,6 +188,19 @@ class ItemPaginationBtn:
             page=str(page),
         ).pack()
 
+    def comment(self, page: str | int, item_id: str):
+        return ReviewCBD(
+            action=RevAction.first,
+            item_id=str(item_id),
+            key=self.key,
+            api_page=self.api_page,
+            next=str(int(page) + 1),
+            prev=str(int(page) - 1),
+            first=str(self.first),
+            last=str(self.len),
+            page=str(page),
+        ).pack()
+
 
 class FavoritePaginationBtn:
     def __init__(self, item_id):
@@ -214,6 +227,27 @@ class FavoritePaginationBtn:
             action=self.action.delete,
             item_id=item_id if item_id else self.id,
             page=str(page)
+        ).pack()
+
+
+class CommentPaginationBtn(FavoritePaginationBtn):
+    def __init__(self, item_id):
+        super().__init__(item_id)
+        self.action = RevAction
+        self.navigate = RevPagination
+
+    def next_bt(self, page):  # page + 1
+        return ReviewPageCBD(
+            action=self.action.page,
+            navigate=self.navigate.next,
+            page=str(int(page + 1))
+        ).pack()
+
+    def prev_bt(self, page):  # page - 1
+        return FavoritePageCBD(
+            action=self.action.page,
+            navigate=self.navigate.prev,
+            page=str(int(page - 1))
         ).pack()
 
 
@@ -304,7 +338,6 @@ async def error_kb():
     return await builder_kb([{"🏠 back menu": "menu"}], (1,))
 
 
-
 async def paginate_item_list_kb(
         key: str,
         api_page: str,
@@ -353,7 +386,8 @@ async def paginate_item_list_kb(
     buttons = [
         {"ℹ️ подробно": btn_set.detail(page, item_id)},
         {"🏠 меню": "menu"},
-        {"🌐": "menu"}
+        {"🌐": "menu"},
+        {"💬 comments": btn_set.comment(page, item_id)}
     ]
     kb.add_buttons(buttons)
     kb.add_markup(3)
@@ -394,6 +428,38 @@ async def paginate_favorite_list_kb(page: int, item_id, navigate: str, len_data:
     buttons = [{"❌ удалить": btn.delete_btn(page, item_id)}, {"🏠 menu": "menu"}]
     kb.add_buttons(buttons).add_markup(2)
     print('8888', kb.get_markup())
+    return kb.create_kb()
+
+
+async def paginate_review_list_kb(page: int, item_id, navigate: str, len_data: int):
+    """
+
+    :param page:
+    :param item_id:
+    :param navigate:
+    :param len_data:
+    :return:
+    """
+    kb = PaginationKB()
+    btn = FavoritePaginationBtn(item_id)
+
+    if len_data > 1:
+        if navigate == FavPagination.first:
+            kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
+
+        elif navigate == FavPagination.next:
+            kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).add_markup(1)
+            if page < len_data:
+                kb.add_button({"След. ➡️": btn.next_bt(page)}).update_markup(2)
+
+        elif navigate == FavPagination.prev:
+            kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
+            if page > 1:
+                kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).update_markup(2)
+
+    buttons = [{"🏠 menu": "menu"}]
+    kb.add_buttons(buttons).add_markup(1)
+
     return kb.create_kb()
 
 

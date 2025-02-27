@@ -1,5 +1,6 @@
 from typing import Optional, List
 
+import emoji
 from aiogram import types
 
 from database.orm import *
@@ -37,7 +38,6 @@ def card_info(item, currency) -> tuple[str, str]:
 
 
 async def create_tg_answer(item, page, api_page, total_pages):
-
     msg = "<b>{0:.50}</b>\n".format(item["title"])
     msg += "💰\t\tцена:\t\t<b>{0}</b> RUB\n".format(item["sku"]["def"]["promotionPrice"])
     msg += "👀\t\tзаказы:\t\t<b>{0}</b>\n".format(item["sales"])
@@ -51,7 +51,6 @@ async def create_tg_answer(item, page, api_page, total_pages):
 
 
 async def refresh_tg_answer(item, item_id, page, api_page, total_pages):
-
     msg = "<b>{0:.50}</b>\n".format(item["title"])
     msg += "💰\t\tцена:\t\t<b>{0}</b> RUB\n".format(item["price"])
     msg += "👀\t\tзаказы:\t\t<b>{0}</b>\n".format(item["reviews"])
@@ -61,6 +60,30 @@ async def refresh_tg_answer(item, item_id, page, api_page, total_pages):
     if is_favorite:
         msg += "👍\tв избранном"
     return types.InputMediaPhoto(media=item["image"], caption=msg)
+
+
+async def create_review_tg_answer(obj, page, api_page, total_pages):
+    dtime = obj['review']['reviewDate']
+    stars = obj['review']['reviewStarts']
+    item_title = obj['review']['itemSpecInfo']
+    review_text = obj.get('review').get('translation').get('reviewContent', 'no comment')
+    msg = "{0}\n".format("⭐️" * stars)
+    msg += '{0}\n'.format(dtime)
+    msg += "<i>{0:.200}</i>\n\n".format(review_text)
+    msg += "📦 item: {0:.50}\n".format(item_title)
+    msg += "👤 name: {0}\n".format(obj['buyer']['buyerTitle'])
+    try:
+        country = FLAGS[obj['buyer']['buyerCountry']].replace(" ", "_")
+        country_name = FLAGS[obj['buyer']['buyerCountry']]
+        print(country, country_name)
+    except KeyError:
+        country = "pirate_flag"
+        country_name = obj['buyer']['buyerCountry']
+
+    msg += emoji.emojize(":{0}: {1}".format(country, country_name))
+    msg += "<b>{0}</b> из {1} стр. {2}\t".format(page, total_pages, api_page)
+
+    return msg
 
 
 def detail_info(i) -> str:

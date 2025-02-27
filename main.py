@@ -20,10 +20,11 @@ bot = Bot(
 dp = Dispatcher()
 
 dp.include_router(routers.bases.base)
-dp.include_router(routers.review.review)
+
 dp.include_router(routers.histories.history)
 dp.include_router(routers.favorites.favorite)
 dp.include_router(routers.details.detail)
+dp.include_router(routers.review.review)
 dp.include_router(routers.categories.category)
 dp.include_router(routers.searches.search)
 

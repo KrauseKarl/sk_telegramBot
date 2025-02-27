@@ -7,6 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 class CacheKey(CallbackData, prefix='redis'):
     key: str
     api_page: str | int
+    extra: str = None
 
 
 class ItemCBD(CallbackData, prefix='itList'):
@@ -84,3 +85,33 @@ class FavoriteDeleteCBD(CallbackData, prefix='favorite'):
     action: FavAction
     item_id: str
     page: str
+
+
+class RevAction(str, Enum):
+    first = "first"
+    page = "page"
+
+
+class RevPagination(str, Enum):
+    next = "next_page"
+    prev = "prev_page"
+    last = "lats_page"
+    first = "first_page"
+
+
+class ReviewPageCBD(CallbackData, prefix='review'):
+    action: RevAction
+    navigate: RevPagination
+    page: int = 1
+
+
+class ReviewCBD(CallbackData, prefix='rvwList'):
+    action: RevAction
+    item_id: str = None
+    key: str
+    api_page: int | str
+    page: str
+    next: str
+    prev: str
+    first: str
+    last: str
