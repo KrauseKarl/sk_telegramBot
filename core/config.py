@@ -23,6 +23,8 @@ FAKE_MODE = True # False
 URL_API_ITEM_LIST = "item_search_5"
 URL_API_ITEM_DETAIL = "item_detail_6"
 URL_API_CATEGORY = "category_list_1"
+URL_API_REVIEW = "item_review"
+
 
 # DIRECTORY SETTINGS ####################################################################
 STATIC_FOLDER = 'static'

@@ -22,6 +22,7 @@ SORT_DATA = [
 MENU_DATA = [
     {"🛒 поиск товара": "search"},
     # {"🧾 поиск категории": "category"},
+    {"💬 comments": "review"},
     {"📋 история команд": "history"},
     {"️⭐️ избранное": FavoritePageCBD(
         action=FavAction.page,

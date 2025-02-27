@@ -14,6 +14,7 @@ class ItemFSM(state.StatesGroup):
     qnt = state.State()
     sort = state.State()
 
+
 class CacheFSM(state.StatesGroup):
     """Группа состояний."""
 
@@ -22,6 +23,7 @@ class CacheFSM(state.StatesGroup):
     price_max = state.State()
     qnt = state.State()
     sort = state.State()
+
 
 class CategoryFSM(state.StatesGroup):
     """Группа состояний."""
