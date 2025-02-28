@@ -13,7 +13,7 @@ from api_telegram.callback_data import *
 from api_telegram.keyboards import *
 from core import *
 from core.config import conf
-from database.pagination import *
+from database.paginator import *
 from utils.media import *
 from utils.message_info import *
 
@@ -124,7 +124,7 @@ async def request_review(callback: CallbackQuery, callback_data: ReviewCBD):
     paginator = Paginator(array=review_list_cache, page=page)
     comment = paginator.get_page()[0]
     msg = await create_review_tg_answer(comment, page, api_page, paginator.len)
-    kb = PaginationKB()
+    kb = KeyBoardFactory()
     btn = CommentPaginationBtn(item_id)
 
     if paginator.len > 1:

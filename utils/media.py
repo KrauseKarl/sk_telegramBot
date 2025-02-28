@@ -9,7 +9,7 @@ from aiogram.types import FSInputFile, InlineKeyboardMarkup, InputMediaPhoto
 from PIL import Image
 
 from core import config
-from database.pagination import *
+from database.paginator import *
 
 
 # MEDIA HANDLERS ######################################################################

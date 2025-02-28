@@ -21,6 +21,7 @@ async def deserialize_item_detail_fake(
     data = dict()
 
     item = response["result"]["item"]
+    data['item_id'] = item['itemId']
     data["user"] = user_id
     data["command"] = "item detail"
     data["title"] = item.get("title")

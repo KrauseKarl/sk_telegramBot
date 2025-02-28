@@ -19,90 +19,43 @@ detail = Router()
 async def get_item_detail(
         call: CallbackQuery,
         state: FSMContext,
-        callback_data: DetailCBD
+        data: DetailCBD
 ) -> None:
     print('🟦 DETAIL ENDPOINT')
     try:
         await call.answer()
-
         response = await request_api(
             url=config.URL_API_ITEM_DETAIL,
-            item_id=callback_data.item_id
+            item_id=data.item_id
         )
-        print(f"🟦 {callback_data= }")
         item_data = await deserialize_item_detail(response, call.from_user.id)
         msg = await get_detail_info(response)
         await orm_make_record_request(item_data)
 
-        # media_group = MediaGroupBuilder()
-        # img_color = get_color_img(response)
-        #
-        # for img_set in img_color[:8]:
-        #     media_group.add_photo(media=img_set)
+        # todo refactor - add kb_factory
+        kb = ItemPaginationBtn(
+            key=data.key,
+            api_page=data.api_page,
+            item_id=data.item_id,
+            paginator_len=int(data.last)
+        )
+        is_favorite = await orm_get_favorite(item_id=data.item_id)
+        buttons = [
+            kb.detail('back', data.page, DetailAction.back),
+            kb.btn_text('price')
+        ]
+        if is_favorite is None:
+            buttons.insert(0, kb.favorite(data.page))
+        (kb.add_buttons(buttons).add_markups([1, 2, 2]))
 
-        # await call.message.answer_media_group(media=media_group.build())
-
-        # await state.clear()
-        #
-        # await state.set_state(FavoriteFSM.product_id)
-        # await state.update_data(product_id=item_id)
-        #
-        # await state.set_state(FavoriteFSM.title)
-        # await state.update_data(title=item_data["title"])
-        #
-        # await state.set_state(FavoriteFSM.price)
-        # await state.update_data(price=item_data["price"])
-        #
-        # await state.set_state(FavoriteFSM.reviews)
-        # await state.update_data(reviews=item_data["reviews"])
-        #
-        # await state.set_state(FavoriteFSM.stars)
-        # await state.update_data(stars=item_data["star"])
-        #
-        # await state.set_state(FavoriteFSM.url)
-        # await state.update_data(url=item_data["url"])
-        #
-        # await state.set_state(FavoriteFSM.image)
-        # await state.update_data(image=item_data["image"])
-
-        add_favorite = FavoriteAddCBD(
-            action=FavAction.detail,
-            item_id=callback_data.item_id,
-            key=callback_data.key,
-            api_page=callback_data.api_page,
-            page=callback_data.page,
-            next=callback_data.next,
-            prev=callback_data.prev,
-            first=callback_data.first,
-            last=callback_data.last,
-        ).pack()
-        back_to_list = DetailCBD(
-            action=DetailAction.back,
-            item_id=callback_data.item_id,
-            key=callback_data.key,
-            api_page=callback_data.api_page,
-            page=callback_data.page,
-            next=callback_data.next,
-            prev=callback_data.prev,
-            first=callback_data.first,
-            last=callback_data.last,
-        ).pack()
         # todo check if item already in favorites don not show fav button
 
-        kb = await kb_builder(
-            size=(1, 2, 2),
-            data_list=[
-                {"⭐️ добавить в избранное": add_favorite},
-                {"🔙 назад": back_to_list},
-                {"📉 отслеживать цену": "price"}
-            ]
-        )
         await call.message.edit_media(
             media=InputMediaPhoto(
                 media=item_data['image'],
                 caption=msg
             ),
-            reply_markup=kb
+            reply_markup=kb.create_kb()
         )
         # await call.message.answer(msg, reply_markup=kb)
 

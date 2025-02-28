@@ -7,7 +7,7 @@ from api_redis.handlers import redis_get_data_from_cache, redis_set_data_to_cach
 from api_telegram.callback_data import *
 from api_telegram.statments import CacheFSM
 from core import config
-from database.pagination import *
+from database.paginator import *
 
 
 async def get_data_from_cache(call_data: ItemCBD | DetailCBD):

@@ -11,6 +11,7 @@ from api_redis.handlers import *
 from api_telegram.callback_data import *
 from api_telegram.crud.items import *
 from api_telegram.keyboards import *
+from api_telegram.paginations import paginate_item_list_kb
 from api_telegram.statments import *
 from database.exceptions import *
 from utils.media import *

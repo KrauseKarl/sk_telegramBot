@@ -8,7 +8,7 @@ from api_telegram.keyboards import kb_builder
 from core import config
 from database.models import History
 from database.orm import orm_get_history_list
-from database.pagination import Paginator
+from database.paginator import Paginator
 from utils.media import get_fs_input_hero_image
 from utils.message_info import history_info
 

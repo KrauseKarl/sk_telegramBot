@@ -8,40 +8,73 @@ from api_redis.handlers import redis_get_data_from_cache
 from api_telegram.callback_data import *
 from core.config import *
 from database.orm import orm_get_favorite, orm_get_favorite_list
-from database.pagination import Paginator
+from database.paginator import Paginator
 
 if TYPE_CHECKING:
-    from database.pagination import Paginator
+    from database.paginator import Paginator
+KEYS = {
+    "menu": "🏠 menu",
+    "web": "🌐",
+    "next": "След. ➡️",
+    "prev": "⬅️ Пред.",
+    "first": "⏪ Первая",
+    "last": "Послед.⏩",
+    "delete": "❌ удалить",
 
-SORT_DATA = [
-    {"📶 по умолчанию": "default"},
-    {"💰 по продажам": "salesDesc"},
-    {"⬇️ по убыванию": "priceDesc"},
-    {"️⬆️по возрастанию": "priceAsc"},
-]
-MENU_DATA = [
-    {"🛒 поиск товара": "search"},
-    # {"🧾 поиск категории": "category"},
-    {"💬 comments": "review"},
-    {"📋 история команд": "history"},
-    {"️⭐️ избранное": FavoritePageCBD(
-        action=FavAction.page,
-        navigate=FavPagination.first
-    ).pack()},
-]
+    "search": "🛒 поиск",
+    "history": "📋 история",
+    "favorite": "⭐️ избранное",
+
+    "default": "📶 по умолчанию",
+    "salesDesc": "💰 по продажам",
+    "priceDesc": "⬇️ по убыванию",
+    "priceAsc": "⬆️ по возрастанию",
+
+    "price_min": "✅ да",
+    "price_skip": "🚫 пропустить",
+
+    "review": "💬 комментарии",
+    "detail": "ℹ️ подробно",
+    "view": "ℹ️ подробно",
+    "back": "⬅️ назад",
+
+    "price": "📉 отслеживать цену",
+
+    "2": "2️⃣",
+    "3": "3️⃣",
+    "5": "5️⃣",
+    "10": "🔟"
+}
 
 QNT_DATA = [
-    {"2️⃣": "2"},
-    {"3️⃣": "3"},
-    {"5️⃣": "5"},
-    {"🔟": "10"}
+
 ]
+
+
+class KeysBuilder:
+    def __init__(self, data: Dict[str, str]):
+        for key, value in data.items():
+            setattr(self, key, value)
+
+    # def __getattr__(self, attr):
+    #     return self[attr]
+
+    def to_dict(self):
+        return {key: value for (key, value) in self.__dict__.items()}
+
+    def create_btn_callback_data(self, name, callback_data):
+        return {getattr(self, name): callback_data}
+
+    def create_btn_text(self, name):
+        return {getattr(self, name): name}
 
 
 # KEYBOARD BUILDER CLASS ###############################################
-class KB:
+class KeyBoardBuilder:
     def __init__(self):
         self.kb = keyboard.InlineKeyboardBuilder()
+        self.keys = KeysBuilder(KEYS).to_dict()
+        self.factory = KeysBuilder(KEYS)
 
     def builder(
             self, data: list, size: tuple
@@ -77,7 +110,7 @@ class KB:
         return self.kb.adjust(*size).as_markup()
 
 
-class PaginationKB(KB):
+class KeyBoardFactory(KeyBoardBuilder):
 
     def __init__(self):
         super().__init__()
@@ -126,46 +159,47 @@ class PaginationKB(KB):
         )
 
 
-class DetailPaginationBtn:
-    def __init__(self, data: FavoriteAddCBD):
-        self.action = DetailAction.view,
-        self.data = data
+class PaginationBtn(KeyBoardFactory):
+    def __init__(self):
+        super().__init__()
 
-    def detail(self):
-        return DetailCBD(
-            action=self.action,
-            item_id=str(self.data.item_id),
-            key=self.data.key,
-            api_page=self.data.api_page,
-            page=str(self.data.page),
-            next=str(self.data.page),
-            prev=str(self.data.page),
-            first=str(self.data.first),
-            last=str(self.data.last)
-        ).pack()
+    def btn_text(self, name):
+        return self.factory.create_btn_text(name)
+
+    def btn_data(self, name, data):
+        return self.factory.create_btn_callback_data(name, data)
 
 
-class ItemPaginationBtn:
-    def __init__(self, key: str, api_page: str, paginator_len: int = None):
+class ItemPaginationBtn(PaginationBtn):
+    def __init__(self, key: str, api_page: str, item_id: str = None, paginator_len: int = None):
+        super().__init__()
         self.key = key
         self.api_page = api_page
+        self.item_id = item_id
         self.len = paginator_len
         self.first = 1
-        self.keyboard_list = []
+        self.call_data = ItemCBD
 
-    def btn(self, page):
-        return ItemCBD(key=self.key, api_page=self.api_page, page=page).pack()
+    def _btn(self, page):
+        return self.call_data(
+            key=self.key,
+            api_page=self.api_page,
+            page=page
+        ).pack()
+
+    def btn(self, name, page):
+        return self.btn_data(name, self._btn(page))
 
     def first_btn(self):
-        return ItemCBD(key=self.key, api_page=self.api_page, page=self.first).pack()
+        return self.btn_data("first", self._btn(self.first))
 
     def last_btn(self):
-        return ItemCBD(key=self.key, api_page=self.api_page, page=self.len).pack()
+        return self.btn_data("last", self._btn(self.len))
 
-    def detail(self, page: str | int, item_id: str):
+    def _detail(self, page: str | int, action):
         return DetailCBD(
-            action=DetailAction.view,
-            item_id=str(item_id),
+            action=action,
+            item_id=str(self.item_id),
             key=self.key,
             api_page=self.api_page,
             page=str(page),
@@ -175,10 +209,13 @@ class ItemPaginationBtn:
             last=str(self.len)
         ).pack()
 
-    def favorite(self, page: str | int, item_id: str):
+    def detail(self, name, page: str | int, action):
+        return self.btn_data(name, self._detail(page, action))
+
+    def _favorite(self, page: str | int):
         return FavoriteAddCBD(
             action=FavAction.list,
-            item_id=str(item_id),
+            item_id=str(self.item_id),
             key=self.key,
             api_page=self.api_page,
             next=str(int(page) + 1),
@@ -188,10 +225,13 @@ class ItemPaginationBtn:
             page=str(page),
         ).pack()
 
-    def comment(self, page: str | int, item_id: str):
+    def favorite(self, page: str | int):
+        return self.btn_data('favorite', self._favorite(page))
+
+    def _comment(self, page: str | int):
         return ReviewCBD(
             action=RevAction.first,
-            item_id=str(item_id),
+            item_id=str(self.item_id),
             key=self.key,
             api_page=self.api_page,
             next=str(int(page) + 1),
@@ -201,22 +241,30 @@ class ItemPaginationBtn:
             page=str(page),
         ).pack()
 
+    def comment(self, page: str | int):
+        return self.btn_data('review', self._comment(page))
 
-class FavoritePaginationBtn:
+
+class FavoritePaginationBtn_(PaginationBtn):
     def __init__(self, item_id):
+        super().__init__()
         self.action = FavAction
         self.navigate = FavPagination
+        self.prev = FavPagination.prev
+        self.next = FavPagination.next
         self.id = item_id
+        self.data = FavoritePageCBD
+        self.page = 1
 
     def next_bt(self, page):  # page + 1
-        return FavoritePageCBD(
+        return self.data(
             action=self.action.page,
             navigate=self.navigate.next,
             page=str(int(page + 1))
         ).pack()
 
     def prev_bt(self, page):  # page - 1
-        return FavoritePageCBD(
+        return self.data(
             action=self.action.page,
             navigate=self.navigate.prev,
             page=str(int(page - 1))
@@ -230,21 +278,68 @@ class FavoritePaginationBtn:
         ).pack()
 
 
+class FavoritePaginationBtn(PaginationBtn):
+    def __init__(self, item_id):
+        super().__init__()
+        self.page = 1
+        self.id = item_id
+        self.action = FavAction
+        self.navigate = FavPagination
+        self.call_data = FavoritePageCBD
+
+    def pg(self, page):
+        self.page = page
+        return self
+
+    def __add__(self, other):
+        return self.page + other
+
+    def _btn(self, num, navigate):
+        return self.call_data(
+            action=self.action.page,
+            navigate=navigate,
+            page=self.__add__(num)
+        ).pack()
+
+    def next_btn(self, num):  # page + 1
+        return self.btn_data(
+            name='next',
+            data=self._btn(num, self.navigate.next)
+        )
+
+    def prev_btn(self, num):  # page - 1
+        return self.btn_data(
+            name='prev',
+            data=self._btn(num, self.navigate.prev)
+        )
+
+    def delete_btn(self, item_id=None):
+        return self.btn_data(
+            name='delete',
+            data=FavoriteDeleteCBD(
+                action=self.action.delete,
+                item_id=item_id if item_id else self.id,
+                page=self.page
+            ).pack()
+        )
+
+
 class CommentPaginationBtn(FavoritePaginationBtn):
     def __init__(self, item_id):
         super().__init__(item_id)
         self.action = RevAction
         self.navigate = RevPagination
+        self.data = ReviewPageCBD
 
     def next_bt(self, page):  # page + 1
-        return ReviewPageCBD(
+        return self.data(
             action=self.action.page,
             navigate=self.navigate.next,
             page=str(int(page + 1))
         ).pack()
 
     def prev_bt(self, page):  # page - 1
-        return FavoritePageCBD(
+        return self.data(
             action=self.action.page,
             navigate=self.navigate.prev,
             page=str(int(page - 1))
@@ -280,7 +375,7 @@ async def builder_kb(data: list, size: tuple):
     :param size:
     :return:
     """
-    return KB().builder(data, size)
+    return KeyBoardBuilder().builder(data, size)
 
 
 async def menu_kb():
@@ -288,7 +383,17 @@ async def menu_kb():
 
     :return:
     """
-    return await builder_kb(MENU_DATA, (1, 2))
+    kb = PaginationBtn()
+    kb.add_buttons([
+        kb.btn_text("search"),
+        kb.btn_text("history"),
+        kb.btn_data("favorite", FavoritePageCBD(
+            action=FavAction.page,
+            navigate=FavPagination.first
+        ).pack()
+                    )
+    ]).add_markups([1, 2])
+    return kb.create_kb()
 
 
 async def sort_kb():
@@ -296,15 +401,30 @@ async def sort_kb():
 
     :return:
     """
-    return await builder_kb(SORT_DATA, (2, 2,))
+    kb = PaginationBtn()
+    kb.add_buttons([
+        kb.btn_text("default"),
+        kb.btn_text("salesDesc"),
+        kb.btn_text("priceDesc"),
+        kb.btn_text("priceAsc")
+    ]).add_markups([2, 2])
+    return kb.create_kb()
 
 
 async def qnt_kb():
     """
 
     :return:
+
     """
-    return await builder_kb(QNT_DATA, (2, 2,))
+    kb = PaginationBtn()
+    kb.add_buttons([
+        kb.btn_text("2"),
+        kb.btn_text("3"),
+        kb.btn_text("5"),
+        kb.btn_text("10")
+    ]).add_markups([2, ])
+    return kb.create_kb()
 
 
 async def item_kb(prefix: str, item_id: str, text: str):
@@ -315,174 +435,21 @@ async def item_kb(prefix: str, item_id: str, text: str):
     :param text:
     :return:
     """
-    return KB().builder_id(prefix, item_id, text, (1,))
-
-
-async def item_kb_2(data: list):
-    """
-
-    :param data:
-    :return:
-    """
-    return KB().builder(data, (2,))
+    return KeyBoardBuilder().builder_id(prefix, item_id, text, (1,))
 
 
 async def price_range_kb():
-    return await kb_builder(
-        (2,),
-        [{"✅ да": "price_min"}, {"🚫 пропустить": "price_skip"}]
-    )
+    kb = PaginationBtn()
+    kb.add_buttons([
+        kb.btn_text("price_min"),
+        kb.btn_text("price_skip")
+    ]).add_markups([2, ])
+    return kb.create_kb()
 
 
 async def error_kb():
-    return await builder_kb([{"🏠 back menu": "menu"}], (1,))
-
-
-async def paginate_item_list_kb(
-        key: str,
-        api_page: str,
-        page: int,
-        item_id: str,
-        len_data: int
-):
-    btn_set = ItemPaginationBtn(key=key, api_page=api_page, paginator_len=len_data)
-    kb = PaginationKB()
-    if int(api_page) == 1 and int(page) == 1:
-        buttons = [
-            {"➡️ След.": btn_set.btn(int(page) + 1)},
-            {"⏩ Послед.": btn_set.last_btn()}
-        ]
-        kb.add_buttons(buttons)
-        kb.add_markups([1, 1])
-    elif int(api_page) > 1 and int(page) == 1:
-        prev_paginate_page = len(
-            await redis_get_data_from_cache(CacheKey(key=key, api_page=str(int(api_page) - 1)).pack()))
-        buttons = [
-            {"⬅️ Пред.": btn_set.btn(prev_paginate_page)},
-            {"➡️ След": btn_set.btn(2)},
-            {"⏩ Послед.": btn_set.last_btn()}
-        ]
-        kb.add_buttons(buttons)
-        kb.add_markups([2, 1])
-    elif len_data > int(page) > 1:
-        buttons = [
-            {"⬅️ Пред.": btn_set.btn(str(page - 1 if page - 1 > 1 else 1))},
-            {"➡️ След": btn_set.btn(str(page + 1 if page + 1 < len_data else len_data + 1))},
-            {"⏪ Перв.": btn_set.first_btn()},
-            {"⏩ Послед.": btn_set.last_btn()}
-        ]
-        kb.add_buttons(buttons)
-        kb.add_markups([2, 2])
-    elif int(page) == len_data:
-        # "последняя страница"
-        buttons = [
-            {"⬅️ Пред.": btn_set.btn(str(page - 1 if page - 1 != 0 else 1))},
-            {"➡️ След": btn_set.btn(str(page + 1))},
-            {"⏪ Перв.": btn_set.first_btn()},
-        ]
-        kb.add_buttons(buttons)
-        kb.add_markups([2, 1])
-
-    buttons = [
-        {"ℹ️ подробно": btn_set.detail(page, item_id)},
-        {"🏠 меню": "menu"},
-        {"🌐": "menu"},
-        {"💬 comments": btn_set.comment(page, item_id)}
-    ]
-    kb.add_buttons(buttons)
-    kb.add_markup(3)
-    is_favorite = await orm_get_favorite(item_id)
-    if is_favorite is None:
-        kb.add_button({"⭐️ в избранное": btn_set.favorite(page, item_id)})
-        kb.update_markup(4)
-
-    return await builder_kb(kb.get_kb(), size=kb.get_markup())
-
-
-async def paginate_favorite_list_kb(page: int, item_id, navigate: str, len_data: int):
-    """
-
-    :param page:
-    :param item_id:
-    :param navigate:
-    :param len_data:
-    :return:
-    """
-    kb = PaginationKB()
-    btn = FavoritePaginationBtn(item_id)
-
-    if len_data > 1:
-        if navigate == FavPagination.first:
-            kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
-
-        elif navigate == FavPagination.next:
-            kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).add_markup(1)
-            if page < len_data:
-                kb.add_button({"След. ➡️": btn.next_bt(page)}).update_markup(2)
-
-        elif navigate == FavPagination.prev:
-            kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
-            if page > 1:
-                kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).update_markup(2)
-
-    buttons = [{"❌ удалить": btn.delete_btn(page, item_id)}, {"🏠 menu": "menu"}]
-    kb.add_buttons(buttons).add_markup(2)
-    print('8888', kb.get_markup())
+    kb = PaginationBtn()
+    kb.add_buttons([
+        kb.btn_text("menu"),
+    ]).add_markups([1, ])
     return kb.create_kb()
-
-
-async def paginate_review_list_kb(page: int, item_id, navigate: str, len_data: int):
-    """
-
-    :param page:
-    :param item_id:
-    :param navigate:
-    :param len_data:
-    :return:
-    """
-    kb = PaginationKB()
-    btn = FavoritePaginationBtn(item_id)
-
-    if len_data > 1:
-        if navigate == FavPagination.first:
-            kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
-
-        elif navigate == FavPagination.next:
-            kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).add_markup(1)
-            if page < len_data:
-                kb.add_button({"След. ➡️": btn.next_bt(page)}).update_markup(2)
-
-        elif navigate == FavPagination.prev:
-            kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
-            if page > 1:
-                kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).update_markup(2)
-
-    buttons = [{"🏠 menu": "menu"}]
-    kb.add_buttons(buttons).add_markup(1)
-
-    return kb.create_kb()
-
-
-async def paginate_favorite_delete_kb(
-        page: int,
-        len_data: int,
-        item_id
-):
-    keyboard_list = []
-    if page == 0:
-        page += 1
-        if len_data == 0:
-            pass
-        keyboard_list.append({"След. ➡️": await next_button(page)})
-    elif page == 1:
-        keyboard_list.append({"След. ➡️": await next_button(page)})
-    else:
-        if len_data > 1:
-            keyboard_list.extend(
-                [
-                    {"⬅️ Пред.": await prev_button(page)},
-                    {"След. ➡️": await next_button(page)}
-                ]
-            )
-    keyboard_list.append({"❌ удалить": await delete_button(page - 1, item_id)})
-    return keyboard_list

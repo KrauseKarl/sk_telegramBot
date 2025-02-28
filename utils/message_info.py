@@ -4,7 +4,7 @@ import emoji
 from aiogram import types
 
 from database.orm import *
-from database.pagination import *
+from database.paginator import *
 
 
 def get_price_range(_list) -> Optional[str]:
@@ -56,7 +56,7 @@ async def refresh_tg_answer(item, item_id, page, api_page, total_pages):
     msg += "👀\t\tзаказы:\t\t<b>{0}</b>\n".format(item["reviews"])
     msg += "🌐\t\t{0}\n\n".format(item["url"])
     msg += "<b>{0}</b> из {1} стр. {2}\t".format(page, total_pages, api_page)
-    is_favorite = await orm_get_favorite(item['itemId'])
+    is_favorite = await orm_get_favorite(item['item_id'])
     if is_favorite:
         msg += "👍\tв избранном"
     return types.InputMediaPhoto(media=item["image"], caption=msg)
@@ -227,40 +227,40 @@ async def history_info(item) -> str:
     msg = "⚙️ команда:\t<b>{0}</b>\n\n".format(item.command)
     msg += "📅 {0}\t".format(item.date.strftime('%d %b %Y'))
     msg += "🕐 {0}\n".format(item.date.strftime('%H:%M:%S'))
-    if item.search_name:
-        msg = msg + "🔎 поиск:\t{0:.20}\n".format(item.search_name)
-    if item.price_min and item.price_max:
-        msg = msg + "⚪️ диапазон цен:\t{0}-{1}\n".format(item.price_min, item.price_max)
-    if item.title:
-        msg = msg + "✅ {:.30}\n".format(item.title)
-    if item.price:
-        msg = msg + "🟠 {0} RUB\n".format(item.price)
-    if item.reviews:
-        msg = msg + "👀 промоторы {0}\n".format(item.reviews)
-    if item.stars:
-        msg = msg + "⭐️рейтинг {0}\n".format(item.stars)
-    if item.url:
-        msg = msg + "{0}\n".format(item.url.split("//")[1])
-    if item.sort:
-        msg = msg + "📊 отсортировано: {0}\n".format(item.sort)
+    msg += "🔎 поиск:\t{0:.20}\n".format(
+        item.search_name
+    ) if item.search_name else ''
+    msg += "⚪️ диапазон цен:\t{0}-{1}\n".format(
+        item.price_min,
+        item.price_max
+    ) if item.price_min and item.price_max else ''
+    msg += "✅ {:.30}\n".format(item.title) if item.title else ''
+    msg += "🟠 {0} RUB\n".format(item.price) if item.price else ''
+    msg += "👀 промоторы {0}\n".format(item.reviews) if item.reviews else ''
+    msg += "⭐️рейтинг {0}\n".format(item.stars) if item.stars else ''
+    msg += "{0}\n".format(item.url.split("//")[1]) if item.url else ''
+    msg += "📊 отсортировано: {0}\n".format(item.sort) if item.sort else ''
 
     return msg
 
 
-async def favorite_info(item) -> str:
+async def favorite_info(item, page, total_page) -> str:
     """
 
+    :param total_page:
+    :param page:
     :param item:
     :return:
     """
     msg = "📅\t{0}\n".format(item.date.strftime('%d %b %Y'))
-    msg = msg + "🕐\t{0}\n".format(item.date.strftime('%H:%M:%S'))
-    msg = msg + "🆔\t<u>id</u>:\t{0}\n".format(item.product_id)
-    msg = msg + "✅\t{:.50}\n".format(item.title)
-    msg = msg + "🟠\t<i>цена</i>:\t{0}\tRUB\n".format(item.price)
-    msg = msg + "👀\t<i>просмотров</i>:\t{0}\n".format(item.reviews)
-    msg = msg + "⭐️\t<i>рейтинг</i>:\t{0}\n".format(item.stars)
-    msg = msg + "{0}\n".format(item.url.split("//")[1])
+    msg += "🕐\t{0}\n".format(item.date.strftime('%H:%M:%S'))
+    msg += "🆔\t<u>id</u>:\t{0}\n".format(item.product_id)
+    msg += "✅\t{:.50}\n".format(item.title)
+    msg += "🟠\t<i>цена</i>:\t{0}\tRUB\n".format(item.price)
+    msg += "👀\t<i>просмотров</i>:\t{0}\n".format(item.reviews)
+    msg += "⭐️\t<i>рейтинг</i>:\t{0}\n".format(item.stars)
+    msg += "{0}\n".format(item.url.split("//")[1])
+    msg += "\n{0} из {1}".format(page, total_page)
     return msg
 
 

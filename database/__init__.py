@@ -1,1 +1,1 @@
-from . import db, exceptions, models, orm, pagination
+from . import db, exceptions, models, orm, paginator

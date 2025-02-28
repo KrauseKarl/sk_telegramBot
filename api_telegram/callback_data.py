@@ -84,7 +84,7 @@ class FavoriteAddCBD(FavoriteAddDetailCBD, prefix='favorite'):
 class FavoriteDeleteCBD(CallbackData, prefix='favorite'):
     action: FavAction
     item_id: str
-    page: str
+    page: int
 
 
 class RevAction(str, Enum):

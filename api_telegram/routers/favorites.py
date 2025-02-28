@@ -8,6 +8,7 @@ from api_aliexpress.deserializers import *
 from api_aliexpress.request import *
 from api_telegram.callback_data import *
 from api_telegram.crud.favorites import *
+from api_telegram.paginations import paginate_favorite_list_kb
 from api_telegram.statments import ItemFSM
 from database.exceptions import *
 from database.orm import *
@@ -18,45 +19,25 @@ favorite = Router()
 
 
 @favorite.callback_query(FavoritePageCBD.filter(F.action == FavAction.page))
-async def get_favorite_list(call: CallbackQuery, callback_data: FavoritePageCBD) -> None:
+async def request_favorite_list(callback: CallbackQuery, callback_data: FavoritePageCBD) -> None:
     """
 
+    :param callback:
     :param callback_data:
-    :param call:
     :return:
     """
     print('🟪 FAVORITE ENDPOINT')
     try:
-        data_list = await orm_get_favorite_list(call.from_user.id)
-        msg = "⭕️ у вас пока нет избранных товаров"
-        img = None
-
-        if len(data_list) > 0:
-            paginator = Paginator(data_list, page=callback_data.page)
-            item = paginator.get_page()[0]
-            img = item.image
-            msg = await favorite_info(item)
-            kb = await paginate_favorite_list_kb(
-                    page=int(callback_data.page),
-                    item_id=item.product_id,
-                    navigate=callback_data.navigate,
-                    len_data=paginator.len
-                )
-            msg = msg + "\n{0} из {1}".format(callback_data.page, paginator.pages)
-        try:
-            # img = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, img))
-            photo = types.InputMediaPhoto(media=img, caption=msg)
-        except (ValidationError, TypeError):
-            photo = await get_input_media_hero_image("favorite", msg)
-        await call.message.edit_media(
+        msg, photo, kb = await get_favorite_list(callback, callback_data)
+        await callback.message.edit_media(
             media=photo,
-            reply_markup=kb)
+            reply_markup=kb.create_kb())
 
     except TelegramBadRequest as error:
-        await call.answer(f"⚠️ {str(error)}")
+        await callback.answer(f"⚠️ {str(error)}")
     except CustomError as error:
         msg, photo = await get_error_answer_photo(error)
-        await call.message.answer_photo(
+        await callback.message.answer_photo(
             photo=photo,
             caption=msg,
             reply_markup=await menu_kb()
@@ -117,8 +98,8 @@ async def delete_favorite(call: CallbackQuery, callback_data: FavoriteDeleteCBD)
     print(f"ID   {callback_data.item_id}")
     data_list = await orm_get_favorite_list(call.from_user.id)
     paginator = Paginator(data_list, page=int(page))
-    kb = PaginationKB()
-    btn = FavoritePaginationBtn(item_id=callback_data.item_id)
+    kb = KeyBoardFactory()
+    btn = FavoritePaginationBtn_(item_id=callback_data.item_id)
     print(f"❌len  {paginator.len}")
     print(f"❌page  {page}")
     print(f"❌page  page > paginator.len =  {page > paginator.len}")
@@ -183,8 +164,7 @@ async def delete_favorite(call: CallbackQuery, callback_data: FavoriteDeleteCBD)
     ########################################################################################################
     try:
         item = paginator.get_page()[0]
-        msg = await favorite_info(item)
-        msg = msg + paginator.display_page()
+        msg = await favorite_info(item, page, paginator.len)
         img = item.image if item.image else None
     except IndexError:
         img = None
