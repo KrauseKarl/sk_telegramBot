@@ -8,46 +8,48 @@ class CacheKey(CallbackData, prefix='redis'):
     key: str
     api_page: str | int
     extra: str = None
+    sub_key: int = None
 
 
-class ItemCBD(CallbackData, prefix='itList'):
+class ItemCBD(CallbackData, prefix='ITL'):
     key: str
     api_page: int | str
     page: int | str
 
 
 class DetailAction(str, Enum):
-    view = "view"
-    back = "back"
+    go_view = "gtDtl"
+    back_list = "bcLst"
+    back_detail = "bcDtl"
 
 
-class DetailCBD(CallbackData, prefix='itDetail'):
+class DetailCBD(CallbackData, prefix='ITD'):
     action: DetailAction
     item_id: str = None
     key: str
     api_page: int | str
-    page: str
-    next: str
-    prev: str
-    first: str
-    last: str
+    page: int | str
+    next: int | str
+    prev: int | str
+    first: int | str
+    last: int | str
 
 
 class FavAction(str, Enum):
-    list = "add_list"
-    detail = "add_detail"
-    delete = "delete"
+    list = "add_lst"
+    detail = "add_dtl"
+    delete = "del"
     page = "page"
 
 
 class FavPagination(str, Enum):
-    next = "next_page"
-    prev = "prev_page"
-    last = "lats_page"
-    first = "first_page"
+    next = "next"
+    prev = "prev"
+    last = "lats"
+    first = "first"
 
 
-class FavoritePageCBD(CallbackData, prefix='favorite'):
+class FavoritePageCBD(CallbackData, prefix='FVT'):
     action: FavAction
     navigate: FavPagination
     page: int = 1
@@ -66,7 +68,7 @@ class FavoritePageCBD(CallbackData, prefix='favorite'):
 #     page: str
 
 
-class FavoriteAddDetailCBD(CallbackData, prefix='favorite'):
+class FavoriteAddDetailCBD(CallbackData, prefix='FVT'):
     action: FavAction
     item_id: str = None
     key: str
@@ -77,11 +79,11 @@ class FavoriteAddDetailCBD(CallbackData, prefix='favorite'):
     last: str
 
 
-class FavoriteAddCBD(FavoriteAddDetailCBD, prefix='favorite'):
+class FavoriteAddCBD(FavoriteAddDetailCBD, prefix='FVT'):
     page: str
 
 
-class FavoriteDeleteCBD(CallbackData, prefix='favorite'):
+class FavoriteDeleteCBD(CallbackData, prefix='FVT'):
     action: FavAction
     item_id: str
     page: int
@@ -93,19 +95,19 @@ class RevAction(str, Enum):
 
 
 class RevPagination(str, Enum):
-    next = "next_page"
-    prev = "prev_page"
-    last = "lats_page"
-    first = "first_page"
+    next = "next"
+    prev = "prev"
+    last = "lats"
+    first = "first"
 
 
-class ReviewPageCBD(CallbackData, prefix='review'):
+class ReviewPageCBD(CallbackData, prefix='RVW'):
     action: RevAction
     navigate: RevPagination
     page: int = 1
 
 
-class ReviewCBD(CallbackData, prefix='rvwList'):
+class ReviewCBD(CallbackData, prefix='RVW'):
     action: RevAction
     item_id: str = None
     key: str
@@ -115,3 +117,30 @@ class ReviewCBD(CallbackData, prefix='rvwList'):
     prev: str
     first: str
     last: str
+
+
+class ImgAction(str, Enum):
+    images = "img"
+    page = 'pgn'
+    back = "bck"
+
+
+class ImgNavigation(str, Enum):
+    next = "nx"
+    prev = "pr"
+    last = "lt"
+    first = "ft"
+
+
+class ImageCBD(CallbackData, prefix='IMG'):
+    action: ImgAction
+    navigate: ImgNavigation
+    item_id: str = None
+    key: str
+    api_page: int | str
+    page: int | str
+    next: int | str
+    prev: int | str
+    first: int | str
+    last: int | str
+    img_page: str | int

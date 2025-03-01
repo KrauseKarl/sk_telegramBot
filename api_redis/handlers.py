@@ -59,3 +59,13 @@ async def redis_set_data_to_cache(key: str, value: str) -> bool:
     if keys:
         print('\n'.join([f"🟧 {k}" for k in sorted(keys)]))
     return state
+
+
+async def redis_get_keys() -> aioredis.Redis:
+    """Flush all keys  from redis."""
+    client = await redis_connect()
+    keys = await client.keys()
+    if keys:
+        print('\n'.join([f"🔑 {k}" for k in sorted(keys)]))
+
+    return client

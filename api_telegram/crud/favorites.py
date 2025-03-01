@@ -88,7 +88,7 @@ async def get_favorite_list(query, data):
     else:
         msg = "⭕️ у вас пока нет избранных товаров"
         img = None
-        kb = PaginationBtn()
+        kb = BasePaginationBtn()
         kb.add_button(kb.btn_text('menu'))
     try:
         # img = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, img))

@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm import state
 
+from api_aliexpress.request import *
 from api_redis.handlers import *
 from api_telegram.callback_data import *
 from api_telegram.keyboards import *
@@ -24,12 +25,12 @@ class Review(state.StatesGroup):
     product = state.State()
 
 
-async def save_data_json(data, item_id: str = None):
+async def save_data_json_local(data, item_id: str = None, folder: str = None):
     file_name = "{0}.json".format(item_id.lower())
     file_path = os.path.join(
         config.BASE_DIR,
         "_json_example",
-        "_reviews",
+        folder,
         file_name
     )
     with open(file_path, "w") as file:
@@ -50,8 +51,8 @@ async def request_api_review(
         filter: str = None
 
 ) -> dict:
+
     full_url = "/".join([conf.base_url, url])
-    print(f"{full_url= }")
     if item_id:
         conf.querystring["itemId"] = item_id
     if sort:
@@ -69,18 +70,9 @@ async def request_api_review(
         )
     result = response.json()
     if item_id:
-        await save_data_json(data=result, item_id=item_id)
+        await save_data_json(data=result, item_id=item_id, folder=REVIEW_FAKE_FOLDER)
 
     return result
-
-
-async def request_api_review_fake(item_id: str = None):
-    file_name = "{0}.json".format(item_id)
-    path = os.path.join(config.BASE_DIR, "_json_example", "_reviews", file_name)
-    print(f"{path= }")
-    with open(path, 'r') as file:
-        data = json.load(file)
-    return data
 
 
 @review.callback_query(ReviewCBD.filter(F.action == RevAction.first))
@@ -94,7 +86,13 @@ async def request_review(callback: CallbackQuery, callback_data: ReviewCBD):
     review_list_cache = await redis_get_data_from_cache(cache_key)
 
     if review_list_cache is None:
-        response = await request_api_review_fake(item_id)
+        response = await request_api_review(
+            url=config.URL_API_REVIEW,
+            page=str(api_page),
+            item_id=item_id,
+            sort="latest",
+            filter="allReviews"
+        )
         review_list_cache = response['result']['resultList']
         await redis_set_data_to_cache(key=cache_key, value=review_list_cache)
 
@@ -104,7 +102,25 @@ async def request_review(callback: CallbackQuery, callback_data: ReviewCBD):
         api_page += 1
         ########################################################################
         if config.FAKE_MODE:
-            response = await request_api_review_fake(item_id)
+            my_file = Path(
+                os.path.join(
+                    config.BASE_DIR,
+                    FAKE_MAIN_FOLDER,
+                    REVIEW_FAKE_FOLDER,
+                    "review_{0}.json".format(item_id)
+                )
+            )
+            if my_file.is_file():
+                print('request from 🟩 FILE')
+                response = await request_api_review_fake(item_id=item_id)
+            else:
+                response = await request_api_review(
+                    url=config.URL_API_REVIEW,
+                    page=str(api_page),
+                    item_id=item_id,
+                    sort="latest",
+                    filter="allReviews"
+                )
         else:
             response = await request_api_review(
                 url=config.URL_API_REVIEW,

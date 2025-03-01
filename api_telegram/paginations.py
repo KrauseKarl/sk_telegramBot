@@ -49,10 +49,11 @@ async def paginate_item_list_kb(
         ]).add_markups([2, 1])
 
     kb.add_buttons([
-        kb.detail('detail', page, DetailAction.view),
+        kb.detail('detail', page, DetailAction.go_view),
         kb.btn_text("menu"),
         kb.btn_text("web")
     ]).add_markup(3)
+
     is_favorite = await orm_get_favorite(item_id)
     if is_favorite is None:
         kb.add_button(kb.favorite(page)).update_markup(4)

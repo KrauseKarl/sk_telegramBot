@@ -386,7 +386,10 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 @search.callback_query(
-    or_f(ItemCBD.filter(), DetailCBD.filter(F.action == DetailAction.back))
+    or_f(
+        ItemCBD.filter(),
+        DetailCBD.filter(F.action == DetailAction.back_list)
+    )
 )
 async def item_list_page(
         callback: types.CallbackQuery,
@@ -403,8 +406,7 @@ async def item_list_page(
 
     try:
         data = await state.get_data()
-        print('⬜️🟧 ENDPOINT SEARCH PAGINATION')
-        print(f'⬜️🟧 {data= }')
+        # print('⬜️🟧 ENDPOINT SEARCH PAGINATION')
         key = callback_data.key
         page = int(callback_data.page)
         api_page = callback_data.api_page
@@ -422,6 +424,11 @@ async def item_list_page(
         photo = await create_tg_answer(item["item"], page, api_page, paginator.pages)
         await callback.message.edit_media(media=photo, reply_markup=kb)
 
+        for i in kb:
+            for k in i[1]:
+                callback = k[0].callback_data
+                if callback.startswith("ITD"):
+                    print('❤️ list to detail', callback.split(":"))
     except CustomError as error:
         msg, photo = await get_error_answer_photo(error)
         await callback.message.answer_photo(
@@ -440,7 +447,7 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
     :param state: 
     :return: 
     """
-    print('️⬛️🟨 ENDPOINT SEARCH RESULT')
+    # print('️⬛️🟨 ENDPOINT SEARCH RESULT')
 
     try:
         await state.update_data(sort=call.data)
@@ -448,7 +455,7 @@ async def search_result(call: CallbackQuery, state: FSMContext) -> None:
         paginator_page = 1
         key = str(uuid.uuid4().hex)[:8]
         data = await save_query_in_cache_state(state)
-        print(f'️⬛️🟨 {data= }')
+        # print(f'️⬛️🟨 {data= }')
         ################################################################################################################
         call_data = ItemCBD(key=key, api_page="0", page=str(paginator_page))
         paginator = await get_paginate_item(data, call_data)
@@ -512,30 +519,9 @@ async def search_delete_callback(callback: CallbackQuery) -> None:
         media=await get_input_media_hero_image('error')
     )
 
-# @search.message(Command("cache"))
-# async def get_key_cache(message: Message, state: FSMContext):
-#     await state.set_state(Cache.key)
-#     await message.answer('🟥🟨🟩 Введите ключ')
-#
-#
-# @search.message(Cache.key)
-# async def get_cache(message: Message, state: FSMContext):
-#     await state.update_data(key=message.text)
-#
-#     ##############################################
-#     # _list = await get_routes_from_cache(message.text)
-#     _list = await storage.get_cache(message.text)
-#     ##############################################
-#
-#     print(f"\n{type(_list)= }\n")
-#     # await message.answer('done')
-#     # data = json.loads()
-#     # # _path = os.path.join(config.CACHE_PATH, f'{message.text}.json')
-#     # #
-#     # # with open(_path, 'r') as file:
-#     # #     data = json.load(file)
-#     #
-#     item_list = await deserialize_item_cache(_list)
-#     #
-#     for msg, img, kb in item_list:
-#         await message.answer_photo(photo=img, caption=msg, reply_markup=kb)
+
+@search.message(Command("redis"))
+async def get_key_cache(message: Message):
+    print('redis route start')
+    await redis_get_keys()
+    print('redis route finish')

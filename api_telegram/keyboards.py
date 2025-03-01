@@ -1,14 +1,12 @@
-from typing import Any, Coroutine, TYPE_CHECKING
+from typing import Any,  TYPE_CHECKING
 
 from aiogram import types
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils import keyboard
 
-from api_redis.handlers import redis_get_data_from_cache
 from api_telegram.callback_data import *
 from core.config import *
-from database.orm import orm_get_favorite, orm_get_favorite_list
-from database.paginator import Paginator
+from database.orm import *
+
 
 if TYPE_CHECKING:
     from database.paginator import Paginator
@@ -20,6 +18,7 @@ KEYS = {
     "first": "⏪ Первая",
     "last": "Послед.⏩",
     "delete": "❌ удалить",
+    "images": "🖼 изображения ",
 
     "search": "🛒 поиск",
     "history": "📋 история",
@@ -159,7 +158,7 @@ class KeyBoardFactory(KeyBoardBuilder):
         )
 
 
-class PaginationBtn(KeyBoardFactory):
+class BasePaginationBtn(KeyBoardFactory):
     def __init__(self):
         super().__init__()
 
@@ -170,18 +169,23 @@ class PaginationBtn(KeyBoardFactory):
         return self.factory.create_btn_callback_data(name, data)
 
 
-class ItemPaginationBtn(PaginationBtn):
-    def __init__(self, key: str, api_page: str, item_id: str = None, paginator_len: int = None):
+class ItemPaginationBtn(BasePaginationBtn):
+    def __init__(
+            self,
+            key: str,
+            api_page: str | int,
+            item_id: str = None,
+            paginator_len: str | int = None):
         super().__init__()
         self.key = key
         self.api_page = api_page
         self.item_id = item_id
         self.len = paginator_len
         self.first = 1
-        self.call_data = ItemCBD
+        self.callback_data = ItemCBD
 
     def _btn(self, page):
-        return self.call_data(
+        return self.callback_data(
             key=self.key,
             api_page=self.api_page,
             page=page
@@ -241,11 +245,126 @@ class ItemPaginationBtn(PaginationBtn):
             page=str(page),
         ).pack()
 
+    def _images(self, page: str | int):
+        return ImageCBD(
+            action=ImgAction.images,
+            item_id=str(self.item_id),
+            key=self.key,
+            api_page=self.api_page,
+            page=str(page),
+            next=str(int(page) + 1),
+            prev=str(int(page) - 1),
+            first=str(self.first),
+            last=str(self.len),
+            navigate=ImgNavigation.first,
+            img_page=1
+        ).pack()
+
     def comment(self, page: str | int):
         return self.btn_data('review', self._comment(page))
 
+    def images(self, page: str | int):
+        return self.btn_data("images", self._images(page))
 
-class FavoritePaginationBtn_(PaginationBtn):
+
+class ImgPaginationBtn(ItemPaginationBtn):
+    def __init__(
+            self,
+            key: str,
+            api_page: str | int,
+            item_id: str = None,
+            paginator_len: str | int = None,
+    ):
+        super().__init__(
+            key,
+            api_page,
+            item_id,
+            paginator_len,
+        )
+        self.callback_data = ImageCBD
+        self.action = ImgAction
+        self.navigate = ImgNavigation
+        # self.item_id = item_id
+        # self.paginator_len = paginator_len
+
+    def set_callback_data(self, data):
+        self.callback_data = data
+        return self
+
+    def _call_data(self, page, img_page, navigate):  # page + 1
+        return self.callback_data(
+            action=self.action.page,
+            item_id=self.item_id,
+            key=self.key,
+            api_page=self.api_page,
+            page=str(page),
+            next=str(int(page + 1)),
+            prev=str(int(page - 1)),
+            first=self.first,
+            last=self.len,
+            navigate=navigate,
+            img_page=int(img_page),
+        ).pack()
+
+    def next_btn(self, page, img_page):
+        return self.btn_data(
+            'next',
+            self._call_data(page, img_page, navigate=self.navigate.next)
+        )
+
+    def prev_btn(self, page, img_page):
+        return self.btn_data(
+            'prev',
+            self._call_data(page, img_page, navigate=self.navigate.prev)
+        )
+
+
+class PGBtn(ItemPaginationBtn):
+    def __init__(
+            self,
+            key: str,
+            api_page: str | int,
+            item_id: str = None,
+            paginator_len: str | int = None,
+            data: Any = None,
+            action: Any = None,
+            navigate: Any = None,
+
+    ):
+        super().__init__(key, api_page, paginator_len, item_id)
+        self.paginator_len = paginator_len
+        self.callback_data = data
+        self.action = action
+        self.navigate = navigate
+
+    def _next_call_data(self, page):  # page + 1
+        return self.callback_data(
+            action=self.action.page,
+            navigate=self.navigate.next,
+            page=str(int(page + 1))
+        ).pack()
+
+    def next(self, page):
+        return self.btn_data('next', self._next_call_data(page))
+
+    def _prev_bt_call_data(self, page):  # page - 1
+        return self.callback_data(
+            action=self.action.page,
+            navigate=self.navigate.prev,
+            page=str(int(page - 1))
+        ).pack()
+
+    def prev(self, page):
+        return self.btn_data('prev', self._prev_bt_call_data(page))
+
+    def first(self):
+        return self.btn_data('first', 1)
+
+    def last(self):
+        return self.btn_data('last', self.paginator_len)
+
+
+class FavoritePaginationBtn_(BasePaginationBtn):
     def __init__(self, item_id):
         super().__init__()
         self.action = FavAction
@@ -278,7 +397,7 @@ class FavoritePaginationBtn_(PaginationBtn):
         ).pack()
 
 
-class FavoritePaginationBtn(PaginationBtn):
+class FavoritePaginationBtn(BasePaginationBtn):
     def __init__(self, item_id):
         super().__init__()
         self.page = 1
@@ -383,7 +502,7 @@ async def menu_kb():
 
     :return:
     """
-    kb = PaginationBtn()
+    kb = BasePaginationBtn()
     kb.add_buttons([
         kb.btn_text("search"),
         kb.btn_text("history"),
@@ -401,7 +520,7 @@ async def sort_kb():
 
     :return:
     """
-    kb = PaginationBtn()
+    kb = BasePaginationBtn()
     kb.add_buttons([
         kb.btn_text("default"),
         kb.btn_text("salesDesc"),
@@ -417,7 +536,7 @@ async def qnt_kb():
     :return:
 
     """
-    kb = PaginationBtn()
+    kb = BasePaginationBtn()
     kb.add_buttons([
         kb.btn_text("2"),
         kb.btn_text("3"),
@@ -439,7 +558,7 @@ async def item_kb(prefix: str, item_id: str, text: str):
 
 
 async def price_range_kb():
-    kb = PaginationBtn()
+    kb = BasePaginationBtn()
     kb.add_buttons([
         kb.btn_text("price_min"),
         kb.btn_text("price_skip")
@@ -448,7 +567,7 @@ async def price_range_kb():
 
 
 async def error_kb():
-    kb = PaginationBtn()
+    kb = BasePaginationBtn()
     kb.add_buttons([
         kb.btn_text("menu"),
     ]).add_markups([1, ])

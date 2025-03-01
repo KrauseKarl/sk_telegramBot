@@ -31,7 +31,7 @@ async def get_paginate_item(state_data: Dict[str, Any], callback_data: ItemCBD |
     cache_key = CacheKey(key=key, api_page=api_page).pack()
     item_list_cache = await redis_get_data_from_cache(cache_key)
 
-    print(f"⬜️DATA FROM 🟩 CACHE ")
+    # print(f"⬜️DATA FROM 🟩 CACHE ")
     if api_page == 0 or page > len(item_list_cache):
         print(f"⬜️DATA FROM 🟥 REQUEST")
         api_page += 1

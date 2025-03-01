@@ -66,7 +66,7 @@ FLAGS = {
 
 load_dotenv()
 
-FAKE_MODE = True # False
+FAKE_MODE = True  # False
 
 # ALIEXPRESS API URLS ###################################################################
 URL_API_ITEM_LIST = "item_search_5"
