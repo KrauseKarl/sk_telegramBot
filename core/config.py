@@ -66,7 +66,7 @@ FLAGS = {
 
 load_dotenv()
 
-FAKE_MODE = True  # False
+FAKE_MODE = 1 == 1
 
 # ALIEXPRESS API URLS ###################################################################
 URL_API_ITEM_LIST = "item_search_5"
@@ -137,6 +137,7 @@ HERO = {
     "search": os.path.join(DEFAULT_FOLDER, "search_2.png"),
     "result": os.path.join(DEFAULT_FOLDER, "result_2.png"),
     "welcome": os.path.join(DEFAULT_FOLDER, "welcome_2.png"),
+    "not_found": os.path.join(DEFAULT_FOLDER, "not_found.png"),
 }
 
 

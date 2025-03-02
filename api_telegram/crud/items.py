@@ -32,14 +32,12 @@ async def get_paginate_item(state_data: Dict[str, Any], callback_data: ItemCBD |
     item_list_cache = await redis_get_data_from_cache(cache_key)
 
     # print(f"⬜️DATA FROM 🟩 CACHE ")
-    if api_page == 0 or page > len(item_list_cache):
-        print(f"⬜️DATA FROM 🟥 REQUEST")
-        api_page += 1
+    if item_list_cache is None:
         ########################################################################
         if config.FAKE_MODE:
-            result = await request_api_fake(page=api_page, query=state_data.get("product"))
+            response = await request_api_fake(page=api_page, query=state_data.get("product"))
         else:
-            result = await request_api(
+            response = await request_api(
                 query=state_data.get("product"),
                 sort=state_data.get("sort"),
                 start_price=state_data.get("price_min"),
@@ -47,13 +45,28 @@ async def get_paginate_item(state_data: Dict[str, Any], callback_data: ItemCBD |
                 url=config.URL_API_ITEM_LIST,
                 page=str(api_page)
             )
+            print('----', response, '----')
+        item_list_cache = response["result"]["resultList"]
         ########################################################################
-        item_list_cache = result["result"]["resultList"]
-        cache_key = CacheKey(key=key, api_page=api_page).pack()
+        if api_page == 0 or page > len(item_list_cache):
+            print(f"⬜️DATA FROM 🟥 REQUEST")
+            api_page += 1
+            ########################################################################
+            if config.FAKE_MODE:
+                response = await request_api_fake(page=api_page, query=state_data.get("product"))
+            else:
+                response = await request_api(
+                    query=state_data.get("product"),
+                    sort=state_data.get("sort"),
+                    start_price=state_data.get("price_min"),
+                    end_price=state_data.get("price_max"),
+                    url=config.URL_API_ITEM_LIST,
+                    page=str(api_page)
+                )
+        ########################################################################
+        item_list_cache = response["result"]["resultList"]
         page = 1
-        cache_data = await redis_get_data_from_cache(cache_key)
-        if cache_data is None:
-            await redis_set_data_to_cache(key=cache_key, value=item_list_cache)
+        await redis_set_data_to_cache(key=cache_key, value=item_list_cache)
 
     return Paginator(array=item_list_cache, page=page)
 

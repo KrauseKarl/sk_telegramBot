@@ -1,18 +1,12 @@
-import json
-import os
-import emoji
-import httpx
-from aiogram import Router, F, types
-from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+
+from aiogram import Router, F
+from aiogram.types import CallbackQuery
 from aiogram.fsm import state
 
 from api_aliexpress.request import *
 from api_redis.handlers import *
 from api_telegram.callback_data import *
 from api_telegram.keyboards import *
-from core import *
 from core.config import conf
 from database.paginator import *
 from utils.media import *
@@ -75,45 +69,47 @@ async def request_api_review(
     return result
 
 
-@review.callback_query(ReviewCBD.filter(F.action == RevAction.first))
+@review.callback_query(ReviewCBD.filter(F.action.in_({RevAction.first, RevAction.page})))
 async def request_review(callback: CallbackQuery, callback_data: ReviewCBD):
-    item_id = callback_data.item_id
-    # comment_list = await request_api_review_fake(item_id)
-    key = callback_data.key
-    page = int(callback_data.page)
-    api_page = int(callback_data.api_page)
-    cache_key = CacheKey(key=key, api_page=api_page, extra='review').pack()
-    review_list_cache = await redis_get_data_from_cache(cache_key)
+    try:
+        item_id = callback_data.item_id
+        key = callback_data.key
+        page = int(callback_data.page)
+        api_page = int(callback_data.api_page)
+        navigate = callback_data.navigate
+        review_page = callback_data.review_page
 
-    if review_list_cache is None:
-        response = await request_api_review(
-            url=config.URL_API_REVIEW,
-            page=str(api_page),
-            item_id=item_id,
-            sort="latest",
-            filter="allReviews"
-        )
-        review_list_cache = response['result']['resultList']
-        await redis_set_data_to_cache(key=cache_key, value=review_list_cache)
+        cache_key = CacheKey(key=key, api_page=api_page, extra='review').pack()
+        review_list_cache = await redis_get_data_from_cache(cache_key)
 
-    print(f"⬜️REVIEW DATA FROM 🟩 CACHE ")
-    if api_page == 0 or page > len(review_list_cache):
-        print(f"⬜️️REVIEW DATA FROM 🟥 REQUEST")
-        api_page += 1
-        ########################################################################
-        if config.FAKE_MODE:
-            my_file = Path(
-                os.path.join(
-                    config.BASE_DIR,
-                    FAKE_MAIN_FOLDER,
-                    REVIEW_FAKE_FOLDER,
-                    "review_{0}.json".format(item_id)
+        if review_list_cache is None:
+            ################################################################################
+            # FAKE_MODE                                                                    #
+            ################################################################################
+            if config.FAKE_MODE:
+                my_file = Path(
+                    os.path.join(
+                        config.BASE_DIR,
+                        FAKE_MAIN_FOLDER,
+                        REVIEW_FAKE_FOLDER,
+                        "review_{0}.json".format(item_id)
+                    )
                 )
-            )
-            if my_file.is_file():
-                print('request from 🟩 FILE')
-                response = await request_api_review_fake(item_id=item_id)
+                if my_file.is_file():
+                    print('FAKE_MODE request from 🟩🟩🟩 FILE')
+                    response = await request_api_review_fake(item_id=item_id)
+                else:
+                    print('FAKE_MODE request from 🟥🟥🟥 INTERNET')
+                    response = await request_api_review(
+                        url=config.URL_API_REVIEW,
+                        page=str(api_page),
+                        item_id=item_id,
+                        sort="latest",
+                        filter="allReviews"
+                    )
             else:
+                ################################################################################
+                print(f"🌐🌐🌐🟥 DATA FROM INTERNET [💬 REVIEW]")
                 response = await request_api_review(
                     url=config.URL_API_REVIEW,
                     page=str(api_page),
@@ -121,124 +117,64 @@ async def request_review(callback: CallbackQuery, callback_data: ReviewCBD):
                     sort="latest",
                     filter="allReviews"
                 )
-        else:
-            response = await request_api_review(
-                url=config.URL_API_REVIEW,
-                page=str(api_page),
+            try:
+                review_list_cache = response['result']['resultList']
+                await redis_set_data_to_cache(key=cache_key, value=review_list_cache)
+            except KeyError:
+                review_list_cache = response['data']
+        if review_list_cache != 'error':
+            if api_page == 0 or page > len(review_list_cache):
+                api_page += 1
+                page = 1
+                cache_data = await redis_get_data_from_cache(cache_key)
+                if cache_data is None:
+                    await redis_set_data_to_cache(key=cache_key, value=review_list_cache)
+
+            paginator = Paginator(array=review_list_cache, page=int(review_page))
+            reviews = paginator.get_page()[0]
+            msg = await create_review_tg_answer(reviews, review_page, paginator.len)
+            print('\n*****', reviews['review']['reviewImages'])
+            # todo make func `simple paginator`
+            kb = RevPaginationBtn(
+                key=key,
+                api_page=api_page,
                 item_id=item_id,
-                sort="latest",
-                filter="allReviews"
+                paginator_len=callback_data.last
             )
-        ########################################################################
-        review_list_cache = response['result']['resultList']
-        cache_key = CacheKey(key=key, api_page=api_page, extra='review').pack()
-        page = 1
-        cache_data = await redis_get_data_from_cache(cache_key)
-        if cache_data is None:
-            await redis_set_data_to_cache(key=cache_key, value=review_list_cache)
+            if paginator.len > 1:
+                if navigate == RevNavigate.first:
+                    kb.add_button(kb.next_btn(page, int(review_page) + 1)).add_markup(1)
+                elif navigate == RevNavigate.next:
+                    kb.add_button(kb.prev_btn(page, int(review_page) - 1)).add_markup(2)
+                    if int(review_page) < paginator.len:
+                        kb.add_button(kb.next_btn(page, int(review_page) + 1)).add_markup(2)
+                elif navigate == RevNavigate.prev:
+                    if int(review_page) > 1:
+                        kb.add_button(kb.prev_btn(page, int(review_page) - 1)).add_markup(2)
+                    kb.add_button(kb.next_btn(page, int(review_page) + 1)).add_markup(2)
 
-    paginator = Paginator(array=review_list_cache, page=page)
-    comment = paginator.get_page()[0]
-    msg = await create_review_tg_answer(comment, page, api_page, paginator.len)
-    kb = KeyBoardFactory()
-    btn = CommentPaginationBtn(item_id)
-
-    if paginator.len > 1:
-        # if navigate == RevPagination.first:
-        kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
-        #
-        # elif navigate == FavPagination.next:
-        #     kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).add_markup(1)
-        #     if page < len_data:
-        #         kb.add_button({"След. ➡️": btn.next_bt(page)}).update_markup(2)
-        #
-        # elif navigate == FavPagination.prev:
-        #     kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
-        #     if page > 1:
-        #         kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).update_markup(2)
-    back_to_list = DetailCBD(
-        action=DetailAction.back,
-        item_id=callback_data.item_id,
-        key=callback_data.key,
-        api_page=callback_data.api_page,
-        page=callback_data.page,
-        next=callback_data.next,
-        prev=callback_data.prev,
-        first=callback_data.first,
-        last=callback_data.last,
-    ).pack()
-    buttons = [{"🏠 назад": back_to_list}]
-    kb.add_buttons(buttons).add_markup(1)
-    media = await get_fs_input_hero_image('result')
-    photo = types.InputMediaPhoto(media=media, caption=msg)
-    await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
-
-# @review.callback_query(F.data.startswith("review"))
-# async def request_review_message(message: CallbackQuery, state: FSMContext) -> None:
-#     await state.clear()
-#     await state.set_state(Review.product)
-#     await message.message.answer('💬💬💬 Введите артикул товара')
-#
-#
-# @review.message(Review.product)
-# async def request_product_name(message: Message, state: FSMContext) -> None:
-#     await state.update_data(product=message.text)
-#     # response = await request_api_review(
-#     #     item_id=message.text,
-#     #     sort="latest",
-#     #     url=config.URL_API_REVIEW,
-#     #     page='1',
-#     #     filter="allReviews"
-#     # )
-#     response = await request_api_review_fake(item_id=message.text)
-#     reviews = response['result']['resultList'][:20]
-#
-#     for r in reviews:
-#         dtime = r['review']['reviewDate']
-#         stars = r['review']['reviewStarts']
-#         item_title = r['review']['itemSpecInfo']
-#         review_text = r.get('review').get('translation').get('reviewContent', 'no comment')
-#         msg = "{0}\n".format("⭐️" * stars)
-#         msg += '{0}\n'.format(dtime)
-#         msg += "<i>{0:.200}</i>\n\n".format(review_text)
-#         msg += "📦 item: {0:.50}\n".format(item_title)
-#         msg += "👤 name: {0}\n".format(r['buyer']['buyerTitle'])
-#         try:
-#             country = config.FLAGS[r['buyer']['buyerCountry']].replace(" ", "_")
-#             country_name = config.FLAGS[r['buyer']['buyerCountry']]
-#             print(country, country_name)
-#         except KeyError:
-#             country = "pirate_flag"
-#             country_name = r['buyer']['buyerCountry']
-#
-#         msg += emoji.emojize(":{0}: {1}".format(country, country_name))
-#
-#         await message.answer(msg)
-#
-#     # result
-#     #     "resultList": [
-#     #       {
-#     #         "review": {
-#     #           "reviewId": 60088804112413800,
-#     #           "reviewDate": "25 фев 2025",
-#     #           "reviewContent": "Fits true. Nice material ",
-#     #           "reviewAdditional": null,
-#     #           "reviewStarts": 5,
-#     #           "reviewImages": null,
-#     #           "reviewAnonymous": false,
-#     #           "reviewHelpfulYes": 0,
-#     #           "reviewHelpfulNo": 0,
-#     #           "itemSpecInfo": "Color:Black Long Sleeve 3 Size:L ",
-#     #           "itemLogistics": "AliExpress Standard Shipping",
-#     #           "translation": {
-#     #             "reviewContent": "Подходит правда. Хороший материал",
-#     #             "reviewLanguage": "ru"
-#     #           }
-#     #         },
-#     #         "buyer": {
-#     #           "buyerTitle": "L***d",
-#     #           "buyerGender": null,
-#     #           "buyerCountry": "CA",
-#     #           "buyerImage": null
-#     #         }
-#     #       },
+            back_button = kb.detail("back", page, DetailAction.back_detail)
+            kb.add_button(back_button).add_markups([1])
+            # todo make func `simple paginator`
+            try:
+                media = ":".join(["https", reviews['review']['reviewImages'][0]])
+                photo = types.InputMediaPhoto(media=media, caption=msg)
+            except:
+                media = await get_fs_input_hero_image('result')
+                photo = types.InputMediaPhoto(media=media, caption=msg)
+            await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
+        else:
+            kb = ItemPaginationBtn(
+                key=callback_data.key,
+                api_page=callback_data.api_page,
+                paginator_len=callback_data.last,
+                item_id=callback_data.item_id
+            )
+            back_call_back = kb.detail('back', callback_data.page, DetailAction.back_detail)
+            kb.add_button(back_call_back).add_markup(1)
+            media = await get_fs_input_hero_image('not_found')
+            photo = types.InputMediaPhoto(media=media, caption='⭕️ нет комментариев')
+            await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
+    except Exception as error:
+        print(str(error))
+        await callback.answer(text=f'⚠️ error review')

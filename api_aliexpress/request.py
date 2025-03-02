@@ -160,9 +160,8 @@ async def request_api(
 
         ##################################################################
         # todo delete after develop
-
-        print("☀️☀️☀️☀️☀️REQUEST TO ALIEXPRESS API - {}".format(conf.querystring.items()))
-        print(f"$$$ {url = }")
+        params = ' '.join([f"{k}:{v}" for k, v in conf.querystring.items()])
+        print("REQUEST TO ALIEXPRESS http://.../{1} - {0}".format(params, url).ljust(5, '='))
         if url == config.URL_API_ITEM_LIST:
             await save_data_json(data=result, query=query, page=page, folder=ITEM_LIST_FAKE_FOLDER)
             print(f'save in /{ITEM_LIST_FAKE_FOLDER}')

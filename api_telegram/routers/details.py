@@ -23,9 +23,6 @@ async def get_item_detail(
         state: FSMContext,
 
 ) -> None:
-    # print('🟦 DETAIL ENDPOINT')
-    data = callback_data
-    # print(data)
     try:
         await call.answer()
         cache_key = CacheKey(
@@ -37,23 +34,26 @@ async def get_item_detail(
         detail_cache = await redis_get_data_from_cache(cache_key)
 
         if detail_cache is None:
-            # FAKE REQUEST TO FILE JSON ############################################
+            ########################################################################################
+            # FAKE REQUEST TO FILE JSON
+            ########################################################################################
             path = os.path.join(
                 config.BASE_DIR,
                 FAKE_MAIN_FOLDER,
                 DETAIL_FAKE_FOLDER,
-                "detail_{0}.json".format(data.item_id)
+                "detail_{0}.json".format(callback_data.item_id)
             )
             my_file = Path(path)
             if my_file.is_file():
-                print('request from 🟩 FILE')
-                response = await request_api_detail_fake(item_id=data.item_id)
+                print(f"🟩  DATA FROM 💾CACHE [ℹ️ DETAIL]".rjust(20, "🟩"))
+                response = await request_api_detail_fake(item_id=callback_data.item_id)
             else:
-                print('request from 🟥 INTERNET')
-                ######################################################################
+                print(f"🟥 DATA FROM 🌐INTERNET [ℹ️ DETAIL]".rjust(20, "🟥"))
+                #####################################################################################
+
                 response = await request_api(
                     url=config.URL_API_ITEM_DETAIL,
-                    item_id=data.item_id
+                    item_id=callback_data.item_id
                 )
             detail_cache = response
             await redis_set_data_to_cache(key=cache_key, value=detail_cache)
@@ -64,26 +64,47 @@ async def get_item_detail(
 
         # todo refactor - add kb_factory
         kb = ItemPaginationBtn(
-            key=data.key,
-            api_page=data.api_page,
-            item_id=data.item_id,
-            paginator_len=int(data.last)
+            key=callback_data.key,
+            api_page=callback_data.api_page,
+            item_id=callback_data.item_id,
+            paginator_len=int(callback_data.last)
         )
-        is_favorite = await orm_get_favorite(item_id=data.item_id)
+
+        # kb_new = BaseBtn(
+        #     key=callback_data.key,
+        #     api_page=callback_data.api_page,
+        #     item_id=callback_data.item_id,
+        #     paginator_len=int(callback_data.last)
+        # )
+        # review_btn = kb_new.title(
+        #     "review"
+        # ).do(
+        #     ReviewAction.first
+        # ).nav(
+        #     Navigation.first
+        # ).pg(
+        #     callback_data.page
+        # ).extra_page(1).btn_create()
         buttons = [
-            kb.detail('back', data.page, DetailAction.back_list),
-            kb.comment(data.page),
-            kb.images(data.page),
+            kb.comment(callback_data.page),
+            kb.images(callback_data.page),
             kb.btn_text('price'),
+            kb.detail('back', callback_data.page, DetailAction.back_list),
+
         ]
+        is_favorite = await orm_get_favorite(item_id=callback_data.item_id)
         if is_favorite is None:
-            buttons.insert(0, kb.favorite(data.page))
-        (kb.add_buttons(buttons).add_markups([1, 2, 2]))
+            buttons.insert(0, kb.favorite(callback_data.page))
+
+        kb.add_buttons(buttons).add_markups([2, 2, 1])
+        # todo refactor - add kb_factory
+
+        ##################################################################
         for i in kb.get_kb():
             for k, v in i.items():
                 if v.startswith('ITD'):
                     print("💜 detail to list", v.split(":"))
-        # todo check if item already in favorites don not show fav button
+        #################################################################
 
         await call.message.edit_media(
             media=InputMediaPhoto(
@@ -113,6 +134,7 @@ async def show_first_item_paginate_images(callback: CallbackQuery, callback_data
     api_page = int(callback_data.api_page)
     navigate = callback_data.navigate
     img_page = int(callback_data.img_page)
+
     kb = ImgPaginationBtn(
         key=key,
         api_page=api_page,
@@ -121,14 +143,15 @@ async def show_first_item_paginate_images(callback: CallbackQuery, callback_data
     )
     cache_key = CacheKey(key=key, api_page=api_page, extra='detail', sub_key=page).pack()
     item_img_cache = await redis_get_data_from_cache(cache_key)
-    # print(f"🔴🔴🔴CACHE")
+    print(f"🟥 DATA FROM 🌐INTERNET [🖼 IMAGE]".rjust(20, "🟥"))
     if item_img_cache is None:
         response = await request_api(
             url=config.URL_API_REVIEW,
             item_id=item_id,
         )
         item_img_cache = response['result']['item']
-        # print(f"🟦🟦🟦INTERNET")
+
+        print(f"🟩 DATA FROM 💾CACHE [🖼 IMAGE]".rjust(20, "🟩"))
         await redis_set_data_to_cache(key=cache_key, value=item_img_cache)
     # img_list = item_img_cache.get('images')
 
@@ -139,8 +162,6 @@ async def show_first_item_paginate_images(callback: CallbackQuery, callback_data
             img_list.extend(color_list)
     except:
         pass
-    for i in img_list:
-        print(f"-- {i}")
     print(f"🖼 1 img_list len = {len(img_list)=}")
     # print(f"🖼 2 {page= }")
 

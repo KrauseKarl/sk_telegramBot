@@ -1,3 +1,5 @@
+from aiogram import types
+
 from api_redis.handlers import redis_get_data_from_cache
 from api_telegram.callback_data import DetailAction, CacheKey, FavPagination
 from api_telegram.keyboards import (
@@ -47,11 +49,11 @@ async def paginate_item_list_kb(
             kb.btn("next", str(page + 1)),
             kb.first_btn(),
         ]).add_markups([2, 1])
-
+    data_web = ("url", "https://www.aliexpress.com/item/{0}.html".format(item_id))
     kb.add_buttons([
         kb.detail('detail', page, DetailAction.go_view),
         kb.btn_text("menu"),
-        kb.btn_text("web")
+        kb.btn_data("web", data_web),
     ]).add_markup(3)
 
     is_favorite = await orm_get_favorite(item_id)

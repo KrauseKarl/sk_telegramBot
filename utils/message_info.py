@@ -62,13 +62,13 @@ async def refresh_tg_answer(item, item_id, page, api_page, total_pages):
     return types.InputMediaPhoto(media=item["image"], caption=msg)
 
 
-async def create_review_tg_answer(obj, page, api_page, total_pages):
+async def create_review_tg_answer(obj, page, total_pages):
     dtime = obj['review']['reviewDate']
     stars = obj['review']['reviewStarts']
     item_title = obj['review']['itemSpecInfo']
     review_text = obj.get('review').get('translation').get('reviewContent', 'no comment')
     msg = "{0}\n".format("⭐️" * stars)
-    msg += '{0}\n'.format(dtime)
+    msg += '{0}\n\n'.format(dtime)
     msg += "<i>{0:.200}</i>\n\n".format(review_text)
     msg += "📦 item: {0:.50}\n".format(item_title)
     msg += "👤 name: {0}\n".format(obj['buyer']['buyerTitle'])
@@ -81,7 +81,7 @@ async def create_review_tg_answer(obj, page, api_page, total_pages):
         country_name = obj['buyer']['buyerCountry']
 
     msg += emoji.emojize(":{0}: {1}".format(country, country_name))
-    msg += "<b>{0}</b> из {1} стр. {2}\t".format(page, total_pages, api_page)
+    msg += "\n\n<b>{0}</b> из {1}\t".format(page, total_pages)
 
     return msg
 

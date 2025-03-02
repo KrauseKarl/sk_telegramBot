@@ -51,12 +51,13 @@ async def deserialize_item_detail(
     item = response["result"]["item"]
     reviews = response["result"]["reviews"]
 
-    data["user"] = user_id
+    data["user_id"] = user_id
     data["command"] = "item detail"
     data["title"] = item.get("title")
     data["price"] = item.get("sku").get("base")[0].get("promotionPrice")
     data["reviews"] = reviews.get("count")
     data["star"] = reviews.get("averageStar")
+    data["reviews"] = reviews.get("count")
     data["url"] = ":".join(["https", item.get("itemUrl")])
     try:
         data["image"] = ":".join(["https", item["images"][0]])

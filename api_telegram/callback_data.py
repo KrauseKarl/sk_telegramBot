@@ -94,29 +94,31 @@ class RevAction(str, Enum):
     page = "page"
 
 
-class RevPagination(str, Enum):
-    next = "next"
-    prev = "prev"
-    last = "lats"
-    first = "first"
+class RevNavigate(str, Enum):
+    next = "nxt"
+    prev = "prv"
+    last = "lts"
+    first = "fst"
 
 
 class ReviewPageCBD(CallbackData, prefix='RVW'):
     action: RevAction
-    navigate: RevPagination
+    navigate: RevNavigate
     page: int = 1
 
 
 class ReviewCBD(CallbackData, prefix='RVW'):
     action: RevAction
-    item_id: str = None
+    navigate: RevNavigate
+    item_id: str | None = None
     key: str
     api_page: int | str
-    page: str
-    next: str
-    prev: str
-    first: str
-    last: str
+    page: str | int
+    next: str | int
+    prev: str | int
+    first: str | int
+    last: str | int
+    review_page: str | int
 
 
 class ImgAction(str, Enum):
@@ -144,3 +146,47 @@ class ImageCBD(CallbackData, prefix='IMG'):
     first: int | str
     last: int | str
     img_page: str | int
+
+
+class DetailsAction(str, Enum):
+    view = "DGD"
+    list = "DBL"
+    detail = "DBD"
+
+
+class FavoriteAction(str, Enum):
+    add_list = "FAL"
+    aad_detail = "FAD"
+    delete = "FDL"
+    paginate = "FPG"
+
+
+class ReviewAction(str, Enum):
+    first = "RFP"
+    paginate = "RPG"
+
+
+class ImagesAction(str, Enum):
+    images = "IFP"
+    paginate = 'IPG'
+    back = "IBD"
+
+
+class Navigation(str, Enum):
+    next = "NXT"
+    prev = "PRV"
+    last = "LST"
+    first = "FRT"
+
+
+class BaseCBD(CallbackData, prefix='BS'):
+    action:  DetailAction | FavoriteAction | ReviewAction | ImgAction
+    navigate: Navigation
+    item_id: str | int | None = None
+    key: str
+    api_page: str | int
+    next: str | int
+    prev: str | int
+    first: str | int
+    last: str | int
+    extra_page: str | int | None = None

@@ -95,19 +95,19 @@ class Favorite(Base):
 
 class HistoryModel(BaseModel):
     command: str
-    search_name: str = None
-    result_qnt: int = None
-    price_range: str = None
+    user: int
+    search_name: str | None = None
+    result_qnt: int | None = None
+    price_range: str | None = None
     price_min: str | int | None = None
     price_max: str | int | None = None
-    title: str = None
-    price: float = None
-    reviews: int = None
-    stars: float = None
-    url: str = None
-    image: str = None
-    user: int = None
-    sort: str = None
+    title: str | None = None
+    price: float | None = None
+    reviews: int | None = None
+    stars: float | None = None
+    url: str | None = None
+    image: str | None = None
+    sort: str | None = None
 
 
 class FavoriteModel(BaseModel):

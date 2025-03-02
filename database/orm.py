@@ -1,6 +1,7 @@
 from peewee import DoesNotExist
 
-from database.models import Favorite, History, User
+from core import config
+from database.models import Favorite, History, User, HistoryModel
 
 
 # USER #####################################################################
@@ -22,6 +23,15 @@ async def orm_make_record_user(user_id: int) -> None:
 
 
 async def orm_make_record_request(data: dict) -> None:
+    HistoryModel(
+        user=data.get('user_id'),
+        command=data.get('command'),
+        # price_range=''.format(data.get('price_min'), data.get('price_max')),
+        price_min=data.get('price_min', None),
+        price_max=data.get('price_max', None),
+        search_name=data.get('product', None),
+        sort=config.SORT_DICT[data.get('sort', "default")]
+    ).model_dump()
     History().create(**data).save()
 
 
