@@ -23,18 +23,16 @@ async def create_favorite_instance(call: CallbackQuery, data: FavoriteAddCBD):
     if item:
         raise IntegrityError("⚠️ уже добавлено в избранное")
     #####################################################
-    if config.FAKE_MODE:
-        response = await request_api_fake_favorite(data.item_id)
-        item_data = await deserialize_item_detail_fake(response, call.from_user.id)
-    else:
-        response = await request_api(
-            url=config.URL_API_ITEM_DETAIL,
-            item_id=data.item_id
-        )
-        item_data = await deserialize_item_detail(response, call.from_user.id)
+    params = {
+        "url": config.URL_API_ITEM_DETAIL,
+        "itemId": data.item_id
+    }
+    response = await request_api(params)
+    item_data = await deserialize_item_detail(response, call.from_user.id)
     ##########################################################
     item_data["product_id"] = data.item_id
     await orm_get_or_create_favorite(item_data)
+    item_data["command"] = "item detail"
     kb = ItemPaginationBtn(
         key=data.key,
         api_page=data.api_page,
@@ -43,7 +41,7 @@ async def create_favorite_instance(call: CallbackQuery, data: FavoriteAddCBD):
     )
     if data.action == FavAction.detail:
         kb.add_buttons([
-            kb.detail('back', data.page, DetailAction.view),
+            kb.detail('back', data.page, DetailAction.go_view),
             kb.btn_text('price')
         ]).add_markups([1, 2, 3])
     if data.action == FavAction.list:
@@ -52,7 +50,7 @@ async def create_favorite_instance(call: CallbackQuery, data: FavoriteAddCBD):
             kb.btn_data('next', data.next),
             kb.btn_data('first', data.first),
             kb.btn_data('last', data.last),
-            kb.detail('view', data.page, DetailAction.view),
+            kb.detail('view', data.page, DetailAction.go_view),
             kb.btn_text('menu'),
             kb.btn_text('web'),
         ]).add_markups([2, 2, 3])

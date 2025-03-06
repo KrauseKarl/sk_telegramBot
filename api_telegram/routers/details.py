@@ -13,6 +13,7 @@ from database.orm import *
 from utils.message_info import *
 
 detail = Router()
+redis_handler = RedisHandler()
 
 
 # ITEM DETAIL ##########################################################################################################
@@ -25,13 +26,13 @@ async def get_item_detail(
 ) -> None:
     try:
         await call.answer()
-        cache_key = CacheKey(
+        cache_key = CacheKeyExtended(
             key=callback_data.key,
             api_page=callback_data.api_page,
             extra='detail',
-            sub_key=callback_data.page
+            sub_page=callback_data.page
         ).pack()
-        detail_list = await redis_get_data_from_cache(cache_key)
+        detail_list = await redis_handler.get_data(cache_key)
 
         if detail_list is None:
             params = dict(
@@ -41,10 +42,11 @@ async def get_item_detail(
             response = await request_api(params)
 
             detail_list = response
-            await redis_set_data_to_cache(key=cache_key, value=detail_list)
+            await redis_handler.set_data(key=cache_key, value=detail_list)
         ############################################################
         item_data = await deserialize_item_detail(detail_list, call.from_user.id)
         msg = await get_detail_info(detail_list)
+        item_data['command'] = 'detail'
         await orm_make_record_request(item_data)
 
         # todo refactor - add kb_factory
@@ -111,18 +113,20 @@ async def show_first_item_paginate_images(callback: CallbackQuery, callback_data
         item_id=item_id,
         paginator_len=callback_data.last
     )
-    cache_key = CacheKey(key=key, api_page=api_page, extra='detail', sub_key=page).pack()
-    item_img_cache = await redis_get_data_from_cache(cache_key)
-    print(f"🟥 DATA FROM 🌐INTERNET [🖼 IMAGE]".rjust(20, "🟥"))
+    cache_key = CacheKeyExtended(key=key, api_page=api_page, extra='detail', sub_page=page).pack()
+    item_img_cache = await redis_handler.get_data(cache_key)
+    print(f"🟩 DATA FROM 💾CACHE [🖼 IMAGE]".rjust(20, "🟩"))
+
     if item_img_cache is None:
         response = await request_api(
-            url=config.URL_API_REVIEW,
-            item_id=item_id,
+            {
+                "url": config.URL_API_REVIEW,
+                "itemId": item_id
+            }
         )
         item_img_cache = response['result']['item']
-
-        print(f"🟩 DATA FROM 💾CACHE [🖼 IMAGE]".rjust(20, "🟩"))
-        await redis_set_data_to_cache(key=cache_key, value=item_img_cache)
+        print(f"🟥 DATA FROM 🌐INTERNET [🖼 IMAGE]".rjust(20, "🟥"))
+        await redis_handler.set_data(key=cache_key, value=item_img_cache)
     # img_list = item_img_cache.get('images')
 
     img_list = item_img_cache['result']['item']['images']
@@ -133,11 +137,9 @@ async def show_first_item_paginate_images(callback: CallbackQuery, callback_data
     except:
         pass
     print(f"🖼 1 img_list len = {len(img_list)=}")
-    # print(f"🖼 2 {page= }")
 
     paginator = Paginator(array=img_list, page=int(img_page))
     img = paginator.get_page()[0]
-    # print(f"🖼 3 {img= }")
 
     if paginator.len > 1:
         if navigate == ImgNavigation.first:

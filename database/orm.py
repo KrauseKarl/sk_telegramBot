@@ -1,11 +1,7 @@
-from peewee import DoesNotExist
-from trafaret import Dict
-
 from core import config
-from database.models import Favorite, History, User, HistoryModel, CacheData, CacheDataModel, FavoriteModel
+from database.models import Favorite, History, User, HistoryModel, CacheData,  FavoriteModel
 
 
-# USER #####################################################################
 async def orm_get_or_create_user(user) -> str:
     user, created = User.get_or_create(
         user_id=user.id,
@@ -18,14 +14,13 @@ async def orm_get_or_create_user(user) -> str:
     return "🤝 Рады снова видеть вас"
 
 
-# HISTORY #####################################################################
 async def orm_make_record_user(user_id: int) -> None:
     History.create(user=user_id, command='start').save()
 
 
 async def orm_make_record_request(data: dict) -> None:
     HistoryModel(
-        user=data.get('user_id'),
+        user=data.get('user'),
         command=data.get('command'),
         # price_range=''.format(data.get('price_min'), data.get('price_max')),
         price_min=data.get('price_min', None),
@@ -49,8 +44,8 @@ async def orm_get_favorite_list(user_id: int):
     return Favorite.select().where(Favorite.user == user_id).order_by(Favorite.date.desc())
 
 
-async def orm_get_or_create_favorite(data: FavoriteModel):
-    favorite, created = Favorite.get_or_create(
+async def orm_get_or_create_favorite(data: dict):
+    return Favorite.get_or_create(
         product_id=data.get("product_id"),
         title=data.get("title"),
         price=data.get("price"),
@@ -60,7 +55,8 @@ async def orm_get_or_create_favorite(data: FavoriteModel):
         image=data.get("image"),
         user=data.get("user"),
     )
-    return favorite, created
+    # Favorite.create(**data).save()
+    # return favorite, created
 
 
 async def orm_delete_favorite(item_id: str):

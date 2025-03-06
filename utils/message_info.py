@@ -72,7 +72,7 @@ async def refresh_tg_answer(item, item_id, page, api_page, total_pages):
     msg += "👀\t\tзаказы:\t\t<b>{0}</b>\n".format(item["reviews"])
     msg += "🌐\t\t{0}\n\n".format(item["url"])
     msg += "<b>{0}</b> из {1} стр. {2}\t".format(page, total_pages, api_page)
-    is_favorite = await orm_get_favorite(item['item_id'])
+    is_favorite = await orm_get_favorite(item_id)
     if is_favorite:
         msg += "👍\tв избранном"
     return types.InputMediaPhoto(media=item["image"], caption=msg)

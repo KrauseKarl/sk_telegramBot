@@ -3,25 +3,41 @@ from typing import Any, Dict
 
 from aiogram.fsm.context import FSMContext
 from playhouse.shortcuts import model_to_dict
-from api_aliexpress.request import request_api_fake, request_api
-from api_redis.handlers import redis_get_data_from_cache, redis_set_data_to_cache, redis_get_keys
+from api_aliexpress.request import *
+from api_redis.handlers import *
 from api_telegram.callback_data import *
 from api_telegram.statments import CacheFSM
 from core import config
+from database.exceptions import *
 from database.paginator import *
 
-
-async def get_data_from_cache(call_data: ItemCBD | DetailCBD):
-    cache_key = CacheKey(key=call_data.key, api_page=call_data.api_page).pack()
-    res = await redis_get_data_from_cache(cache_key)
-    return res
+redis_handler = RedisHandler()
 
 
-async def set_data_to_cache(data, call_data: ItemCBD | DetailCBD):
-    cache_key = CacheKey(key=call_data.key, api_page=call_data.api_page).pack()
-    cache_data = await redis_get_data_from_cache(cache_key)
-    if cache_data is None:
-        await redis_set_data_to_cache(key=cache_key, value=data)
+async def get_data_from_cache(call_data: ItemCBD | DetailCBD, extra: str | None = None):
+    cache_key = CacheKey(
+        key=call_data.key,
+        api_page=call_data.api_page,
+        extra=extra
+    ).pack()
+    data_list = await redis_handler.get_data(cache_key)
+    # data_list = await redis_get_data_from_cache(cache_key)
+    if data_list:
+        print('DATA ♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️ FROM CACHE')
+    return data_list
+
+
+async def set_data_in_cache(data, call_data: ItemCBD | DetailCBD, extra: str | None = None):
+    cache_key = CacheKey(
+        key=call_data.key,
+        api_page=call_data.api_page,
+        extra=extra
+    ).pack()
+    data_list = await redis_handler.get_data(cache_key)
+    # cache_data = await redis_get_data_from_cache(cache_key)
+    if data_list is None:
+        # await redis_set_data_to_cache(key=cache_key, value=data)
+        await redis_handler.set_data(key=cache_key, value=data)
 
 
 async def save_query_in_db(data: dict, key: str, page: str | int):
@@ -67,13 +83,95 @@ async def get_query_from_db(key: str, params: dict | None = None):
 async def refresh_params_dict(params: dict, key: str):
     if params.get('q', None) is None:
         params = await get_query_from_db(key, params)
-        print('#㊗️㊗️㊗️ >>>> GET PARAMS FROM DB ', '||'.join([f"{k} {v}" for k, v in params.items()]))
+        print('㊗️ >>>> GET PARAMS FROM DB')
         return params
-
-    print('#✅✅✅ >>>> GET PARAMS FROM STATE', '||'.join([f"{k} {v}" for k, v in params.items()]))
     return params
 
 
+async def get_item(data_list: list, page: str | int):
+    paginator = Paginator(array=data_list, page=page)
+    return paginator.get_page()[0]
+
+
+async def get_paginator_len(data_list: list, page: str | int):
+    paginator = Paginator(array=data_list, page=page)
+    return paginator.len
+
+
+async def get_data_by_request_to_api(params: dict):
+    response = await request_api(params)
+
+    try:
+        return response["result"]["resultList"]
+    except KeyError:
+        if "message" in response:
+            raise FreeAPIExceededError(
+                message="⚠️HTTP error\n{0}".format(
+                    response.get('message')
+                )
+            )
+
+
+# async def get_paginate_item(params: dict[str, Any], data: ItemCBD | DetailCBD):
+#     """
+#
+#     :param params: FSMContext
+#     :param data: ItemCBD | DetailCBD Callback_Data
+#     :return: Paginator
+#     """
+#     params['url'] = config.URL_API_ITEM_LIST
+#     print("♻️ DATA = {0}\n♻️ PARAMS = {1} [{2}]".format(
+#         data, params.get('q', None),
+#         params.get('page', None)
+#     ))
+#     # cache_key = await create_cache_key(data.key, data.api_page, 'list')
+#     # item_list = await redis_get_data_from_cache(cache_key)
+#     item_list = await get_data_from_cache(data, extra="list")
+#     page = int(data.page) if int(data.page) else 1
+#     if item_list is None:
+#         ########################################################################
+#         print('\n❌>>>> NO CACHE NEW REQUEST ')
+#         params = await refresh_params_dict(params, data.key)
+#         page = int(data.page)
+#         if data.api_page:
+#             params['page'] = data.api_page
+#         #######################################################################
+#         response = await request_api(params)
+#         item_list = response["result"]["resultList"]
+#
+#         # todo `save_to_cache(data: dict, key: str)`############################
+#         # is_cached = await redis_get_data_from_cache(cache_key)
+#         # if not is_cached:
+#         #     print('SAVE IN ♻️CACHE♻️')
+#         #     await redis_set_data_to_cache(key=cache_key, value=item_list)
+#         await set_data_to_cache(item_list, data, extra='list')
+#         # todo `save_to_cache(data: dict, key: str)`############################
+#         ########################################################################
+#     if int(data.api_page) == 0 or page > len(item_list):
+#         params = await refresh_params_dict(params, data.key)
+#         page = 1
+#         api_page = data.api_page if data.api_page else params['page']
+#         params['page'] = str(int(api_page) + 1)
+#         response = await request_api(params)
+#         item_list = response["result"]["resultList"]
+#         # cache_key = await create_cache_key(data.key, params['page'], 'list')
+#         # todo `save_to_cache(data: dict, key: str)`############################
+#         await set_data_to_cache(item_list, data, extra='list')
+#         # is_cached = await redis_get_data_from_cache(cache_key)
+#         # if not is_cached:
+#         #     await redis_set_data_to_cache(key=cache_key, value=item_list)
+#         # await update_query_in_db(params, data.key)
+#         # todo `save_to_cache(data: dict, key: str)`############################
+#
+#     item = await get_item(item_list, page)
+#
+#     return dict(
+#         key=data.key,
+#         api_page=int(params['page']),
+#         page=str(page),
+#         item=item['item'],
+#         total_pages=await get_paginator_len(item_list, page)
+#     )
 async def get_paginate_item(params: dict[str, Any], data: ItemCBD | DetailCBD):
     """
 
@@ -82,56 +180,34 @@ async def get_paginate_item(params: dict[str, Any], data: ItemCBD | DetailCBD):
     :return: Paginator
     """
     params['url'] = config.URL_API_ITEM_LIST
-    await redis_get_keys()
-    print("♻️♻️♻️ DATA = {0}\n♻️♻️♻️ PARAMS = {1} [{2}]".format(data, params.get('q', None), params.get('page', None)))
-    cache_key = await create_cache_key(data.key, data.api_page, 'list')
-    item_list = await redis_get_data_from_cache(cache_key)
+    item_list = await get_data_from_cache(data, extra="list")
     page = int(data.page) if int(data.page) else 1
+
     if item_list is None:
-        ########################################################################
-        print('\n❌❌❌ #0 >>>> NO CACHE NEW REQUEST ')
-        params = await refresh_params_dict(params, data.key)
         page = int(data.page)
+        params = await refresh_params_dict(params, data.key)
         if data.api_page:
             params['page'] = data.api_page
-        #######################################################################
-        response = await request_api(params)
-        item_list = response["result"]["resultList"]
-
-        # todo `save_to_cache(data: dict, key: str)`############################
-        is_cached = await redis_get_data_from_cache(cache_key)
-        if not is_cached:
-            print('SAVE IN ♻️CACHE♻️')
-            await redis_set_data_to_cache(key=cache_key, value=item_list)
-        # todo `save_to_cache(data: dict, key: str)`############################
-
-        print('❌❌❌ #0 >>>> NO CACHE NEW REQUEST \n')
-
-        ########################################################################
-    if int(data.api_page) == 0 or page > len(item_list):
-        params = await refresh_params_dict(params, data.key)
-        page = 1
-        if data.api_page:
-            params['page'] = str(int(data.api_page) + 1)
-        else:
-            params['page'] = str(int(params['page']) + 1)
-        response = await request_api(params)
-        item_list = response["result"]["resultList"]
-        cache_key = await create_cache_key(data.key, params['page'], 'list')
-
-        # todo `save_to_cache(data: dict, key: str)`############################
-        is_cached = await redis_get_data_from_cache(cache_key)
-        if not is_cached:
-            await redis_set_data_to_cache(key=cache_key, value=item_list)
+        item_list = await get_data_by_request_to_api(params)
         await update_query_in_db(params, data.key)
-        # todo `save_to_cache(data: dict, key: str)`############################
+        await set_data_in_cache(item_list, data, extra='list')
 
-    paginator = Paginator(array=item_list, page=page)
-    item = paginator.get_page()[0]
-    return dict(
-        key=data.key,
-        api_page=int(params['page']),
-        page=str(page),
-        item=item['item'],
-        total_pages=paginator.len
-    )
+    if int(data.api_page) == 0 or page > len(item_list):
+        page = 1
+        params = await refresh_params_dict(params, data.key)
+        api_page = data.api_page if data.api_page else params['page']
+        params['page'] = str(int(api_page) + 1)
+        item_list = await get_data_by_request_to_api(params)
+        await update_query_in_db(params, data.key)
+        await set_data_in_cache(item_list, data, extra='list')
+
+
+    item = await get_item(item_list, page)
+
+    return {
+        "key": data.key,
+        "api_page": int(params['page']),
+        "page": str(page),
+        "item": item['item'],
+        "total_pages": await get_paginator_len(item_list, page)
+    }

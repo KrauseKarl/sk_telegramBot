@@ -2,7 +2,7 @@ from aiogram import types
 from aiogram.filters.callback_data import CallbackData
 
 from api_aliexpress.request import request_api
-from api_redis.handlers import redis_get_data_from_cache
+from api_redis.handlers import RedisHandler
 from api_telegram.callback_data import DetailAction, CacheKey, FavPagination, RevNavigate, ReviewCBD
 from api_telegram.crud.items import refresh_params_dict, get_query_from_db
 from api_telegram.keyboards import (
@@ -48,7 +48,8 @@ async def paginate_item_list_kb(params, callback_data_api_page):
         # todo refactor this part ######################################################################################
         # try to find previous item_list in cache
         prev_cache_key = CacheKey(key=key, api_page=str(api_page - 1), extra='list').pack()
-        prev_list = await redis_get_data_from_cache(prev_cache_key)
+        redis_handler = RedisHandler()
+        prev_list = await redis_handler.get_data(prev_cache_key)
 
         # if  previous item_list not exist in cache
         # make new request to API
@@ -131,15 +132,15 @@ async def pagination_review_kb(data_list: list, data: ReviewCBD):
         key=data.key,
         api_page=data.api_page,
         item_id=data.item_id,
-        paginator_len=data.paginator_len
+        paginator_len=data.last
     )
     if data_list is not None:
-        if data.paginator_len > 1:
+        if int(data.last) > 1:
             if data.navigate == RevNavigate.first:
                 kb.add_button(kb.next_btn(data.page, int(data.review_page) + 1)).add_markup(1)
             elif data.navigate == RevNavigate.next:
                 kb.add_button(kb.prev_btn(data.page, int(data.review_page) - 1)).add_markup(2)
-                if int(data.review_page) < data.paginator_len:
+                if int(data.review_page) < int(data.last):
                     kb.add_button(kb.next_btn(data.page, int(data.review_page) + 1)).add_markup(2)
             elif data.navigate == RevNavigate.prev:
                 if int(data.review_page) > 1:

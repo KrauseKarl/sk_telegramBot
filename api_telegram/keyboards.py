@@ -443,6 +443,7 @@ class ImgPaginationBtn(ItemPaginationBtn):
             self._call_data(page, img_page, navigate=self.navigate.prev)
         )
 
+
 class RevPaginationBtn(ItemPaginationBtn):
     def __init__(
             self,
@@ -460,8 +461,8 @@ class RevPaginationBtn(ItemPaginationBtn):
         self.data = ReviewCBD
         self.action = RevAction
         self.navigate = RevNavigate
-        # self.item_id = item_id
-        # self.paginator_len = paginator_len
+        self.item_id = item_id
+        self.paginator_len = paginator_len
 
     def set_callback_data(self, data):
         self.data = data
@@ -474,8 +475,8 @@ class RevPaginationBtn(ItemPaginationBtn):
             key=self.key,
             api_page=self.api_page,
             page=str(page),
-            next=str(int(page + 1)),
-            prev=str(int(page - 1)),
+            next=str(int(page) + 1),
+            prev=str(int(page) - 1),
             first=self.first,
             last=self.len,
             navigate=navigate,
@@ -493,6 +494,8 @@ class RevPaginationBtn(ItemPaginationBtn):
             'prev',
             self._call_data(page, img_page, navigate=self.navigate.prev)
         )
+
+
 class PGBtn(ItemPaginationBtn):
     def __init__(
             self,

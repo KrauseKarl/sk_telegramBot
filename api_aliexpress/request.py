@@ -43,7 +43,7 @@ async def save_fake_data(result: dict, params: dict):
         if config_data["prefix"]:
             my_file = await get_path_to_json(
                 prefix=config_data["prefix"],
-                item_id=params.get("itemId")
+                data=params.get("itemId")
             )
             if my_file.is_file():
                 print(f"File already exists for {params.get('url')}")
@@ -157,7 +157,7 @@ async def request_api(params) -> dict:
     for key, value in params.items():
         if value:
             conf.querystring[key] = value
-    print("⚜️ request_api {0:.10} [{1}]".format(params.get('q'), params.get('page')))
+    print("⚜️ request_api {0} [{1}]".format(params.get('q'), params.get('page')))
     if config.FAKE_MODE:
         result = await request_api_fake(params)
     else:

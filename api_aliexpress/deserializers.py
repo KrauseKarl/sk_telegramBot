@@ -51,8 +51,7 @@ async def deserialize_item_detail(
     item = response["result"]["item"]
     reviews = response["result"]["reviews"]
 
-    data["user_id"] = user_id
-    data["command"] = "item detail"
+    data["user"] = user_id
     data["title"] = item.get("title")
     data["price"] = item.get("sku").get("base")[0].get("promotionPrice")
     data["reviews"] = reviews.get("count")

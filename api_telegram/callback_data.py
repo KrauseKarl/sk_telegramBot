@@ -11,6 +11,14 @@ class CacheKey(CallbackData, prefix='redis'):
     extra: str | None = None
 
 
+class CacheKeyExtended(CallbackData, prefix='redis'):
+    # user_id: int | None = None
+    key: str
+    api_page: str | int
+    extra: str | None = None
+    sub_page: str | int
+
+
 class ItemCBD(CallbackData, prefix='ITL'):
     key: str
     api_page: int | str

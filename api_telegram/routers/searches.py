@@ -105,7 +105,8 @@ async def search_price_range(message: Message, state: FSMContext) -> None:
     :return:
     """
     try:
-        await redis_flush_keys()
+
+        await RedisHandler().flush_keys()
         await state.update_data(product=message.text)
 
         await message.bot.edit_message_media(
@@ -305,8 +306,6 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 
 
 # @search.callback_query(ItemFSM.qnt, F.data.in_(QNT))
-
-
 # @search.callback_query(F.data.startswith("item_list_next_page"))
 # async def search_result_next_page(call: CallbackQuery, state: FSMContext) -> None:
 #     """
@@ -363,27 +362,6 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 #     except CustomError as error:
 #         msg, photo = await get_error_answer_photo(error)
 #         await call.message.answer_photo(photo=photo, caption=msg)
-
-# 🟥 callback_kb= 'item_list_aa8a5340-7512-4ecc-b471-4cda077687e9_2'
-
-
-# class NumbersCallbackFactory(CallbackData, prefix="fabnum"):
-#     action: str
-#     value: Optional[int] = None
-#
-#     builder.button(
-#         text="-2", data=NumbersCallbackFactory(action="change", value=-2)
-#     )
-# InlineKeyboardButton(
-#     text="demo",
-#     data=MyCallback(foo="demo", bar="42").pack()  # value should be packed to string
-# )
-#
-# @router.callback_query(MyCallback.filter(F.foo == "demo"))
-# async def my_callback_foo(query: CallbackQuery, data: MyCallback):
-#     await query.answer(...)
-#     ...
-#     print("bar =", data.bar)
 
 
 # @search.callback_query(
@@ -556,12 +534,12 @@ async def search_delete_callback(callback: CallbackQuery) -> None:
 @search.message(Command("redis"))
 async def get_key_cache(message: Message):
     print('redis route start')
-    await redis_get_keys()
+    await RedisHandler().get_keys()
     print('redis route finish')
 
 
 @search.message(Command("del"))
 async def get_key_cache(message: Message):
     print('redis route start')
-    await redis_flush_keys()
+    await RedisHandler().flush_keys()
     print('redis route finish')
