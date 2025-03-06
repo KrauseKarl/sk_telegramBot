@@ -1,7 +1,8 @@
 from peewee import DoesNotExist
+from trafaret import Dict
 
 from core import config
-from database.models import Favorite, History, User, HistoryModel
+from database.models import Favorite, History, User, HistoryModel, CacheData, CacheDataModel, FavoriteModel
 
 
 # USER #####################################################################
@@ -48,7 +49,7 @@ async def orm_get_favorite_list(user_id: int):
     return Favorite.select().where(Favorite.user == user_id).order_by(Favorite.date.desc())
 
 
-async def orm_get_or_create_favorite(data):
+async def orm_get_or_create_favorite(data: FavoriteModel):
     favorite, created = Favorite.get_or_create(
         product_id=data.get("product_id"),
         title=data.get("title"),
@@ -69,3 +70,14 @@ async def orm_delete_favorite(item_id: str):
 async def orm_get_favorite(item_id: str):
     return Favorite.select().where(Favorite.product_id == item_id).get_or_none()
 
+
+async def orm_save_query_in_db(data: dict):
+    CacheData().create(**data).save()
+
+
+async def orm_update_query_in_db(data: dict, key: str):
+    CacheData.update(query=data).where(CacheData.key == key).execute()
+
+
+async def orm_get_query_from_db(key: str) -> CacheData | None:
+    return CacheData.select().where(CacheData.key == key).get_or_none()

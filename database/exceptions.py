@@ -1,5 +1,5 @@
 from aiogram.exceptions import AiogramError, TelegramBadRequest
-from httpx import HTTPError
+from httpx import HTTPError, ReadTimeout
 from peewee import IntegrityError
 
 

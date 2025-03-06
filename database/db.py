@@ -1,5 +1,6 @@
 from database.models import *
 
+
 # Look, sync code is working!
 
 # objects = peewee_async.Manager(database)
@@ -14,6 +15,7 @@ def create_tables():
     User.create_table(True)
     History.create_table(True)
     Favorite.create_table(True)
+    CacheData.create_table(True)
     db.close()
 
 
@@ -22,6 +24,7 @@ def drop_table():
         User.drop_table(True)
         Favorite.drop_table(True)
         History.drop_table(True)
+        CacheData.drop_table(True)
 
 
 # Create async models manager:

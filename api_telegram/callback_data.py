@@ -5,10 +5,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
 class CacheKey(CallbackData, prefix='redis'):
+    # user_id: int | None = None
     key: str
     api_page: str | int
-    extra: str = None
-    sub_key: int = None
+    extra: str | None = None
 
 
 class ItemCBD(CallbackData, prefix='ITL'):
@@ -180,7 +180,7 @@ class Navigation(str, Enum):
 
 
 class BaseCBD(CallbackData, prefix='BS'):
-    action:  DetailAction | FavoriteAction | ReviewAction | ImgAction
+    action: DetailAction | FavoriteAction | ReviewAction | ImgAction
     navigate: Navigation
     item_id: str | int | None = None
     key: str

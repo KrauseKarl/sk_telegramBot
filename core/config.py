@@ -66,7 +66,7 @@ FLAGS = {
 
 load_dotenv()
 
-FAKE_MODE = 1 == 1
+FAKE_MODE = 1 == 0
 
 # ALIEXPRESS API URLS ###################################################################
 URL_API_ITEM_LIST = "item_search_5"
@@ -103,7 +103,7 @@ IMG_FORMAT = "png"
 IMG_LIMIT = 8
 
 # REDIS ####################################################################################
-CACHE_LIVE_TIME = 60 * 60
+CACHE_LIVE_TIME = 60 * 60 * 24  # 24 часа
 
 # SORT SETTINGS ############################################################################
 SORT_SET = {"default", "priceDesc", "priceAsc", "salesDesc"}

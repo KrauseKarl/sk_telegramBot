@@ -44,10 +44,7 @@ async def request_favorite_list(callback: CallbackQuery, callback_data: Favorite
         )
 
 
-@favorite.callback_query(or_f(
-    FavoriteAddCBD.filter(F.action == FavAction.list),
-    FavoriteAddCBD.filter(F.action == FavAction.detail),
-))
+@favorite.callback_query(FavoriteAddCBD.filter(F.action.in_({FavAction.list, FavAction.detail})))
 async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -> None:
     """
 

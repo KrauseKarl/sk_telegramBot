@@ -3,6 +3,7 @@ import uuid
 from aiogram import F, Router
 from aiogram.filters import Command, or_f
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.base import StorageKey
 from aiogram.types import CallbackQuery, Message
 
 from api_aliexpress.deserializers import *
@@ -11,7 +12,7 @@ from api_redis.handlers import *
 from api_telegram.callback_data import *
 from api_telegram.crud.items import *
 from api_telegram.keyboards import *
-from api_telegram.paginations import paginate_item_list_kb
+from api_telegram.paginations import *
 from api_telegram.statments import *
 from database.exceptions import *
 from utils.media import *
@@ -385,102 +386,159 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 #     print("bar =", data.bar)
 
 
-@search.callback_query(
-    or_f(
-        ItemCBD.filter(),
-        DetailCBD.filter(F.action == DetailAction.back_list)
-    )
-)
-async def item_list_page(
-        callback: types.CallbackQuery,
+# @search.callback_query(
+#     or_f(
+#         ItemCBD.filter(),
+#         DetailCBD.filter(F.action == DetailAction.back_list)
+#     )
+# )
+# async def item_list_page(
+#         callback: types.CallbackQuery,
+#         state: FSMContext,
+#         callback_data: ItemCBD | DetailCBD
+# ) -> None:
+#     """
+#     Some.
+#     :param callback_data:
+#     :param state:
+#     :param callback:
+#     :return:
+#     """
+#     print('️\n🟦🟧🟦🟧🟦🟧 ENDPOINT SEARCH RESULT🟦🟧🟦🟧🟦🟧')
+#     try:
+#         data = await state.get_data()
+#         params = await get_paginate_item(data, callback_data)
+#         #####################################################################
+#         kb = await paginate_item_list_kb(params)
+#         photo = await create_tg_answer(params)
+#         #####################################################################
+#         await callback.message.edit_media(media=photo, reply_markup=kb)
+#         print('️🟦🟧🟦🟧🟦🟧🟦🟧🟦🟧🟦🟧')
+#
+#     except CustomError as error:
+#         msg, photo = await get_error_answer_photo(error)
+#         await callback.message.answer_photo(
+#             photo=photo,
+#             caption=msg,
+#             reply_markup=await error_kb()
+#         )
+
+async def check_current_state(
         state: FSMContext,
-        callback_data: ItemCBD | DetailCBD
-) -> None:
+        callback: CallbackQuery
+) -> bool:
     """
-    Some.
-    :param callback_data:
+
     :param state:
     :param callback:
     :return:
     """
-
-    try:
-        data = await state.get_data()
-        # print('⬜️🟧 ENDPOINT SEARCH PAGINATION')
-        key = callback_data.key
-        page = int(callback_data.page)
-        api_page = callback_data.api_page
-
-        paginator = await get_paginate_item(data, callback_data)
-        item = paginator.get_page()[0]
-
-        kb = await paginate_item_list_kb(
-            item_id=str(item['item']['itemId']),
-            key=key,
-            api_page=api_page,
-            page=int(page),
-            len_data=paginator.len
-        )
-        photo = await create_tg_answer(item["item"], page, api_page, paginator.pages)
-        await callback.message.edit_media(media=photo, reply_markup=kb)
-
-        for i in kb:
-            for k in i[1]:
-                callback = k[0].callback_data
-                if callback.startswith("ITD"):
-                    print('❤️ list to detail', callback.split(":"))
-    except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await callback.message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await error_kb()
-        )
-        # await callback.answer(text=str(error), show_alert=True)
+    key = StorageKey(
+        bot_id=callback.bot.id,
+        chat_id=callback.message.chat.id,
+        user_id=callback.from_user.id
+    )
+    return bool(await state.storage.get_state(key))
 
 
-@search.callback_query(ItemFSM.sort)
-async def search_result(call: CallbackQuery, state: FSMContext) -> None:
+async def create_uuid_key(length: int) -> str:
     """
 
-    :param call:
+    :param length:
+    :return:
+    """
+    return "{0:.10}".format(str(uuid.uuid4().hex)[:length])
+
+
+async def get_or_create_key(data, user_id):
+    if data and await orm_get_query_from_db(data.key):
+        return data.key, False
+    # elif await orm_get_query_by_id_from_db(user_id):
+    #     return await orm_get_query_by_id_from_db(user_id)
+    else:
+        new_key = await create_uuid_key(6)
+        print(f'🔑🔑🔑 NEW KEY {new_key}')
+        return new_key, True
+
+
+@search.callback_query(
+    or_f(ItemFSM.sort,
+         ItemCBD.filter(),
+         DetailCBD.filter(F.action == DetailAction.back_list)
+         )
+
+)
+async def search_result(
+        callback: CallbackQuery,
+        state: FSMContext,
+        callback_data: ItemCBD | DetailCBD | None = None
+) -> None:
+    """
+
+    :param callback_data:
+    :param callback:
     :param state: 
     :return: 
     """
-    # print('️⬛️🟨 ENDPOINT SEARCH RESULT')
+    print("=" * 50)
+    # print(f"️\n⬛️🟨 ENDPOINT SEARCH RESULT\n⬛️🟨{callback_data=}")
 
     try:
         ####################################################################################
-        await state.update_data(sort=call.data)
-        api_page = 1
-        paginator_page = 1
-        key = "{0:.10}".format(str(uuid.uuid4().hex)) #[:6]
-        data = await save_query_in_cache_state(state)
-        data['user_id'] = call.from_user.id
-        data['command'] = 'search'
+        is_state = await check_current_state(state, callback)
 
-        #####################################################################################
-        call_data = ItemCBD(key=key, api_page=api_page, page=str(paginator_page))
-        paginator = await get_paginate_item(data, call_data)
-        item = paginator.get_page()[0]
-        # sort_price_set = set(sorted([item["item"]["sku"]["def"]["promotionPrice"] for item in item_list_cache]))
-        # price_range_list = '{0} - {1}'.format(min(sort_price_set), max(sort_price_set))
-        kb = await paginate_item_list_kb(
-            item_id=str(item['item']['itemId']),
-            key=key,
-            api_page=str(api_page),
-            page=int(paginator_page),
-            len_data=paginator.len
-        )
-        await orm_make_record_request(data)
-        photo = await create_tg_answer(item["item"], paginator_page, paginator.len, api_page)
-        #####################################################################################
-        await call.message.edit_media(media=photo, reply_markup=kb)
+        if is_state:
+            await state.update_data(sort=callback.data)
+            state_data = await state.get_data()
+            await state.set_state(state=None)
 
+            api_page = 1
+            page = 1
+            key, created = await get_or_create_key(callback_data, callback.from_user.id)
+
+            callback_data = ItemCBD(
+                key=key if created else callback_data.key,
+                api_page=api_page,
+                page=str(page)
+            )
+            data = dict(
+                q=state_data.get('product'),
+                sort=state_data.get('sort'),
+                page=api_page,
+                startPrice=state_data.get('price_min'),
+                endPrice=state_data.get('price_max'),
+                user_id=callback.from_user.id,
+                command='search'
+            )
+            if created:
+                await save_query_in_db(data, key, page)
+
+        else:
+            state_data = await state.get_data()
+            print(f"️⬛️🟨 {callback_data=}")
+            data = dict(
+                q=state_data.get('product'),
+                sort=state_data.get('sort'),
+                page=callback_data.api_page,
+                startPrice=state_data.get('price_min'),
+                endPrice=state_data.get('price_max'),
+                user_id=callback.from_user.id,
+                command='search'
+            )
+        print(f"️⬛️🟨 {state_data=}")
+        print("️⬛️🟨 data q={0} page={1}".format(data.get('q', None), data.get('page', None)))
+        #####################################################################################
+        params = await get_paginate_item(data, callback_data)
+        ####################################################################################
+        kb = await paginate_item_list_kb(params, callback_data.api_page)
+        photo = await create_tg_answer(params)
+        #####################################################################################
+        print("=" * 50)
+        await callback.message.edit_media(media=photo, reply_markup=kb)
     except CustomError as error:
         # msg, photo = await get_error_answer_photo(error)
         # await call.message.answer_photo(photo=photo, caption=msg)
-        await call.answer(text=str(error), show_alert=True)
+        await callback.answer(text=str(error), show_alert=True)
 
 
 @search.callback_query(F.data.startswith("delete"))
@@ -499,4 +557,11 @@ async def search_delete_callback(callback: CallbackQuery) -> None:
 async def get_key_cache(message: Message):
     print('redis route start')
     await redis_get_keys()
+    print('redis route finish')
+
+
+@search.message(Command("del"))
+async def get_key_cache(message: Message):
+    print('redis route start')
+    await redis_flush_keys()
     print('redis route finish')

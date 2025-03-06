@@ -45,3 +45,6 @@ class FavoriteFSM(state.StatesGroup):
     stars = state.State()
     url = state.State()
     image = state.State()
+
+class Review(state.StatesGroup):
+    product = state.State()

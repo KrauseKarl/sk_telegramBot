@@ -37,16 +37,32 @@ def card_info(item, currency) -> tuple[str, str]:
     return msg, image
 
 
-async def create_tg_answer(item, page, api_page, total_pages):
-    msg = "<b>{0:.50}</b>\n".format(item["title"])
-    msg += "💰\t\tцена:\t\t<b>{0}</b> RUB\n".format(item["sku"]["def"]["promotionPrice"])
-    msg += "👀\t\tзаказы:\t\t<b>{0}</b>\n".format(item["sales"])
-    msg += "🌐\t\t{0}\n\n".format(item["itemUrl"])
-    msg += "<b>{0}</b> из {1} стр. {2}\t".format(page, total_pages, api_page)
-    img = ":".join(["https", item["image"]])
-    is_favorite = await orm_get_favorite(item['itemId'])
+async def create_tg_answer(params):
+    item = params.get('item', {})
+    sku = item.get("sku", {}).get("def", {})
+
+    item_id = item.get("itemId")
+    title = item.get("title", "")
+    price = sku.get("promotionPrice", "N/A")
+    sales = item.get("sales", "N/A")
+    url = item.get("itemUrl", "")
+    page = params.get("page", "N/A")
+    total_pages = params.get("total_pages", "N/A")
+    api_page = params.get("api_page", "N/A")
+    img = ":".join(["https", params.get('item').get("image")])
+
+    msg = (
+        f"<b>{title[:50]}</b>\n"
+        f"💰\t\tцена:\t\t<b>{price}</b> RUB\n"
+        f"👀\t\tзаказы:\t\t<b>{sales}</b>\n"
+        f"🌐\t\t{url}\n\n"
+        f"<b>{page}</b> из {total_pages} стр. {api_page}\t"
+    )
+
+    is_favorite = await orm_get_favorite(item_id)
     if is_favorite:
         msg += "👍\tв избранном"
+
     return types.InputMediaPhoto(media=img, caption=msg)
 
 

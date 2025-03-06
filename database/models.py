@@ -37,6 +37,18 @@ class User(Base):
         db_table = "user"
 
 
+class CacheData(Base):
+    uid = peewee.PrimaryKeyField()
+    key = peewee.CharField(unique=True)
+    query = peewee.TextField()
+    user = peewee.ForeignKeyField(
+        User,
+        backref='cache_data',
+        to_field="user_id",
+        related_name="cache_data"
+    )
+
+
 class History(Base):
     uid = peewee.PrimaryKeyField()
     command = peewee.CharField()
@@ -118,3 +130,11 @@ class FavoriteModel(BaseModel):
     url: str = None
     image: str = None
     user: int = None
+
+
+class CacheDataModel(BaseModel):
+    key: str
+    query: str
+    user: int
+class CacheDataUpdateModel(BaseModel):
+    query: str

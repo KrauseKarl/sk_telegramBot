@@ -31,35 +31,20 @@ async def get_item_detail(
             extra='detail',
             sub_key=callback_data.page
         ).pack()
-        detail_cache = await redis_get_data_from_cache(cache_key)
+        detail_list = await redis_get_data_from_cache(cache_key)
 
-        if detail_cache is None:
-            ########################################################################################
-            # FAKE REQUEST TO FILE JSON
-            ########################################################################################
-            path = os.path.join(
-                config.BASE_DIR,
-                FAKE_MAIN_FOLDER,
-                DETAIL_FAKE_FOLDER,
-                "detail_{0}.json".format(callback_data.item_id)
+        if detail_list is None:
+            params = dict(
+                url=config.URL_API_ITEM_DETAIL,
+                itemId=callback_data.item_id
             )
-            my_file = Path(path)
-            if my_file.is_file():
-                print(f"🟩  DATA FROM 💾CACHE [ℹ️ DETAIL]".rjust(20, "🟩"))
-                response = await request_api_detail_fake(item_id=callback_data.item_id)
-            else:
-                print(f"🟥 DATA FROM 🌐INTERNET [ℹ️ DETAIL]".rjust(20, "🟥"))
-                #####################################################################################
+            response = await request_api(params)
 
-                response = await request_api(
-                    url=config.URL_API_ITEM_DETAIL,
-                    item_id=callback_data.item_id
-                )
-            detail_cache = response
-            await redis_set_data_to_cache(key=cache_key, value=detail_cache)
+            detail_list = response
+            await redis_set_data_to_cache(key=cache_key, value=detail_list)
         ############################################################
-        item_data = await deserialize_item_detail(detail_cache, call.from_user.id)
-        msg = await get_detail_info(detail_cache)
+        item_data = await deserialize_item_detail(detail_list, call.from_user.id)
+        msg = await get_detail_info(detail_list)
         await orm_make_record_request(item_data)
 
         # todo refactor - add kb_factory
@@ -70,21 +55,6 @@ async def get_item_detail(
             paginator_len=int(callback_data.last)
         )
 
-        # kb_new = BaseBtn(
-        #     key=callback_data.key,
-        #     api_page=callback_data.api_page,
-        #     item_id=callback_data.item_id,
-        #     paginator_len=int(callback_data.last)
-        # )
-        # review_btn = kb_new.title(
-        #     "review"
-        # ).do(
-        #     ReviewAction.first
-        # ).nav(
-        #     Navigation.first
-        # ).pg(
-        #     callback_data.page
-        # ).extra_page(1).btn_create()
         buttons = [
             kb.comment(callback_data.page),
             kb.images(callback_data.page),

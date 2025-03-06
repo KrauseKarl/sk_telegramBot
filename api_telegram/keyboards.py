@@ -50,7 +50,7 @@ QNT_DATA = [
 
 
 class KeysBuilder:
-    def __init__(self, data: Dict[str, str]):
+    def __init__(self, data: dict):
         for key, value in data.items():
             setattr(self, key, value)
 
@@ -205,10 +205,10 @@ class ItemPaginationBtn(BasePaginationBtn):
         self.first = 1
         self.callback_data = ItemCBD
 
-    def _btn(self, page):
+    def _btn(self, page, api_page=None):
         return self.callback_data(
             key=self.key,
-            api_page=self.api_page,
+            api_page=api_page if api_page else self.api_page,
             page=page
         ).pack()
 
@@ -222,8 +222,8 @@ class ItemPaginationBtn(BasePaginationBtn):
             return str(page)
         return str(int(page) - 1)
 
-    def btn(self, name, page):
-        return self.btn_data(name, self._btn(page))
+    def btn(self, name, page, api_page=None):
+        return self.btn_data(name, self._btn(page, api_page))
 
     def first_btn(self):
         return self.btn_data("first", self._btn(self.first))
@@ -384,12 +384,12 @@ def counter_key(name, data):
     count = 0
     max_len = 64
     # print('=' * 20)
-    print(name.upper().rjust(10, "_"))
+    # print(name.upper().rjust(10, "_"))
     # print(f"[{max_len}] [{count}]")
     for i in str(data).split(':'):
         count += len(i)
         # print(f"[{max_len - count}] [{count}] {len(i)} - {i}")
-    print(f"{name.upper().rjust(10, '_')} TOTAL LEN = [{count}] SAVE RANGE = {max_len - count}")
+    # print(f"{name.upper().rjust(10, '_')} TOTAL LEN = [{count}] SAVE RANGE = {max_len - count}")
 
 
 class ImgPaginationBtn(ItemPaginationBtn):
@@ -552,14 +552,14 @@ class FavoritePaginationBtn_(BasePaginationBtn):
     def next_bt(self, page):  # page + 1
         return self.data(
             action=self.action.page,
-            navigate=self.navigate.next,
+            navigate=self.next,
             page=str(int(page + 1))
         ).pack()
 
     def prev_bt(self, page):  # page - 1
         return self.data(
             action=self.action.page,
-            navigate=self.navigate.prev,
+            navigate=self.prev,
             page=str(int(page - 1))
         ).pack()
 
