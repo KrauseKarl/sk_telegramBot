@@ -16,6 +16,8 @@ def create_tables():
     History.create_table(True)
     Favorite.create_table(True)
     CacheData.create_table(True)
+    ItemSearch.create_table(True)
+    DataEntry.create_table(True)
     db.close()
 
 
@@ -25,6 +27,8 @@ def drop_table():
         Favorite.drop_table(True)
         History.drop_table(True)
         CacheData.drop_table(True)
+        ItemSearch.drop_table(True)
+        DataEntry.drop_table(True)
 
 
 # Create async models manager:

@@ -32,22 +32,20 @@ async def get_item_detail(
             extra='detail',
             sub_page=callback_data.page
         ).pack()
-        detail_list = await redis_handler.get_data(cache_key)
+        item_data = await redis_handler.get_data(cache_key)
 
-        if detail_list is None:
+        if item_data is None:
             params = dict(
                 url=config.URL_API_ITEM_DETAIL,
                 itemId=callback_data.item_id
             )
-            response = await request_api(params)
-
-            detail_list = response
-            await redis_handler.set_data(key=cache_key, value=detail_list)
+            item_data = await request_api(params)
+            await redis_handler.set_data(key=cache_key, value=item_data)
         ############################################################
-        item_data = await deserialize_item_detail(detail_list, call.from_user.id)
-        msg = await get_detail_info(detail_list)
-        item_data['command'] = 'detail'
-        await orm_make_record_request(item_data)
+        item = await deserialize_item_detail(item_data, call.from_user.id)
+        msg = await get_detail_info(item_data)
+        item['command'] = 'detail'
+        await orm_make_record_request(item)
 
         # todo refactor - add kb_factory
         kb = ItemPaginationBtn(
@@ -60,8 +58,9 @@ async def get_item_detail(
         buttons = [
             kb.comment(callback_data.page),
             kb.images(callback_data.page),
-            kb.btn_text('price'),
+            # kb.btn_text('price'),
             kb.detail('back', callback_data.page, DetailAction.back_list),
+            kb.btn_data("price", f"item_search:{callback_data.item_id}"),
 
         ]
         is_favorite = await orm_get_favorite(item_id=callback_data.item_id)
@@ -74,13 +73,13 @@ async def get_item_detail(
         ##################################################################
         for i in kb.get_kb():
             for k, v in i.items():
-                if v.startswith('ITD'):
+                # if v.startswith('ITD'):
                     print("💜 detail to list", v.split(":"))
         #################################################################
 
         await call.message.edit_media(
             media=InputMediaPhoto(
-                media=item_data['image'],
+                media=item['image'],
                 caption=msg
             ),
             reply_markup=kb.create_kb()

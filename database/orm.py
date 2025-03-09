@@ -1,5 +1,6 @@
 from core import config
-from database.models import Favorite, History, User, HistoryModel, CacheData,  FavoriteModel
+from database.models import Favorite, History, User,  CacheData, ItemSearch, DataEntry
+from database.pydantic import HistoryModel, FavoriteModel
 
 
 async def orm_get_or_create_user(user) -> str:
@@ -77,3 +78,13 @@ async def orm_update_query_in_db(data: dict, key: str):
 
 async def orm_get_query_from_db(key: str) -> CacheData | None:
     return CacheData.select().where(CacheData.key == key).get_or_none()
+
+
+async def orm_create_item_search(data: dict):
+    ItemSearch.create(
+        product_id=data.get("product_id"),
+        title=data.get("title"),
+        url=data.get("url"),
+        image=data.get("image"),
+        user=data.get("user"),
+    ).save()

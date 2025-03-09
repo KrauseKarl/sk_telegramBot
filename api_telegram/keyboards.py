@@ -22,6 +22,7 @@ KEYS = {
     "search": "🛒 поиск",
     "history": "📋 история",
     "favorite": "⭐️ избранное",
+    "list_searches": "📉 отслеживание цен",
 
     "default": "📶 по умолчанию",
     "salesDesc": "💰 по продажам",
@@ -682,6 +683,7 @@ async def menu_kb():
     kb = BasePaginationBtn()
     kb.add_buttons([
         kb.btn_text("search"),
+        kb.btn_text("list_searches"),
         kb.btn_text("history"),
         kb.btn_data("favorite", FavoritePageCBD(
             action=FavAction.page,

@@ -105,36 +105,22 @@ class Favorite(Base):
 #     pass
 
 
-class HistoryModel(BaseModel):
-    command: str
-    user: int
-    search_name: str | None = None
-    result_qnt: int | None = None
-    price_range: str | None = None
-    price_min: str | int | None = None
-    price_max: str | int | None = None
-    title: str | None = None
-    price: float | None = None
-    reviews: int | None = None
-    stars: float | None = None
-    url: str | None = None
-    image: str | None = None
-    sort: str | None = None
+class ItemSearch(Base):
+    uid = peewee.PrimaryKeyField()
+    product_id = peewee.CharField(max_length=200, unique=True)
+    title = peewee.CharField(null=True, max_length=200)
+    url = peewee.CharField(null=True)
+    image = peewee.CharField(null=True)
+    user = peewee.ForeignKeyField(
+        User,
+        backref='favorite',
+        to_field="user_id",
+        related_name="favorite"
+    )
 
 
-class FavoriteModel(BaseModel):
-    title: str = None
-    price: float = None
-    reviews: int = None
-    stars: float = None
-    url: str = None
-    image: str = None
-    user: int = None
-
-
-class CacheDataModel(BaseModel):
-    key: str
-    query: str
-    user: int
-class CacheDataUpdateModel(BaseModel):
-    query: str
+# Модель для хранения данных
+class DataEntry(Base):
+    value = peewee.FloatField()  # Пример: числовое значение из API
+    # timestamp = peewee.DateTimeField(default=datetime.now)  # Время записи
+    item_search = peewee.ForeignKeyField(ItemSearch, backref="data_entries")  # Связь с ItemSearch item

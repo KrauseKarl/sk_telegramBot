@@ -1,7 +1,6 @@
-import json
-from typing import Any, Dict
+from typing import Any
 
-from aiogram.fsm.context import FSMContext
+
 from playhouse.shortcuts import model_to_dict
 from api_aliexpress.request import *
 from api_redis.handlers import *
@@ -10,6 +9,7 @@ from api_telegram.statments import CacheFSM
 from core import config
 from database.exceptions import *
 from database.paginator import *
+from database.pydantic import *
 
 redis_handler = RedisHandler()
 
@@ -102,7 +102,10 @@ async def get_data_by_request_to_api(params: dict):
     response = await request_api(params)
 
     try:
-        return response["result"]["resultList"]
+        if params.get('q'):
+            return response["result"]["resultList"]
+        else:
+            return response
     except KeyError:
         if "message" in response:
             raise FreeAPIExceededError(

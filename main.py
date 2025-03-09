@@ -5,32 +5,53 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from api_telegram import commands, routers
+from api_telegram.crud.scheduler import setup_scheduler
 from core import config
 from database.db import *
-from database.exceptions import CustomError
 from database.models import *
 
-bot = Bot(
-    token=conf.bot_token.get_secret_value(),
-    default=DefaultBotProperties(
-        parse_mode=ParseMode.HTML,
-        show_caption_above_media=False
-    )
-)
-dp = Dispatcher()
-
-dp.include_router(routers.bases.base)
-
-dp.include_router(routers.histories.history)
-dp.include_router(routers.favorites.favorite)
-dp.include_router(routers.details.detail)
-dp.include_router(routers.review.review)
-dp.include_router(routers.categories.category)
-dp.include_router(routers.searches.search)
+#
+# bot = Bot(
+#     token=conf.bot_token.get_secret_value(),
+#     default=DefaultBotProperties(
+#         parse_mode=ParseMode.HTML,
+#         show_caption_above_media=False
+#     )
+# )
+# dp = Dispatcher()
+#
+# dp.include_router(routers.bases.base)
+#
+# dp.include_router(routers.histories.history)
+# dp.include_router(routers.favorites.favorite)
+# dp.include_router(routers.details.detail)
+# dp.include_router(routers.review.review)
+# dp.include_router(routers.categories.category)
+# dp.include_router(routers.searches.search)
 
 
 async def main():
+    bot = Bot(
+        token=conf.bot_token.get_secret_value(),
+        default=DefaultBotProperties(
+            parse_mode=ParseMode.HTML,
+            show_caption_above_media=False
+        )
+    )
+    dp = Dispatcher()
+
+    dp.include_router(routers.bases.base)
+
+    dp.include_router(routers.histories.history)
+    dp.include_router(routers.favorites.favorite)
+    dp.include_router(routers.details.detail)
+    dp.include_router(routers.review.review)
+    dp.include_router(routers.categories.category)
+    dp.include_router(routers.searches.search)
+    dp.include_router(routers.schedulers.scheduler)
+
     create_tables()
+    setup_scheduler(bot)
 
     await bot.delete_webhook(
         drop_pending_updates=True
