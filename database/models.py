@@ -19,7 +19,7 @@ migrator = PostgresqlMigrator(db)
 
 
 class Base(Model):
-    date = peewee.DateTimeField(default=datetime.now())
+    date = peewee.DateTimeField(default=datetime.datetime.now())
 
     class Meta:
         database = db

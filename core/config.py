@@ -1,3 +1,4 @@
+import datetime
 import os
 from pathlib import Path
 from typing import Dict
@@ -101,6 +102,13 @@ HEIGHT = 576
 THUMBNAIL = 500
 IMG_FORMAT = "png"
 IMG_LIMIT = 8
+
+# SCHEDULER ################################################################################
+now = datetime.datetime.now()
+future = now + datetime.timedelta(minutes=2)
+
+SCHEDULE_HOUR = now.hour
+SCHEDULE_MIN = future.minute
 
 # REDIS ####################################################################################
 CACHE_LIVE_TIME = 60 * 60 * 24  # 24 часа
