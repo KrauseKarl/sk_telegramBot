@@ -1,9 +1,10 @@
 import locale
 
 from aiogram import Router, F, types
-from aiogram.filters import Command
+from aiogram.filters import Command, or_f
 
 from api_telegram.crud.scheduler import remove_job, create_item_search
+from api_telegram.keyboards import BasePaginationBtn
 from utils.media import *
 import matplotlib.pyplot as plt
 
@@ -27,7 +28,10 @@ async def add_search(callback: types.CallbackQuery):
 
 
 # Команда /list_searches
-@scheduler.callback_query(F.data.startswith("list_searches"))
+# @scheduler.callback_query(F.data.startswith("list_searches"))
+@scheduler.callback_query(or_f(
+    MonitorCBD.filter(F.action.in_({MonitorAction.list, MonitorAction.back})),
+    F.data.startswith("list_searches")))
 async def list_searches(callback: types.CallbackQuery):
     try:
         searched_items = ItemSearch.select().where(ItemSearch.user == callback.from_user.id)
@@ -37,11 +41,19 @@ async def list_searches(callback: types.CallbackQuery):
 
         msg = "Список поисковых запросов:\n"
         for item_search in searched_items:
-            msg += "{0:.50} (ID: {1})\n".format(item_search.title, item_search.product_id)
+            msg += "{0:.20} (ID: {1})\n".format(item_search.title, item_search.product_id)
             photo = InputMediaPhoto(media=item_search.image, caption=msg)
-            await callback.message.edit_media(media=photo)
+            kb = BasePaginationBtn()
+            data = MonitorCBD(
+                action=MonitorAction.graph,
+                monitor_id=item_search.uid,
+                item_id=item_search.product_id
+            ).pack()
+            kb.add_buttons([kb.btn_data('graph', data), kb.btn_text('menu')]).add_markup(1)
+            await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
     except Exception as error:
-        await callback.answer(str(error))
+        print(error)
+        await callback.answer(str(error)[:100])
 
 
 # Команда /delete_search
@@ -68,32 +80,32 @@ async def delete_search(message: types.Message):
     await message.answer(f"Поисковый запрос '{item_search.name}' (ID: {item_search.id}) удален.")
 
 
-# Команда /graph
-# Команда /graph
-@scheduler.message(Command("graph"))
-async def send_graph(message: types.Message):
+# @scheduler.message(Command("graph"))
+@scheduler.callback_query(MonitorCBD.filter(F.action == MonitorAction.graph))
+async def send_graph(callback: types.CallbackQuery, callback_data: MonitorCBD):
     # Пример: Получаем ID поискового запроса из аргументов команды
     try:
-        print(message.text)
-        args = message.text.split()
-        if len(args) < 2:
-            await message.answer("Укажите ID поискового запроса: /graph <item_search_id>")
-            return
-
+        # print(message.text)
+        # args = callback_data.
+        # if len(args) < 2:
+        #     await message.answer("Укажите ID поискового запроса: /graph <item_search_id>")
+        #     return
         try:
-            item_search_id = int(args[1])
+            # item_search_id = int(args[1])
+            item_search_id = callback_data.monitor_id
             item_search = ItemSearch.select().where(ItemSearch.uid == item_search_id).get_or_none()
             if item_search is None:
                 raise ValueError
         except (ValueError, ItemSearch.DoesNotExist):
-            await message.answer("Неверный ID поискового запроса.")
+            await callback.message.answer("Неверный ID поискового запроса.")
             return
+
 
         # Получаем данные, связанные с поисковым запросом
         entries = DataEntry.select().where(DataEntry.item_search == item_search).order_by(DataEntry.date)
 
         if not entries:
-            await message.answer("Данные отсутствуют.")
+            await callback.message.answer("Данные отсутствуют.")
             return
 
         locale.setlocale(category=locale.LC_ALL, locale="Russian")
@@ -160,7 +172,16 @@ async def send_graph(message: types.Message):
         msg = f"\r\n📈 max цена = {max(values)}\t({max_time_value})\r\n"\
               f"📉 min цена = {min(values)}\t({min_time_value})\r\n"\
               f"📅 текущая цена = {values[-1]}\t({timestamps[-1]})\r\n"
-        await message.answer_photo(FSInputFile("graph.png"), caption=msg)
+        photo = InputMediaPhoto(media=FSInputFile("graph.png"), caption=msg)
+        kb = BasePaginationBtn()
+        kb_data = MonitorCBD(
+            action=MonitorAction.back,
+            monitor_id=callback_data.monitor_id,
+            item_id=callback_data.item_id
+        ).pack()
+        kb.add_button(kb.btn_data('back', kb_data)).add_markup(1)
+        # kb.add_button(kb.btn_text('li')).add_markup(1)
+        await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
     except Exception as error:
         print(error)
-        await message.answer(str(error))
+        await callback.message.answer(str(error))

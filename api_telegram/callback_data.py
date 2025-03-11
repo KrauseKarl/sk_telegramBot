@@ -198,3 +198,15 @@ class BaseCBD(CallbackData, prefix='BS'):
     first: str | int
     last: str | int
     extra_page: str | int | None = None
+
+
+class MonitorAction(str, Enum):
+    list = "LST"
+    back = "BCK"
+    graph = "GRAPH"
+
+
+class MonitorCBD(CallbackData, prefix="Graph"):
+    action: MonitorAction
+    item_id: str | int
+    monitor_id: str | int

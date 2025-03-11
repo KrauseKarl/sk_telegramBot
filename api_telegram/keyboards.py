@@ -22,7 +22,8 @@ KEYS = {
     "search": "🛒 поиск",
     "history": "📋 история",
     "favorite": "⭐️ избранное",
-    "list_searches": "📉 отслеживание цен",
+    "list_searches": "🧭 отслеживание цен",
+    "graph": "📊 график цены",
 
     "default": "📶 по умолчанию",
     "salesDesc": "💰 по продажам",
