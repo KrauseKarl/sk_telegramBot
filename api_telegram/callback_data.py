@@ -204,11 +204,12 @@ class MonitorAction(str, Enum):
     back = "BCK"
     graph = "GRAPH"
     delete = "DEL"
+    page = "PGN"
 
 
 class MonitorCBD(CallbackData, prefix="Monitor"):
     action: MonitorAction
     navigate: Navigation | None = None
-    page: int = 1
     item_id: str | int | None = None
     monitor_id: str | int | None = None
+    page: int| int | None = None

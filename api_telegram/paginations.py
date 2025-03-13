@@ -147,18 +147,18 @@ async def paginate_searched_items_list_kb(page: int, item_id, navigate: str, len
     )
     if len_data > 1:
         if navigate == Navigation.first:
-            kb.add_button(kb.add_button(kb.pg(page).next_btn(1)))
+            kb.add_button(kb.pg(page).next_btn(1))
         elif navigate == Navigation.next:
-            kb.add_button(kb.add_button(kb.pg(page).prev_btn(-1)))
+            kb.add_button(kb.pg(page).prev_btn(-1))
             if page < len_data:
-                kb.add_button(kb.add_button(kb.pg(page).next_btn(1)))
+                kb.add_button(kb.pg(page).next_btn(1))
         elif navigate == Navigation.prev:
             if page > 1:
-                kb.add_button(kb.add_button(kb.pg(page).prev_btn(-1)))
-            kb.add_button(kb.add_button(kb.pg(page).next_btn(1)))
-        kb.add_markup(len(kb.get_kb()))
+                kb.add_button(kb.pg(page).prev_btn(-1))
+            kb.add_button(kb.pg(page).next_btn(1))
+        # kb.add_markup(len(kb.get_kb()))
 
-    kb.add_buttons([kb.graph_btn(), kb.delete_btn(), kb.btn_text("menu")]).add_markups([1, 2])
+    kb.add_buttons([kb.graph_btn(navigate), kb.delete_btn(navigate), kb.btn_text("menu")]).add_markups([1, 2])
     return kb
 
 

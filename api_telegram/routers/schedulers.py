@@ -29,29 +29,18 @@ async def add_search(callback: types.CallbackQuery):
 
 # Команда /list_searches
 # @scheduler.callback_query(F.data.startswith("list_searches"))
-@scheduler.callback_query(or_f(
-    MonitorCBD.filter(F.action.in_({MonitorAction.list, MonitorAction.back})),
-    F.data.startswith("list_searches")))
+@scheduler.callback_query(MonitorCBD.filter(
+        F.action.in_({MonitorAction.list, MonitorAction.back, MonitorAction.page}))
+)
 async def list_searches(callback: types.CallbackQuery, callback_data: MonitorCBD):
     # try:
+        print(callback_data)
         searched_items = await orm_get_searched_items(callback.from_user.id)
         if not searched_items:
             await callback.message.answer("Поисковые запросы отсутствуют.")
             return
         msg, photo, kb = await get_searched_items_list(callback, callback_data)
 
-        # msg = "Список поисковых запросов:\n"
-        #
-        # for item_search in searched_items:
-        #     msg += "{0:.20} (ID: {1})\n".format(item_search.title, item_search.product_id)
-        #     photo = InputMediaPhoto(media=item_search.image, caption=msg)
-        #     kb = BasePaginationBtn()
-        #     data = MonitorCBD(
-        #         action=MonitorAction.graph,
-        #         monitor_id=item_search.uid,
-        #         item_id=item_search.product_id
-        #     ).pack()
-        # kb.add_buttons([kb.btn_data('graph', data), kb.btn_text('menu')]).add_markup(1)
         print(kb.get_kb())
         await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
     # except Exception as error:
@@ -87,6 +76,7 @@ async def delete_search(message: types.Message):
 @scheduler.callback_query(MonitorCBD.filter(F.action == MonitorAction.graph))
 async def send_graph(callback: types.CallbackQuery, callback_data: MonitorCBD):
     # Пример: Получаем ID поискового запроса из аргументов команды
+    print('GRAF', callback_data)
     try:
         # print(message.text)
         # args = callback_data.
@@ -177,9 +167,11 @@ async def send_graph(callback: types.CallbackQuery, callback_data: MonitorCBD):
         photo = InputMediaPhoto(media=FSInputFile("graph.png"), caption=msg)
         kb = BasePaginationBtn()
         kb_data = MonitorCBD(
-            action=MonitorAction.back,
+            action=MonitorAction.list,
+            navigate=callback_data.navigate,
             monitor_id=callback_data.monitor_id,
-            item_id=callback_data.item_id
+            item_id=callback_data.item_id,
+            page=callback_data.page
         ).pack()
         kb.add_button(kb.btn_data('back', kb_data)).add_markup(1)
         # kb.add_button(kb.btn_text('li')).add_markup(1)

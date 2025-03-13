@@ -157,9 +157,9 @@ async def request_api(params) -> dict:
     for key, value in params.items():
         if value:
             conf.querystring[key] = value
-    print("⚜️ request_api {0} [{1}]".format(params.get('q'), params.get('page')))
-    print("⚜️ request_api {0}".format(params.get('itemId')))
-    print("⚜️ request_api {0}".format(params))
+    # print("⚜️ request_api {0} [{1}]".format(params.get('q'), params.get('page')))
+    # print("⚜️ request_api {0}".format(params.get('itemId')))
+    # print("⚜️ request_api {0}".format(params))
     if config.FAKE_MODE:
         result = await request_api_fake(params)
     else:

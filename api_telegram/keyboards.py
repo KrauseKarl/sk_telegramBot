@@ -667,25 +667,27 @@ class ItemSearchPaginationBtn(PaginationBtn):
         self.navigate = navigate
         self.call_data = call_data
 
-    def delete_btn(self, item_id=None):
+    def delete_btn(self, navigate,item_id=None):
         return self.btn_data(
             name='delete',
             data=MonitorCBD(
                 action=self.action.delete,
+                navigate=navigate,
                 item_id=item_id if item_id else self.id,
                 page=self.page
             ).pack()
         )
 
-    def graph_btn(self, item_id=None):
-        return self.btn_data(
-            name='graph',
-            data=MonitorCBD(
+    def _graph_btn(self, navigate, item_id=None):
+        return self.call_data(
                 action=self.action.graph,
+                navigate=navigate,
                 item_id=item_id if item_id else self.id,
                 page=self.page
             ).pack()
-        )
+
+    def graph_btn(self, navigate, item_id=None):
+        return self.btn_data('graph', self._graph_btn(navigate, item_id))
 
 
 class CommentPaginationBtn(FavoritePaginationBtn):
@@ -757,7 +759,7 @@ async def menu_kb():
         ),
         kb.btn_data(
             "list_searches",
-            MonitorCBD(action=MonitorAction.list, navigate=Navigation.first).pack()
+            MonitorCBD(action=MonitorAction.list, navigate=Navigation.first, page=1).pack()
         )
     ]).add_markups([1, 2])
     print("****** MENU KB", kb)
