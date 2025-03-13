@@ -84,7 +84,11 @@ async def orm_create_item_search(data: dict):
     ItemSearch.create(
         product_id=data.get("product_id"),
         title=data.get("title"),
+        price=data.get("price"),
         url=data.get("url"),
         image=data.get("image"),
         user=data.get("user"),
     ).save()
+
+async def orm_get_searched_items(user_id: int):
+    return ItemSearch.select().where(ItemSearch.user == user_id)

@@ -280,6 +280,24 @@ async def favorite_info(item, page, total_page) -> str:
     return msg
 
 
+async def monitor_info(item, page, total_page) -> str:
+    """
+
+    :param total_page:
+    :param page:
+    :param item:
+    :return:
+    """
+    msg = "📅\t{0}\n".format(item.date.strftime('%d %b %Y'))
+    msg += "🕐\t{0}\n".format(item.date.strftime('%H:%M:%S'))
+    msg += "🆔\t<u>id</u>:\t{0}\n".format(item.product_id)
+    msg += "✅\t{:.50}\n".format(item.title)
+    msg += "🟠\t<i>цена</i>:\t{0}\tRUB\n".format(item.price)
+
+    msg += "\n{0} из {1}".format(page, total_page)
+    return msg
+
+
 def category_info(items: dict, query: str = None):
     """
 

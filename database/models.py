@@ -109,6 +109,9 @@ class ItemSearch(Base):
     uid = peewee.PrimaryKeyField()
     product_id = peewee.CharField(max_length=200, unique=True)
     title = peewee.CharField(null=True, max_length=200)
+    price = peewee.FloatField()
+    max_price = peewee.FloatField(null=True)
+    min_price = peewee.FloatField(null=True)
     url = peewee.CharField(null=True)
     image = peewee.CharField(null=True)
     user = peewee.ForeignKeyField(

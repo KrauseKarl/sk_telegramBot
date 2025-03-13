@@ -4,6 +4,20 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
+class BasePagination(str, Enum):
+    next = "nxt"
+    prev = "prv"
+    last = "lts"
+    first = "fst"
+
+
+class Navigation(str, Enum):
+    next = "NXT"
+    prev = "PRV"
+    last = "LST"
+    first = "FRT"
+
+
 class CacheKey(CallbackData, prefix='redis'):
     # user_id: int | None = None
     key: str
@@ -43,6 +57,13 @@ class DetailCBD(CallbackData, prefix='ITD'):
     last: int | str
 
 
+class DetailsAction(str, Enum):
+    view = "DGD"
+    list = "DBL"
+    detail = "DBD"
+
+
+# FAVORITE ######################################################################################
 class FavAction(str, Enum):
     list = "add_lst"
     detail = "add_dtl"
@@ -50,30 +71,24 @@ class FavAction(str, Enum):
     page = "page"
 
 
+class FavoriteAction(str, Enum):
+    add_list = "FAL"
+    aad_detail = "FAD"
+    delete = "FDL"
+    paginate = "FPG"
+
+
 class FavPagination(str, Enum):
-    next = "next"
-    prev = "prev"
-    last = "lats"
-    first = "first"
+    next = "nxt"
+    prev = "prv"
+    last = "lts"
+    first = "fst"
 
 
 class FavoritePageCBD(CallbackData, prefix='FVT'):
     action: FavAction
     navigate: FavPagination
     page: int = 1
-
-
-# class FavoriteAddCBD(CallbackData, prefix='favorite'):
-#     action: FavAction
-#     item_id: str = None
-#     key: str
-#     api_page: str
-#     next: str
-#     prev: str
-#     first: str
-#     last: str
-#
-#     page: str
 
 
 class FavoriteAddDetailCBD(CallbackData, prefix='FVT'):
@@ -97,9 +112,15 @@ class FavoriteDeleteCBD(CallbackData, prefix='FVT'):
     page: int
 
 
+# REVIEW ######################################################################################
 class RevAction(str, Enum):
     first = "first"
     page = "page"
+
+
+class ReviewAction(str, Enum):
+    first = "RFP"
+    paginate = "RPG"
 
 
 class RevNavigate(str, Enum):
@@ -129,6 +150,7 @@ class ReviewCBD(CallbackData, prefix='RVW'):
     review_page: str | int
 
 
+# IMAGE ######################################################################################
 class ImgAction(str, Enum):
     images = "img"
     page = 'pgn'
@@ -140,6 +162,12 @@ class ImgNavigation(str, Enum):
     prev = "pr"
     last = "lt"
     first = "ft"
+
+
+class ImagesAction(str, Enum):
+    images = "IFP"
+    paginate = 'IPG'
+    back = "IBD"
 
 
 class ImageCBD(CallbackData, prefix='IMG'):
@@ -156,37 +184,7 @@ class ImageCBD(CallbackData, prefix='IMG'):
     img_page: str | int
 
 
-class DetailsAction(str, Enum):
-    view = "DGD"
-    list = "DBL"
-    detail = "DBD"
-
-
-class FavoriteAction(str, Enum):
-    add_list = "FAL"
-    aad_detail = "FAD"
-    delete = "FDL"
-    paginate = "FPG"
-
-
-class ReviewAction(str, Enum):
-    first = "RFP"
-    paginate = "RPG"
-
-
-class ImagesAction(str, Enum):
-    images = "IFP"
-    paginate = 'IPG'
-    back = "IBD"
-
-
-class Navigation(str, Enum):
-    next = "NXT"
-    prev = "PRV"
-    last = "LST"
-    first = "FRT"
-
-
+# BASE ######################################################################################
 class BaseCBD(CallbackData, prefix='BS'):
     action: DetailAction | FavoriteAction | ReviewAction | ImgAction
     navigate: Navigation
@@ -200,13 +198,17 @@ class BaseCBD(CallbackData, prefix='BS'):
     extra_page: str | int | None = None
 
 
+# MONITOR ######################################################################################
 class MonitorAction(str, Enum):
     list = "LST"
     back = "BCK"
     graph = "GRAPH"
+    delete = "DEL"
 
 
-class MonitorCBD(CallbackData, prefix="Graph"):
+class MonitorCBD(CallbackData, prefix="Monitor"):
     action: MonitorAction
-    item_id: str | int
-    monitor_id: str | int
+    navigate: Navigation | None = None
+    page: int = 1
+    item_id: str | int | None = None
+    monitor_id: str | int | None = None

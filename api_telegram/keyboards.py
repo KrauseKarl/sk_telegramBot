@@ -622,6 +622,72 @@ class FavoritePaginationBtn(BasePaginationBtn):
         )
 
 
+class PaginationBtn(BasePaginationBtn):
+    def __init__(self, action, navigate, call_data, item_id):
+        super().__init__()
+        self.page = 1
+        self.id = item_id
+        self.action = action
+        self.navigate = navigate
+        self.call_data = call_data
+
+    def pg(self, page):
+        self.page = page
+        return self
+
+    def __add__(self, other):
+        return self.page + other
+
+    def _btn(self, num, navigate):
+        return self.call_data(
+            action=self.action.page,
+            navigate=navigate,
+            page=self.__add__(num)
+        ).pack()
+
+    def next_btn(self, num):  # page + 1
+        return self.btn_data(
+            name='next',
+            data=self._btn(num, self.navigate.next)
+        )
+
+    def prev_btn(self, num):  # page - 1
+        return self.btn_data(
+            name='prev',
+            data=self._btn(num, self.navigate.prev)
+        )
+
+
+class ItemSearchPaginationBtn(PaginationBtn):
+    def __init__(self, item_id, action, navigate, call_data):
+        super().__init__(item_id, action, navigate, call_data)
+        self.page = 1
+        self.id = item_id
+        self.action = action
+        self.navigate = navigate
+        self.call_data = call_data
+
+    def delete_btn(self, item_id=None):
+        return self.btn_data(
+            name='delete',
+            data=MonitorCBD(
+                action=self.action.delete,
+                item_id=item_id if item_id else self.id,
+                page=self.page
+            ).pack()
+        )
+
+    def graph_btn(self, item_id=None):
+        return self.btn_data(
+            name='graph',
+            data=MonitorCBD(
+                action=self.action.graph,
+                item_id=item_id if item_id else self.id,
+                page=self.page
+            ).pack()
+        )
+
+
 class CommentPaginationBtn(FavoritePaginationBtn):
     def __init__(self, item_id):
         super().__init__(item_id)
@@ -684,14 +750,17 @@ async def menu_kb():
     kb = BasePaginationBtn()
     kb.add_buttons([
         kb.btn_text("search"),
-        kb.btn_text("list_searches"),
         kb.btn_text("history"),
-        kb.btn_data("favorite", FavoritePageCBD(
-            action=FavAction.page,
-            navigate=FavPagination.first
-        ).pack()
-                    )
+        kb.btn_data(
+            "favorite",
+            FavoritePageCBD(action=FavAction.page, navigate=FavPagination.first).pack()
+        ),
+        kb.btn_data(
+            "list_searches",
+            MonitorCBD(action=MonitorAction.list, navigate=Navigation.first).pack()
+        )
     ]).add_markups([1, 2])
+    print("****** MENU KB", kb)
     return kb.create_kb()
 
 

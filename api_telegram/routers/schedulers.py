@@ -3,7 +3,7 @@ import locale
 from aiogram import Router, F, types
 from aiogram.filters import Command, or_f
 
-from api_telegram.crud.scheduler import remove_job, create_item_search
+from api_telegram.crud.scheduler import remove_job, create_item_search, get_searched_items_list
 from api_telegram.keyboards import BasePaginationBtn
 from utils.media import *
 import matplotlib.pyplot as plt
@@ -32,28 +32,31 @@ async def add_search(callback: types.CallbackQuery):
 @scheduler.callback_query(or_f(
     MonitorCBD.filter(F.action.in_({MonitorAction.list, MonitorAction.back})),
     F.data.startswith("list_searches")))
-async def list_searches(callback: types.CallbackQuery):
-    try:
-        searched_items = ItemSearch.select().where(ItemSearch.user == callback.from_user.id)
+async def list_searches(callback: types.CallbackQuery, callback_data: MonitorCBD):
+    # try:
+        searched_items = await orm_get_searched_items(callback.from_user.id)
         if not searched_items:
             await callback.message.answer("Поисковые запросы отсутствуют.")
             return
+        msg, photo, kb = await get_searched_items_list(callback, callback_data)
 
-        msg = "Список поисковых запросов:\n"
-        for item_search in searched_items:
-            msg += "{0:.20} (ID: {1})\n".format(item_search.title, item_search.product_id)
-            photo = InputMediaPhoto(media=item_search.image, caption=msg)
-            kb = BasePaginationBtn()
-            data = MonitorCBD(
-                action=MonitorAction.graph,
-                monitor_id=item_search.uid,
-                item_id=item_search.product_id
-            ).pack()
-            kb.add_buttons([kb.btn_data('graph', data), kb.btn_text('menu')]).add_markup(1)
-            await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
-    except Exception as error:
-        print(error)
-        await callback.answer(str(error)[:100])
+        # msg = "Список поисковых запросов:\n"
+        #
+        # for item_search in searched_items:
+        #     msg += "{0:.20} (ID: {1})\n".format(item_search.title, item_search.product_id)
+        #     photo = InputMediaPhoto(media=item_search.image, caption=msg)
+        #     kb = BasePaginationBtn()
+        #     data = MonitorCBD(
+        #         action=MonitorAction.graph,
+        #         monitor_id=item_search.uid,
+        #         item_id=item_search.product_id
+        #     ).pack()
+        # kb.add_buttons([kb.btn_data('graph', data), kb.btn_text('menu')]).add_markup(1)
+        print(kb.get_kb())
+        await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
+    # except Exception as error:
+    #     print(error)
+    #     await callback.answer(str(error)[:100])
 
 
 # Команда /delete_search
@@ -92,14 +95,13 @@ async def send_graph(callback: types.CallbackQuery, callback_data: MonitorCBD):
         #     return
         try:
             # item_search_id = int(args[1])
-            item_search_id = callback_data.monitor_id
-            item_search = ItemSearch.select().where(ItemSearch.uid == item_search_id).get_or_none()
+            item_search_id = callback_data.item_id
+            item_search = ItemSearch.select().where(ItemSearch.product_id == item_search_id).get_or_none()
             if item_search is None:
                 raise ValueError
         except (ValueError, ItemSearch.DoesNotExist):
             await callback.message.answer("Неверный ID поискового запроса.")
             return
-
 
         # Получаем данные, связанные с поисковым запросом
         entries = DataEntry.select().where(DataEntry.item_search == item_search).order_by(DataEntry.date)
@@ -169,8 +171,8 @@ async def send_graph(callback: types.CallbackQuery, callback_data: MonitorCBD):
         plt.xticks(timestamps)
         plt.savefig("graph.png")
 
-        msg = f"\r\n📈 max цена = {max(values)}\t({max_time_value})\r\n"\
-              f"📉 min цена = {min(values)}\t({min_time_value})\r\n"\
+        msg = f"\r\n📈 max цена = {max(values)}\t({max_time_value})\r\n" \
+              f"📉 min цена = {min(values)}\t({min_time_value})\r\n" \
               f"📅 текущая цена = {values[-1]}\t({timestamps[-1]})\r\n"
         photo = InputMediaPhoto(media=FSInputFile("graph.png"), caption=msg)
         kb = BasePaginationBtn()
