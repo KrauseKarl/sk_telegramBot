@@ -10,6 +10,7 @@ from api_telegram.keyboards import *
 from api_telegram.statments import *
 from database.exceptions import *
 from database.orm import *
+from utils.cache_key import get_extra_cache_key
 from utils.message_info import *
 
 detail = Router()
@@ -17,13 +18,9 @@ redis_handler = RedisHandler()
 
 
 # ITEM DETAIL ##########################################################################################################
-@detail.callback_query(DetailCBD.filter(F.action.in_({DetailAction.go_view, DetailAction.back_detail})))
-async def get_item_detail(
-        call: CallbackQuery,
-        callback_data: DetailCBD,
-        state: FSMContext,
-
-) -> None:
+@detail.callback_query(DetailCBD.filter(F.action == DetailAction.go_view))
+@detail.callback_query(DetailCBD.filter(F.action == DetailAction.back_detail))
+async def get_item_detail(call: CallbackQuery, callback_data: DetailCBD) -> None:
     try:
         await call.answer()
         cache_key = CacheKeyExtended(
@@ -32,6 +29,7 @@ async def get_item_detail(
             extra='detail',
             sub_page=callback_data.page
         ).pack()
+        # cache_key = await get_extra_cache_key(callback_data, 'detail')
         item_data = await redis_handler.get_data(cache_key)
 
         if item_data is None:
@@ -44,10 +42,10 @@ async def get_item_detail(
         ############################################################
         item = await deserialize_item_detail(item_data, call.from_user.id)
         msg = await get_detail_info(item_data)
-        item['command'] = 'detail'
+        # item['command'] = 'detail'
         await orm_make_record_request(item)
 
-        # todo refactor - add kb_factory
+        # todo refactor - add kb_factory_detailItem_page
         kb = ItemPaginationBtn(
             key=callback_data.key,
             api_page=callback_data.api_page,
@@ -55,27 +53,28 @@ async def get_item_detail(
             paginator_len=int(callback_data.last)
         )
 
-        buttons = [
+        kb.add_buttons([
             kb.comment(callback_data.page),
             kb.images(callback_data.page),
             # kb.btn_text('price'),
             kb.detail('back', callback_data.page, DetailAction.back_list),
-            kb.btn_data("price", f"item_search:{callback_data.item_id}"),
 
-        ]
+        ])
+
+        is_monitoring = await orm_get_monitoring_item(callback_data.item_id)
+        if is_monitoring is None:
+            data = MonitorCBD(
+                action=MonitorAction.add,
+                item_id=callback_data.item_id
+            ).pack()
+            kb.add_button(kb.btn_data("price", data))
+
         is_favorite = await orm_get_favorite(item_id=callback_data.item_id)
         if is_favorite is None:
-            buttons.insert(0, kb.favorite(callback_data.page))
+            kb.add_button(kb.favorite(callback_data.page))
 
-        kb.add_buttons(buttons).add_markups([2, 2, 1])
+        kb.add_markups([2, 2, 1])
         # todo refactor - add kb_factory
-
-        ##################################################################
-        for i in kb.get_kb():
-            for k, v in i.items():
-                # if v.startswith('ITD'):
-                    print("💜 detail to list", v.split(":"))
-        #################################################################
 
         await call.message.edit_media(
             media=InputMediaPhoto(
@@ -104,7 +103,7 @@ async def show_first_item_paginate_images(callback: CallbackQuery, callback_data
     key = callback_data.key
     api_page = int(callback_data.api_page)
     navigate = callback_data.navigate
-    img_page = int(callback_data.img_page)
+    sub_page = int(callback_data.sub_page)
 
     kb = ImgPaginationBtn(
         key=key,
@@ -137,42 +136,32 @@ async def show_first_item_paginate_images(callback: CallbackQuery, callback_data
         pass
     print(f"🖼 1 img_list len = {len(img_list)=}")
 
-    paginator = Paginator(array=img_list, page=int(img_page))
+    paginator = Paginator(array=img_list, page=int(sub_page))
     img = paginator.get_page()[0]
 
     if paginator.len > 1:
-        if navigate == ImgNavigation.first:
-            kb.add_button(kb.next_btn(page, int(img_page) + 1)).add_markup(1)
-        # if navigate == FavPagination.first:
-        #     kb.add_button(kb.pg(page).next_btn(1)).add_markup(1)
+        if navigate == Navigation.first:
+            kb.add_button(kb.next_btn(page, int(sub_page) + 1)).add_markup(1)
 
-        elif navigate == ImgNavigation.next:
+        elif navigate == Navigation.next:
 
-            # kb.add_button(kb.pg(page).prev_btn(-1)).add_markup(1)
-            kb.add_button(kb.prev_btn(page, int(img_page) - 1)).add_markup(2)
-            if int(img_page) < paginator.len:
-                kb.add_button(kb.next_btn(page, int(img_page) + 1)).add_markup(2)
-                # kb.add_button(kb.pg(page).next_btn(1)).update_markup(2)
+            kb.add_button(kb.prev_btn(page, int(sub_page) - 1)).add_markup(2)
+            if int(sub_page) < paginator.len:
+                kb.add_button(kb.next_btn(page, int(sub_page) + 1)).add_markup(2)
 
-        elif navigate == ImgNavigation.prev:
-            if int(img_page) > 1:
-                kb.add_button(kb.prev_btn(page, int(img_page) - 1)).add_markup(2)
-                # kb.add_button(kb.pg(page).prev_btn(-1)).update_markup(2)
-            # kb.add_button(kb.pg(page).next_btn(1)).add_markup(1)
-            kb.add_button(kb.next_btn(page, int(img_page) + 1)).add_markup(2)
+        elif navigate == Navigation.prev:
+            if int(sub_page) > 1:
+                kb.add_button(kb.prev_btn(page, int(sub_page) - 1)).add_markup(2)
+            kb.add_button(kb.next_btn(page, int(sub_page) + 1)).add_markup(2)
 
     detail_button = kb.detail("back", page, DetailAction.back_detail)
     kb.add_button(detail_button).add_markups([1])
 
     try:
-        msg = "{0} из {1}".format(img_page, paginator.len)
+        msg = "{0} из {1}".format(sub_page, paginator.len)
         media = InputMediaPhoto(media=":".join(["https", img]), caption=msg)
     except Exception as error:
         print(error.__dict__)
         media = await get_input_media_hero_image('error', str(error))
 
-    for i in kb.get_kb():
-        for k, v in i.items():
-            if v.startswith('ITD'):
-                print("💚 image to detail", v.split(":"))
     await callback.message.edit_media(media=media, reply_markup=kb.create_kb())

@@ -1,3 +1,4 @@
+from aiogram.types import InputMediaPhoto
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
@@ -8,8 +9,9 @@ from pydantic import ValidationError
 
 from api_aliexpress.deserializers import deserialize_item_detail
 from api_telegram.crud.items import *
-from api_telegram.keyboards import BasePaginationBtn
-from api_telegram.paginations import paginate_searched_items_list_kb
+from api_telegram.keyboard.builders import kbm
+from api_telegram.keyboards import BasePaginationBtn, ItemSearchPaginationBtn
+from api_telegram.paginations import paginate_monitor_kb
 from database.models import *
 from utils.media import get_input_media_hero_image
 
@@ -110,17 +112,107 @@ def setup_scheduler(bot: Bot):
     scheduler.start()
 
 
-async def get_searched_items_list(query, data):
-    data_list = await orm_get_searched_items(query.from_user.id)
+class MonitorManager:
+    def __init__(self, callback_data, user_id):
+        self.user_id = user_id
+        self.page = int(callback_data.page)
+        self.navigate = callback_data.navigate
+        self.array: Optional[list] = None
+        self.len: Optional[int] = None
+        self.item: Optional[dict] = None
+        self.photo: Optional[InputMediaPhoto] = None
+        self.empty_message = "⭕️ у вас пока нет отслеживаемых товаров"
+        self.action = MonitorAction
+        self.call_data = MonitorCBD
+        self.kb_factory = ItemSearchPaginationBtn
 
+    async def _get_monitor_list(self) -> List[History]:
+        """Получает список истории и сохраняет его в self.array."""
+        if self.array is None:
+            self.array = await orm_get_monitoring_list(self.user_id)
+        return self.array
+
+    async def _get_len(self) -> int:
+        """Возвращает длину списка истории и сохраняет её в self.len."""
+        if self.len is None:
+            self.len = len(await self._get_monitor_list())
+        return self.len
+
+    async def _get_item(self) -> History:
+        """Возвращает элемент истории для текущей страницы."""
+        if self.item is None and await self._get_len() > 0:
+            paginator = Paginator(await self._get_monitor_list(), page=self.page)
+            self.item = paginator.get_page()[0]
+        return self.item
+
+    async def get_msg(self) -> str:
+        """Возвращает сообщение для текущего элемента истории."""
+        current_item = await self._get_item()
+        return await monitor_info(current_item, str(self.page), await self._get_len())
+
+    async def get_media(self) -> InputMediaPhoto:
+        """Возвращает медиа (фото с подписью) для текущего элемента истории."""
+        if self.photo is None:
+            if await self._get_len() > 0:
+                try:
+                    current_item = await self._get_item()
+                    self.photo = InputMediaPhoto(
+                        media=current_item.image,
+                        caption=await self.get_msg()
+                    )
+                except (ValidationError, TypeError):
+                    self.photo = await get_input_media_hero_image(
+                        "favorite",
+                        await self.get_msg()
+                    )
+            else:
+                self.photo = await get_input_media_hero_image(
+                    "favorite",
+                    self.empty_message
+                )
+        return self.photo
+
+    async def get_photo(self) -> Optional[str]:
+        """Возвращает фото текущего элемента истории."""
+        item = await self._get_item()
+        return item.image if item else None
+
+    async def get_keyboard(self):
+        """Возвращает клавиатуру для пагинации."""
+        if await self._get_len() >= 1:
+            current_item = await self._get_item()
+            kb = self.kb_factory(
+                item_id=str(current_item.uid),
+                action=self.action,
+                call_data=self.call_data
+            )
+            kb.create_pagination_buttons(
+                page=self.page,
+                navigate=self.navigate,
+                len_data=int(await self._get_len())
+            )
+            kb.add_buttons(
+                [
+                    kb.graph_btn(self.navigate),
+                    kb.delete_btn(self.navigate),
+                    kb.btn_text("menu")
+                ]
+            ).add_markups([2, 1])
+            return kb.create_kb()
+        else:
+            return await kbm.back()
+
+async def get_searched_items_list(query, data):
+    data_list = await orm_get_monitoring_list(query.from_user.id)
     if len(data_list) > 0:
         paginator = Paginator(data_list, page=data.page)
-        item = paginator.get_page()[0]
-        img = item.image
-        msg = await monitor_info(item, data.page, paginator.pages)
-        kb = await paginate_searched_items_list_kb(
+        monitor_item = paginator.get_page()[0]
+        img = monitor_item.image
+        msg = await monitor_info(monitor_item, data.page, paginator.pages)
+        # kb = await paginate_searched_items_list_kb(
+        kb = await paginate_monitor_kb(
             page=int(data.page),
-            item_id=item.product_id,
+            item_id=monitor_item.product_id,
             navigate=data.navigate,
             len_data=paginator.len
         )

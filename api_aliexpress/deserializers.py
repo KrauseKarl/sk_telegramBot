@@ -8,6 +8,8 @@ from database.orm import *
 from utils.media import *
 from utils.message_info import card_info, get_price_range
 
+redis_handler = RedisHandler()
+
 
 async def deserialize_item_detail_fake(
         response: dict, user_id: int
@@ -115,11 +117,11 @@ async def deserialize_item_list(
     print(f"\n🟥🟥🟥🟥 {cache_key= } 🟥🟥🟥\n")
 
     # check cache
-    cache_data = await redis_get_data_from_cache(cache_key)
+    cache_data = await redis_handler.get_data(cache_key)
 
     # get_or_create cache
     if cache_data is None:
-        await redis_set_data_to_cache(key=cache_key, value=item_list)
+        await redis_handler.set_data(key=cache_key, value=item_list)
     # save in file .json
     cache_file_path = os.path.join(config.CACHE_PATH, f'{cache_key}.json')
     with open(cache_file_path, 'w', encoding='utf-8') as file:

@@ -203,6 +203,7 @@ class MonitorAction(str, Enum):
     list = "LST"
     back = "BCK"
     graph = "GRAPH"
+    add = "ADD"
     delete = "DEL"
     page = "PGN"
 
@@ -212,4 +213,4 @@ class MonitorCBD(CallbackData, prefix="Monitor"):
     navigate: Navigation | None = None
     item_id: str | int | None = None
     monitor_id: str | int | None = None
-    page: int| int | None = None
+    page: int | int | None = None

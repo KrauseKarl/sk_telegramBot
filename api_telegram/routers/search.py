@@ -1,9 +1,5 @@
-import uuid
-
 from aiogram import F, Router
 from aiogram.filters import Command, or_f
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.base import StorageKey
 from aiogram.types import CallbackQuery, Message
 
 from api_aliexpress.deserializers import *
@@ -11,10 +7,11 @@ from api_aliexpress.request import *
 from api_redis.handlers import *
 from api_telegram.callback_data import *
 from api_telegram.crud.items import *
-from api_telegram.keyboards import *
+from api_telegram.keyboard.builders import kbm
 from api_telegram.paginations import *
 from api_telegram.statments import *
 from database.exceptions import *
+from utils.cache_key import *
 from utils.media import *
 
 search = Router()
@@ -56,7 +53,7 @@ async def search_name_message(message: Message, state: FSMContext) -> None:
     except CustomError as error:
         await message.edit_media(
             media=await get_error_answer_media(error),
-            reply_markup=await menu_kb()
+            reply_markup=await kbm.menu()
         )
 
 
@@ -92,7 +89,7 @@ async def search_name_callback(callback: CallbackQuery, state: FSMContext) -> No
     except CustomError as error:
         await callback.message.edit_media(
             media=await get_error_answer_media(error),
-            reply_markup=await menu_kb()
+            reply_markup=await kbm.menu()
         )
 
 
@@ -116,7 +113,7 @@ async def search_price_range(message: Message, state: FSMContext) -> None:
                 "range",
                 "Задать ценовой диапазон?"
             ),
-            reply_markup=await price_range_kb()
+            reply_markup=await kbm.price_range()
         )
         await message.bot.delete_message(
             chat_id=message.chat.id,
@@ -127,14 +124,14 @@ async def search_price_range(message: Message, state: FSMContext) -> None:
         await message.answer_photo(
             photo=await get_fs_input_hero_image("range"),
             caption="Задать ценовой диапазон?",
-            reply_markup=await price_range_kb()
+            reply_markup=await kbm.price_range()
         )
     except CustomError as error:
         msg, photo = await get_error_answer_photo(error)
         await message.answer_photo(
             photo=photo,
             caption=msg,
-            reply_markup=await error_kb()
+            reply_markup=await kbm.error()
         )
 
 
@@ -160,7 +157,7 @@ async def search_price_min(callback: CallbackQuery, state: FSMContext) -> None:
         await callback.message.answer_photo(
             photo=photo,
             caption=msg,
-            reply_markup=await menu_kb()
+            reply_markup=await kbm.menu()
         )
 
 
@@ -243,7 +240,7 @@ async def search_sort(message: Message, state: FSMContext) -> None:
                 "sort",
                 "Как отсортировать результат?"
             ),
-            reply_markup=await sort_kb()
+            reply_markup=await kbm.sort()
         )
     except (CustomError, ValueError) as error:
         msg, photo = await get_error_answer_photo(error)
@@ -267,14 +264,14 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
                 "sort",
                 "Как отсортировать результат?"
             ),
-            reply_markup=await sort_kb()
+            reply_markup=await kbm.sort()
         )
     except CustomError as error:
         msg, photo = await get_error_answer_photo(error)
         await callback.message.answer_photo(
             photo=photo,
             caption=msg,
-            reply_markup=await menu_kb()
+            reply_markup=await kbm.menu()
         )
 
 
@@ -401,51 +398,9 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 #             reply_markup=await error_kb()
 #         )
 
-async def check_current_state(
-        state: FSMContext,
-        callback: CallbackQuery
-) -> bool:
-    """
-
-    :param state:
-    :param callback:
-    :return:
-    """
-    key = StorageKey(
-        bot_id=callback.bot.id,
-        chat_id=callback.message.chat.id,
-        user_id=callback.from_user.id
-    )
-    return bool(await state.storage.get_state(key))
-
-
-async def create_uuid_key(length: int) -> str:
-    """
-
-    :param length:
-    :return:
-    """
-    return "{0:.10}".format(str(uuid.uuid4().hex)[:length])
-
-
-async def get_or_create_key(data, user_id):
-    if data and await orm_get_query_from_db(data.key):
-        return data.key, False
-    # elif await orm_get_query_by_id_from_db(user_id):
-    #     return await orm_get_query_by_id_from_db(user_id)
-    else:
-        new_key = await create_uuid_key(6)
-        print(f'🔑🔑🔑 NEW KEY {new_key}')
-        return new_key, True
-
-
-@search.callback_query(
-    or_f(ItemFSM.sort,
-         ItemCBD.filter(),
-         DetailCBD.filter(F.action == DetailAction.back_list)
-         )
-
-)
+@search.callback_query(ItemFSM.sort)
+@search.callback_query(ItemCBD.filter())
+@search.callback_query(DetailCBD.filter(F.action == DetailAction.back_list))
 async def search_result(
         callback: CallbackQuery,
         state: FSMContext,
@@ -458,13 +413,10 @@ async def search_result(
     :param state: 
     :return: 
     """
-    print("=" * 50)
-    # print(f"️\n⬛️🟨 ENDPOINT SEARCH RESULT\n⬛️🟨{callback_data=}")
 
     try:
         ####################################################################################
         is_state = await check_current_state(state, callback)
-
         if is_state:
             await state.update_data(sort=callback.data)
             state_data = await state.get_data()
@@ -490,10 +442,8 @@ async def search_result(
             )
             if created:
                 await save_query_in_db(data, key, page)
-
         else:
             state_data = await state.get_data()
-            print(f"️⬛️🟨 {callback_data=}")
             data = dict(
                 q=state_data.get('product'),
                 sort=state_data.get('sort'),
@@ -503,8 +453,6 @@ async def search_result(
                 user_id=callback.from_user.id,
                 command='search'
             )
-        print(f"️⬛️🟨 {state_data=}")
-        print("️⬛️🟨 data q={0} page={1}".format(data.get('q', None), data.get('page', None)))
         #####################################################################################
         params = await get_paginate_item(data, callback_data)
         ####################################################################################
@@ -529,17 +477,3 @@ async def search_delete_callback(callback: CallbackQuery) -> None:
     await callback.message.edit_media(
         media=await get_input_media_hero_image('error')
     )
-
-
-@search.message(Command("redis"))
-async def get_key_cache(message: Message):
-    print('redis route start')
-    await RedisHandler().get_keys()
-    print('redis route finish')
-
-
-@search.message(Command("del"))
-async def get_key_cache(message: Message):
-    print('redis route start')
-    await RedisHandler().flush_keys()
-    print('redis route finish')

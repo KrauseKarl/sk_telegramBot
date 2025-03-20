@@ -1,19 +1,21 @@
-from aiogram import types
-from aiogram.filters.callback_data import CallbackData
-
 from api_aliexpress.request import request_api
 from api_redis.handlers import RedisHandler
-from api_telegram.callback_data import DetailAction, CacheKey, FavPagination, RevNavigate, ReviewCBD, MonitorAction, \
-    BasePagination, MonitorCBD, Navigation
-from api_telegram.crud.items import refresh_params_dict, get_query_from_db
+from api_telegram.callback_data import (
+    DetailAction,
+    CacheKey,
+    ReviewCBD,
+    MonitorAction,
+    MonitorCBD,
+    FavoriteAction,
+    FavoriteCBD,
+    ReviewAction
+)
+from api_telegram.crud.items import *
 from api_telegram.keyboards import (
     ItemPaginationBtn,
     builder_kb,
-    FavoritePaginationBtn_,
-    KeyBoardFactory,
     FavoritePaginationBtn,
-    RevPaginationBtn,
-    ItemSearchPaginationBtn
+    ItemSearchPaginationBtn, ReviewPaginationBtn
 )
 from core import config
 from database.orm import orm_get_favorite
@@ -100,7 +102,7 @@ async def paginate_item_list_kb(params, callback_data_api_page):
     return await builder_kb(kb.get_kb(), size=kb.get_markup())
 
 
-async def paginate_favorite_list_kb(page: int, item_id, navigate: str, len_data: int):
+async def paginate_favorite_kb(page: int, item_id, navigate: str, len_data: int):
     """
 
     :param page:
@@ -109,28 +111,22 @@ async def paginate_favorite_list_kb(page: int, item_id, navigate: str, len_data:
     :param len_data:
     :return:
     """
-    kb = FavoritePaginationBtn(item_id)
-    buttons = list()
+    kb = FavoritePaginationBtn(
+        item_id=item_id,
+        action=FavoriteAction,
+        call_data=FavoriteCBD
+    )
     if len_data > 1:
-        if navigate == FavPagination.first:
-            buttons.append(kb.add_button(kb.pg(page).next_btn(1)))
-
-        elif navigate == FavPagination.next:
-            buttons.append(kb.add_button(kb.pg(page).prev_btn(-1)))
-            if page < len_data:
-                buttons.append(kb.add_button(kb.pg(page).next_btn(1)))
-
-        elif navigate == FavPagination.prev:
-            if page > 1:
-                buttons.append(kb.add_button(kb.pg(page).prev_btn(-1)))
-            buttons.append(kb.add_button(kb.pg(page).next_btn(1)))
-        kb.add_markup(len(buttons))
-        kb.add_buttons([kb.delete_btn(), kb.btn_text("menu")]).add_markup(2)
+        kb.create_pagination_buttons(page, navigate, len_data)
+    kb.add_buttons([
+        kb.delete_btn(),
+        kb.btn_text("menu")
+    ]).add_markup(2)
 
     return kb
 
 
-async def paginate_searched_items_list_kb(page: int, item_id, navigate: str, len_data: int):
+async def paginate_monitor_kb(page: int, item_id, navigate: str, len_data: int):
     """
 
     :param page:
@@ -142,106 +138,50 @@ async def paginate_searched_items_list_kb(page: int, item_id, navigate: str, len
     kb = ItemSearchPaginationBtn(
         item_id=item_id,
         action=MonitorAction,
-        navigate=Navigation,
         call_data=MonitorCBD
     )
     if len_data > 1:
-        if navigate == Navigation.first:
-            kb.add_button(kb.pg(page).next_btn(1))
-        elif navigate == Navigation.next:
-            kb.add_button(kb.pg(page).prev_btn(-1))
-            if page < len_data:
-                kb.add_button(kb.pg(page).next_btn(1))
-        elif navigate == Navigation.prev:
-            if page > 1:
-                kb.add_button(kb.pg(page).prev_btn(-1))
-            kb.add_button(kb.pg(page).next_btn(1))
-        # kb.add_markup(len(kb.get_kb()))
+        kb.create_pagination_buttons(page, navigate, len_data)
+    kb.add_buttons([
+        kb.graph_btn(navigate),
+        kb.delete_btn(navigate),
+        kb.btn_text("menu")
+    ]).add_markups([2, 1])
 
-    kb.add_buttons([kb.graph_btn(navigate), kb.delete_btn(navigate), kb.btn_text("menu")]).add_markups([1, 2])
     return kb
 
 
-async def universal_paginate_key_board(kb, page: int, navigate: str, len_data: int):
+async def pagination_review_kb(len_data: int, data: ReviewCBD):
     """
-    :param kb:
-    :param page:
-    :param navigate:
+
     :param len_data:
+    :param data:
     :return:
     """
-
-    if len_data > 1:
-        if navigate == BasePagination.first:
-            kb.add_button(kb.add_button(kb.pg(page).next_btn(1)))
-        elif navigate == BasePagination.next:
-            kb.add_button(kb.add_button(kb.pg(page).prev_btn(-1)))
-            if page < len_data:
-                kb.add_button(kb.add_button(kb.pg(page).next_btn(1)))
-        elif navigate == BasePagination.prev:
-            if page > 1:
-                kb.add_button(kb.add_button(kb.pg(page).prev_btn(-1)))
-            kb.add_button(kb.add_button(kb.pg(page).next_btn(1)))
-        kb.add_markup(len(kb.get_kb()))
-        kb.add_buttons([kb.delete_btn(), kb.btn_text("menu")]).add_markup(2)
-    return kb
-
-
-async def pagination_review_kb(data_list: list, data: ReviewCBD):
-    kb = RevPaginationBtn(
+    kb = ReviewPaginationBtn(
+        action=ReviewAction,
+        call_data=ReviewCBD,
+        item_id=data.item_id,
         key=data.key,
         api_page=data.api_page,
-        item_id=data.item_id,
         paginator_len=data.last
     )
-    if data_list is not None:
-        if int(data.last) > 1:
-            if data.navigate == RevNavigate.first:
-                kb.add_button(kb.next_btn(data.page, int(data.review_page) + 1)).add_markup(1)
-            elif data.navigate == RevNavigate.next:
-                kb.add_button(kb.prev_btn(data.page, int(data.review_page) - 1)).add_markup(2)
-                if int(data.review_page) < int(data.last):
-                    kb.add_button(kb.next_btn(data.page, int(data.review_page) + 1)).add_markup(2)
-            elif data.navigate == RevNavigate.prev:
-                if int(data.review_page) > 1:
-                    kb.add_button(kb.prev_btn(data.page, int(data.review_page) - 1)).add_markup(2)
-                kb.add_button(kb.next_btn(data.page, int(data.review_page) + 1)).add_markup(2)
+    if int(len_data) > 1:
+        kb.create_pagination_buttons(
+            page=int(data.page),
+            navigate=data.navigate,
+            len_data=int(data.last),
+            sub_page=int(data.sub_page)
+        )
 
-    back_button = kb.detail("back", data.page, DetailAction.back_detail)
-    kb.add_button(back_button).add_markups([1])
+    extra_buttons = [
+        kb.detail("back", data.page, DetailAction.back_detail)
+    ]
+    kb.add_buttons(extra_buttons).add_markups([1])
+
     return kb
 
 
-async def paginate_review_list_kb(page: int, item_id, navigate: str, len_data: int):
-    """
-
-    :param page:
-    :param item_id:
-    :param navigate:
-    :param len_data:
-    :return:
-    """
-    kb = KeyBoardFactory()
-    btn = FavoritePaginationBtn_(item_id)
-
-    if len_data > 1:
-        if navigate == FavPagination.first:
-            kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
-
-        elif navigate == FavPagination.next:
-            kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).add_markup(1)
-            if page < len_data:
-                kb.add_button({"След. ➡️": btn.next_bt(page)}).update_markup(2)
-
-        elif navigate == FavPagination.prev:
-            kb.add_button({"След. ➡️": btn.next_bt(page)}).add_markup(1)
-            if page > 1:
-                kb.add_button({"⬅️ Пред.": btn.prev_bt(page)}).update_markup(2)
-
-    buttons = [{"🏠 menu": "menu"}]
-    kb.add_buttons(buttons).add_markup(1)
-
-    return kb.create_kb()
 
 
 async def paginate_favorite_delete_kb(

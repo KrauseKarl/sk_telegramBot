@@ -1,5 +1,5 @@
 from core import config
-from database.models import Favorite, History, User,  CacheData, ItemSearch, DataEntry
+from database.models import Favorite, History, User, CacheData, ItemSearch, DataEntry
 from database.pydantic import HistoryModel, FavoriteModel
 
 
@@ -20,20 +20,27 @@ async def orm_make_record_user(user_id: int) -> None:
 
 
 async def orm_make_record_request(data: dict) -> None:
-    HistoryModel(
-        user=data.get('user'),
-        command=data.get('command'),
-        # price_range=''.format(data.get('price_min'), data.get('price_max')),
-        price_min=data.get('price_min', None),
-        price_max=data.get('price_max', None),
-        search_name=data.get('product', None),
-        sort=config.SORT_DICT[data.get('sort', "default")]
-    ).model_dump()
-    History().create(**data).save()
+    is_exist = await orm_get_history(str(data.get('product_id')))
+    if not is_exist:
+        HistoryModel(
+            user=data.get('user'),
+            product_id=str(data.get('product_id')),
+            title=data.get('title'),
+            price=float(data.get('price')),
+            reviews=int(data.get('reviews')),
+            stars=float(data.get('star')),
+            url=data.get('url'),
+            image=data.get('image'),
+        ).model_dump()
+        History().create(**data).save()
+
+
+async def orm_get_history(product_id: str):
+    return History.select().where(History.product_id == product_id).get_or_none()
 
 
 async def orm_get_history_list(user_id: int):
-    return History.select().where(History.user == user_id).order_by(History.date)
+    return History.select().where(History.user == user_id).order_by(History.date.desc())
 
 
 # FAVORITE #####################################################################
@@ -90,5 +97,10 @@ async def orm_create_item_search(data: dict):
         user=data.get("user"),
     ).save()
 
-async def orm_get_searched_items(user_id: int):
+
+async def orm_get_monitoring_list(user_id: int):
     return ItemSearch.select().where(ItemSearch.user == user_id)
+
+
+async def orm_get_monitoring_item(product_id: int | str):
+    return ItemSearch.select().where(ItemSearch.product_id == product_id).get_or_none()

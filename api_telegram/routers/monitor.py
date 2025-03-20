@@ -2,54 +2,65 @@ import locale
 
 from aiogram import Router, F, types
 from aiogram.filters import Command, or_f
+from aiogram.types import Message
 
-from api_telegram.crud.scheduler import remove_job, create_item_search, get_searched_items_list
+from api_telegram.crud.scheduler import remove_job, create_item_search, get_searched_items_list, MonitorManager
 from api_telegram.keyboards import BasePaginationBtn
 from utils.media import *
 import matplotlib.pyplot as plt
 
-scheduler = Router()
+monitor = Router()
 
 
-@scheduler.callback_query(F.data.startswith("item_search"))
+# @scheduler.callback_query(F.data.startswith("item_search"))
+@monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.add))
 async def add_search(callback: types.CallbackQuery):
-    # try:
-    item_id = callback.data.split(":")[1]
-    await create_item_search(item_id, callback.from_user.id)
-    await callback.answer(
-        f"Поисковый запрос '{item_id}' добавлен.",
-        show_alert=True
-    )
+    try:
+        item_id = callback.data.split(":")[1]
+        await create_item_search(item_id, callback.from_user.id)
+        await callback.answer(
+            f"Поисковый запрос '{item_id}' добавлен.",
+            show_alert=True
+        )
+    except Exception as error:
+        print('error = ', error)
+        await callback.answer(str(error), show_alert=True)
 
-
-# except Exception as error:
-#     print('error = ', error)
-#     await callback.answer(str(error), show_alert=True)
-
-
-# Команда /list_searches
-# @scheduler.callback_query(F.data.startswith("list_searches"))
-@scheduler.callback_query(MonitorCBD.filter(
-        F.action.in_({MonitorAction.list, MonitorAction.back, MonitorAction.page}))
-)
+@monitor.message(Command("monitor"))
+@monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.page))
+@monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.list))
+@monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.back))
 async def list_searches(callback: types.CallbackQuery, callback_data: MonitorCBD):
-    # try:
-        print(callback_data)
-        searched_items = await orm_get_searched_items(callback.from_user.id)
+    try:
+        searched_items = await orm_get_monitoring_list(callback.from_user.id)
         if not searched_items:
             await callback.message.answer("Поисковые запросы отсутствуют.")
             return
+        if callback_data is None:
+            callback_data = HistoryCBD(
+                action=HistoryAction.first,
+                navigate=Navigation.first
+            )
+        manager = MonitorManager(callback_data, callback.from_user.id)
+        if isinstance(callback, Message):
+            await callback.answer_photo(
+                photo=await manager.get_photo(),
+                caption=await manager.get_msg(),
+                reply_markup=await manager.get_keyboard()
+            )
+        else:
+            await callback.message.edit_media(
+                media=await manager.get_media(),
+                reply_markup=await manager.get_keyboard()
+            )
         msg, photo, kb = await get_searched_items_list(callback, callback_data)
-
-        print(kb.get_kb())
         await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
-    # except Exception as error:
-    #     print(error)
-    #     await callback.answer(str(error)[:100])
+    except Exception as error:
+        await callback.answer(str(error)[:100])
 
 
 # Команда /delete_search
-@scheduler.message(Command("delete_search"))
+@monitor.message(Command("delete_search"))
 async def delete_search(message: types.Message):
     # Пример: Получаем ID поискового запроса из аргументов команды
     args = message.text.split()
@@ -73,7 +84,7 @@ async def delete_search(message: types.Message):
 
 
 # @scheduler.message(Command("graph"))
-@scheduler.callback_query(MonitorCBD.filter(F.action == MonitorAction.graph))
+@monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.graph))
 async def send_graph(callback: types.CallbackQuery, callback_data: MonitorCBD):
     # Пример: Получаем ID поискового запроса из аргументов команды
     print('GRAF', callback_data)

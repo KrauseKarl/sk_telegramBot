@@ -4,8 +4,9 @@ from pydantic import ValidationError
 from api_aliexpress.deserializers import *
 from api_aliexpress.request import *
 from api_telegram.callback_data import *
+from api_telegram.keyboard.builders import kbm
 from api_telegram.keyboards import *
-from api_telegram.paginations import paginate_favorite_list_kb
+from api_telegram.paginations import *
 from core import config
 from utils.message_info import favorite_info
 
@@ -39,12 +40,12 @@ async def create_favorite_instance(call: CallbackQuery, data: FavoriteAddCBD):
         paginator_len=int(data.last),
         item_id=data.item_id
     )
-    if data.action == FavAction.detail:
+    if data.action == FavoriteAction.detail:
         kb.add_buttons([
             kb.detail('back', data.page, DetailAction.go_view),
             kb.btn_text('price')
         ]).add_markups([1, 2, 3])
-    if data.action == FavAction.list:
+    if data.action == FavoriteAction.list:
         kb.add_buttons([
             kb.btn_data('prev', data.prev),
             kb.btn_data('next', data.next),
@@ -69,71 +70,89 @@ async def delete_favorite_instance(item_id: str) -> bool:
         return False
 
 
-async def get_favorite_list(query, data):
-    data_list = await orm_get_favorite_list(query.from_user.id)
+class FavoriteManager:
+    def __init__(self, callback_data, user_id):
+        self.user_id = user_id
+        self.page = int(callback_data.page)
+        self.navigate = callback_data.navigate
+        self.array: Optional[list] = None
+        self.len: Optional[int] = None
+        self.item: Optional[dict] = None
+        self.photo: Optional[InputMediaPhoto] = None
+        self.empty_message = "⭕️ у вас пока нет избранных товаров."
+        self.action = FavoriteAction
+        self.call_data = FavoriteCBD
+        self.kb_factory = FavoritePaginationBtn
 
-    if len(data_list) > 0:
-        paginator = Paginator(data_list, page=data.page)
-        item = paginator.get_page()[0]
-        img = item.image
-        msg = await favorite_info(item, data.page, paginator.pages)
-        kb = await paginate_favorite_list_kb(
-            page=int(data.page),
-            item_id=item.product_id,
-            navigate=data.navigate,
-            len_data=paginator.len
-        )
-    else:
-        msg = "⭕️ у вас пока нет избранных товаров"
-        img = None
-        kb = BasePaginationBtn()
-        kb.add_button(kb.btn_text('menu'))
-    try:
-        # img = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, img))
-        photo = types.InputMediaPhoto(media=img, caption=msg)
-    except (ValidationError, TypeError):
-        photo = await get_input_media_hero_image("favorite", msg)
-    return msg, photo, kb
+    async def _get_favorite_list(self) -> List[History]:
+        """Получает список истории и сохраняет его в self.array."""
+        if self.array is None:
+            self.array = await orm_get_favorite_list(self.user_id)
+        return self.array
 
-# async def make_paginate_favorite_list(
-#         favorite_list: List[Favorite], page: int = 1
-# ):
-#     kb = FavoritePaginationBtn()
-#     if len(favorite_list) == 0:
-#         msg = "⭕️ у вас пока нет избранных товаров"
-#         kb = await kb_builder(data_list=[{"🏠 меню": "menu"}], size=(1,))
-#         return msg, kb, None
-#     else:
-#         paginator = Paginator(favorite_list, page=page)
-#         item = paginator.get_page()[0]
-#         msg = await favorite_info(item)
-#         msg = msg + "\n{0} из {1}".format(page, paginator.pages)
-#         if len(favorite_list) == 1:
-#             kb = await kb_builder(
-#                 size=(1,),
-#                 data_list=[
-#                     {"🏠 меню": "menu"}
-#                 ]
-#             )
-#         else:
-#
-#             next_page = FavoritePageCBD(
-#                 action=FavAction.page,
-#                 page=FavPagination.next,
-#                 pages=int(page) + 1
-#             ).pack()
-#             delete = FavoriteDeleteCBD(
-#                 action=FavAction.delete,
-#                 item_id=item.product_id,
-#                 page=str(page - 1)
-#             ).pack()
-#
-#             kb = await kb_builder(
-#                 size=(1, 2),
-#                 data_list=[
-#                     {"След. ▶": next_page},
-#                     {"❌ удалить": delete},
-#                     {"🏠 меню": "menu"},
-#                 ]
-#             )
-#         return msg, kb, item.image
+    async def _get_len(self) -> int:
+        """Возвращает длину списка избранных товаров и сохраняет её в self.len."""
+        if self.len is None:
+            self.len = len(await self._get_favorite_list())
+        return self.len
+
+    async def _get_item(self) -> Favorite:
+        """Возвращает элемент избранных товаров для текущей страницы."""
+        if self.item is None and await self._get_len() > 0:
+            paginator = Paginator(await self._get_favorite_list(), page=self.page)
+            self.item = paginator.get_page()[0]
+        return self.item
+
+    async def get_msg(self) -> str:
+        """Возвращает сообщение для текущего элемента избранных товаров."""
+        current_item = await self._get_item()
+        return await favorite_info(current_item, str(self.page), await self._get_len())
+
+    async def get_media(self) -> InputMediaPhoto:
+        """Возвращает медиа (фото с подписью) для текущего элемента избранных товаров."""
+        if self.photo is None:
+            if await self._get_len() > 0:
+                try:
+                    current_item = await self._get_item()
+                    self.photo = InputMediaPhoto(
+                        media=current_item.image,
+                        caption=await self.get_msg()
+                    )
+                except (ValidationError, TypeError):
+                    self.photo = await get_input_media_hero_image(
+                        "history",
+                        await self.get_msg()
+                    )
+            else:
+                self.photo = await get_input_media_hero_image(
+                    "history",
+                    self.empty_message
+                )
+        return self.photo
+
+    async def get_photo(self) -> Optional[str]:
+        """Возвращает фото текущего элемента истории."""
+        current_item = await self._get_item()
+        return current_item.image if current_item else None
+
+    async def get_keyboard(self) -> InlineKeyboardMarkup:
+        """Возвращает клавиатуру для пагинации."""
+        current_item = await self._get_item()
+        if await self._get_len() >= 1:
+            kb = self.kb_factory(
+                item_id=str(current_item.uid),
+                action=self.action,
+                call_data=self.call_data
+            )
+            kb.create_pagination_buttons(
+                page=self.page,
+                navigate=self.navigate,
+                len_data=int(await self._get_len())
+            )
+            kb.add_buttons([
+                kb.delete_btn(),
+                kb.btn_text("menu")
+            ]).add_markup(2)
+            return kb.create_kb()
+        else:
+            return await kbm.back()

@@ -1,14 +1,12 @@
 from aiogram import F, Router
-from aiogram.filters import or_f
-from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton
-from pydantic import ValidationError
+from aiogram.filters import Command
+from aiogram import types as t
 
 from api_aliexpress.deserializers import *
 from api_aliexpress.request import *
 from api_telegram.callback_data import *
 from api_telegram.crud.favorites import *
-from api_telegram.paginations import paginate_favorite_list_kb
+from api_telegram.paginations import paginate_favorite_kb
 from api_telegram.statments import ItemFSM
 from database.exceptions import *
 from database.orm import *
@@ -18,21 +16,37 @@ from utils.message_info import *
 favorite = Router()
 
 
-@favorite.callback_query(FavoritePageCBD.filter(F.action == FavAction.page))
-async def request_favorite_list(callback: CallbackQuery, callback_data: FavoritePageCBD) -> None:
+@favorite.message(Command("favorite"))
+@favorite.callback_query(FavoriteCBD.filter(F.action == FavoriteAction.page))
+async def request_favorite_list(
+        callback: t.CallbackQuery | t.Message,
+        callback_data: Optional[FavoriteCBD] = None
+) -> None:
     """
 
     :param callback:
     :param callback_data:
     :return:
     """
-    print('🟪 FAVORITE ENDPOINT')
-    try:
-        msg, photo, kb = await get_favorite_list(callback, callback_data)
-        await callback.message.edit_media(
-            media=photo,
-            reply_markup=kb.create_kb())
 
+    try:
+        if callback_data is None:
+            callback_data = FavoriteCBD(
+                action=FavoriteAction.page,
+                navigate=Navigation.first
+            )
+        manager = FavoriteManager(callback_data, callback.from_user.id)
+        if isinstance(callback, t.Message):
+            await callback.answer_photo(
+                photo=await manager.get_photo(),
+                caption=await manager.get_msg(),
+                reply_markup=await manager.get_keyboard()
+            )
+        else:
+            await callback.message.edit_media(
+                media=await manager.get_media(),
+                reply_markup=await manager.get_keyboard()
+            )
     except TelegramBadRequest as error:
         await callback.answer(f"⚠️ {str(error)}")
     except CustomError as error:
@@ -44,7 +58,8 @@ async def request_favorite_list(callback: CallbackQuery, callback_data: Favorite
         )
 
 
-@favorite.callback_query(FavoriteAddCBD.filter(F.action.in_({FavAction.list, FavAction.detail})))
+@favorite.callback_query(FavoriteAddCBD.filter(F.action == FavoriteAction.list))
+@favorite.callback_query(FavoriteAddCBD.filter(F.action == FavoriteAction.detail))
 async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -> None:
     """
 
@@ -54,6 +69,7 @@ async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -
     """
     print('🟪 FAVORITE ADD ENDPOINT\n🟪 data = {call.data}')
     try:
+
         page = callback_data.page
         total_pages = callback_data.last
         api_page = callback_data.api_page
@@ -76,7 +92,7 @@ async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -
         await callback.answer(str(error), show_alert=True)
 
 
-@favorite.callback_query(FavoriteDeleteCBD.filter(F.action == FavAction.delete))
+@favorite.callback_query(FavoriteDeleteCBD.filter(F.action == FavoriteAction.delete))
 async def delete_favorite(call: CallbackQuery, callback_data: FavoriteDeleteCBD) -> None:
     """
 
@@ -90,16 +106,11 @@ async def delete_favorite(call: CallbackQuery, callback_data: FavoriteDeleteCBD)
     current_page = 1
 
     await delete_favorite_instance(callback_data.item_id)
-    print(f"PAGE {callback_data.page}")
-    print(f"ACT  {callback_data.action}")
-    print(f"ID   {callback_data.item_id}")
+
     data_list = await orm_get_favorite_list(call.from_user.id)
     paginator = Paginator(data_list, page=int(page))
     kb = KeyBoardFactory()
     btn = FavoritePaginationBtn_(item_id=callback_data.item_id)
-    print(f"❌len  {paginator.len}")
-    print(f"❌page  {page}")
-    print(f"❌page  page > paginator.len =  {page > paginator.len}")
     ########################################################################################################
     if paginator.len == 1:
         # keyboard_list.append({"⬅️": await prev_btn(page)})

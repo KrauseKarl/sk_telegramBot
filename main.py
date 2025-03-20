@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from api_telegram import commands, routers
+from api_telegram import commands, routers as r
 from api_telegram.crud.scheduler import setup_scheduler
 from core import config
 from database.db import *
@@ -39,17 +39,15 @@ async def main():
         )
     )
     dp = Dispatcher()
-
-    dp.include_router(routers.bases.base)
-
-    dp.include_router(routers.histories.history)
-    dp.include_router(routers.favorites.favorite)
-    dp.include_router(routers.details.detail)
-    dp.include_router(routers.review.review)
-    dp.include_router(routers.categories.category)
-    dp.include_router(routers.searches.search)
-    dp.include_router(routers.schedulers.scheduler)
-
+    dp.include_routers(
+        r.route,
+        r.monitor,
+        r.history,
+        r.favorite,
+        r.search,
+        r.detail,
+        r.review
+    )
     create_tables()
     setup_scheduler(bot)
 

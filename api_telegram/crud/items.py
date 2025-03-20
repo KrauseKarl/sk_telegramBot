@@ -1,6 +1,5 @@
 from typing import Any
 
-
 from playhouse.shortcuts import model_to_dict
 from api_aliexpress.request import *
 from api_redis.handlers import *
@@ -12,6 +11,14 @@ from database.paginator import *
 from database.pydantic import *
 
 redis_handler = RedisHandler()
+
+
+async def create_cache_key(key: str, page: str, extra: str, sub_page: str = None):
+    return CacheKey(
+        key=key,
+        api_page=int(page),
+        extra=extra
+    ).pack()
 
 
 async def get_data_from_cache(call_data: ItemCBD | DetailCBD, extra: str | None = None):
@@ -55,14 +62,6 @@ async def update_query_in_db(data: dict, key: str):
     query_str = json.dumps(data, ensure_ascii=False)
     update_query_dict = CacheDataUpdateModel(query=str(query_str)).model_dump()
     await orm_update_query_in_db(update_query_dict.get('query'), key)
-
-
-async def create_cache_key(key: str, page: str, extra: str, sub_page: str = None):
-    return CacheKey(
-        key=key,
-        api_page=int(page),
-        extra=extra
-    ).pack()
 
 
 async def get_query_from_db(key: str, params: dict | None = None):
@@ -203,7 +202,6 @@ async def get_paginate_item(params: dict[str, Any], data: ItemCBD | DetailCBD):
         item_list = await get_data_by_request_to_api(params)
         await update_query_in_db(params, data.key)
         await set_data_in_cache(item_list, data, extra='list')
-
 
     item = await get_item(item_list, page)
 

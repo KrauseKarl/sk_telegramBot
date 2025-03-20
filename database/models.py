@@ -51,16 +51,8 @@ class CacheData(Base):
 
 class History(Base):
     uid = peewee.PrimaryKeyField()
-    command = peewee.CharField()
-
-    search_name = peewee.CharField(null=True)
-    result_qnt = peewee.IntegerField(null=True)
-    price_range = peewee.TextField(null=True)
-    price_min = peewee.TextField(null=True)
-    price_max = peewee.TextField(null=True)
-    sort = peewee.TextField(null=True)
+    product_id = peewee.CharField()
     title = peewee.CharField(null=True, max_length=200)
-
     price = peewee.FloatField(null=True)
     reviews = peewee.IntegerField(null=True)
     stars = peewee.FloatField(null=True)

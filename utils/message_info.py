@@ -91,7 +91,6 @@ async def create_review_tg_answer(obj, page, total_pages):
     try:
         country = FLAGS[obj['buyer']['buyerCountry']].replace(" ", "_")
         country_name = FLAGS[obj['buyer']['buyerCountry']]
-        print(country, country_name)
     except KeyError:
         country = "pirate_flag"
         country_name = obj['buyer']['buyerCountry']
@@ -121,11 +120,6 @@ async def get_detail_info(i) -> str:
     :param i:
     :return:
     """
-    # try:
-    #     print('\ndetail_info_2=', i["result"]["item"]["title"])
-    # except Exception as err:
-    #     print(i)
-    #     print("❌ERROR: ", err)
     msg = ""
     title = i["result"]["item"]["title"]
     item_url = ":".join(["https", i["result"]["item"]["itemUrl"]])
@@ -234,28 +228,20 @@ def detail_img(item) -> Optional[List[str]]:
         return None
 
 
-async def history_info(item) -> str:
+async def history_info(item, page: str, len_list: int) -> str:
     """
 
     :param item:
     :return:
     """
-    msg = "⚙️ команда:\t<b>{0}</b>\n\n".format(item.command)
-    msg += "📅 {0}\t".format(item.date.strftime('%d %b %Y'))
+    msg = "📅 {0}\t".format(item.date.strftime('%d %b %Y'))
     msg += "🕐 {0}\n".format(item.date.strftime('%H:%M:%S'))
-    msg += "🔎 поиск:\t{0:.20}\n".format(
-        item.search_name
-    ) if item.search_name else ''
-    msg += "⚪️ диапазон цен:\t{0}-{1}\n".format(
-        item.price_min,
-        item.price_max
-    ) if item.price_min and item.price_max else ''
     msg += "✅ {:.30}\n".format(item.title) if item.title else ''
     msg += "🟠 {0} RUB\n".format(item.price) if item.price else ''
     msg += "👀 промоторы {0}\n".format(item.reviews) if item.reviews else ''
     msg += "⭐️рейтинг {0}\n".format(item.stars) if item.stars else ''
-    msg += "{0}\n".format(item.url.split("//")[1]) if item.url else ''
-    msg += "📊 отсортировано: {0}\n".format(item.sort) if item.sort else ''
+    msg += "{0}\n\n".format(item.url.split("//")[1]) if item.url else ''
+    msg += "{0} из {1}".format(page, len_list)
 
     return msg
 
