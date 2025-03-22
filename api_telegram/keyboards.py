@@ -1,11 +1,12 @@
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Optional
 
 from aiogram import types
 from aiogram.utils import keyboard
 
+from api_redis.handlers import RedisHandler
 from database.orm import *
 from api_telegram.callback_data import *
-from utils.cache_key import counter_key
+from utils.cache_key import counter_key, previous_api_page
 
 if TYPE_CHECKING:
     from database.paginator import Paginator
@@ -166,7 +167,9 @@ class PaginationBtn(BasePaginationBtn):
         return self
 
     def __add__(self, other):
-        return self.page + other
+        if other:
+            return self.page + other
+        return self.page
 
     def increase(self, obj):
         if obj:
@@ -176,9 +179,9 @@ class PaginationBtn(BasePaginationBtn):
         if obj:
             return int(obj) - 1
 
-    def _btn(self, num, navigate, *args, **kwargs):
+    def _btn(self, num, navigate, action, *args, **kwargs):
         return self.call_data(
-            action=self.action.page,
+            action=action,
             navigate=navigate,
             page=self.__add__(num)
         ).pack()
@@ -186,13 +189,27 @@ class PaginationBtn(BasePaginationBtn):
     def next_btn(self, num, sub_page=None, *args, **kwargs):  # page + 1
         return self.btn_data(
             name='next',
-            data=self._btn(num, self.navigate.next, sub_page=None, *args, **kwargs)
+            data=self._btn(
+                num=num,
+                navigate=self.navigate.next,
+                action=self.action.paginate,
+                sub_page=None,
+                *args,
+                **kwargs
+            )
         )
 
     def prev_btn(self, num, sub_page=None, *args, **kwargs):  # page - 1
         return self.btn_data(
             name='prev',
-            data=self._btn(num, self.navigate.prev, sub_page=None, *args, **kwargs)
+            data=self._btn(
+                num=num,
+                navigate=self.navigate.prev,
+                action=self.action.paginate,
+                sub_page=None,
+                *args,
+                **kwargs
+            )
         )
 
     def create_pagination_buttons(self, page, navigate, len_data, sub_page=None, *args, **kwargs):
@@ -228,14 +245,14 @@ class FavoritePaginationBtn(PaginationBtn):
         self.action = action
         self.call_data = call_data
 
-    def _btn(self, num, navigate, *args, **kwargs):
+    def _btn(self, num: int, navigate: str, *args, **kwargs):
         return self.call_data(
-            action=self.action.page,
+            action=self.action.paginate,
             navigate=navigate,
             page=self.__add__(num)
         ).pack()
 
-    def next_btn(self, num, *args, **kwargs):  # page + 1
+    def next_btn(self, num: int, *args, **kwargs):  # page + 1
         return self.btn_data(
             name='next',
             data=self._btn(num, self.navigate.next, *args, **kwargs)
@@ -279,39 +296,63 @@ class ReviewPaginationBtn(PaginationBtn):
             self._btn(num, self.navigate.prev, sub_page, *args, **kwargs)
         )
 
-    def _btn(self, num, navigate, sub_page=None, *args, **kwargs):  # page, sub_page
+    def _btn(self, num: int, navigate: str, sub_page: Optional[int] = None, *args, **kwargs):  # page, sub_page
         return self.call_data(
             action=self.action.paginate,
             item_id=self.item_id,
             key=self.key,
             api_page=self.api_page,
             page=self.page,
-            next=str(int(self.page) + 1),
-            prev=str(int(self.page) - 1),
+            next=self.page + 1,
+            prev=self.page - 1,
             first=self.first,
             last=self.len,
             navigate=navigate,
-            sub_page=int(sub_page),
+            sub_page=sub_page,
         ).pack()
 
-    def _detail(self, page: str | int, action):
+    def _detail(self, page: int, action: str):
         return DetailCBD(
             action=action,
             item_id=str(self.item_id),
             key=self.key,
             api_page=self.api_page,
-            page=str(page),
-            next=str(int(page) + 1),
-            prev=str(int(page) - 1),
-            first=str(self.first),
-            last=str(self.len)
+            page=page,
+            next=page + 1,
+            prev=page - 1,
+            last=self.len
         ).pack()
 
-    def detail(self, name: str, page: str | int, action: DetailAction):
+    def detail(self, name: str, page: int, action: str):
         return self.btn_data(name, self._detail(page, action))
 
+    def create_pagination_buttons(
+            self, page: int, navigate: str, len_data: int, sub_page: Optional[int] = None, *args, **kwargs):
+        if navigate == Navigation.first:
+            self.add_button(
+                self.pg(page).next_btn(1, self.increase(sub_page), *args, **kwargs)
+            )
+        elif navigate == Navigation.next:
+            self.add_button(
+                self.pg(page).prev_btn(-1, self.decrease(sub_page), *args, **kwargs)
+            )
+            if sub_page < len_data:
+                self.add_button(
+                    self.pg(page).next_btn(1, self.increase(sub_page), *args, **kwargs)
+                )
+        elif navigate == Navigation.prev:
+            if sub_page > 1:
+                self.add_button(
+                    self.pg(page).prev_btn(-1, self.decrease(sub_page), *args, **kwargs)
+                )
+            self.add_button(
+                self.pg(page).next_btn(1, self.increase(sub_page), *args, **kwargs)
+            )
+        self.add_markup(2 if len(self.get_kb()) == 2 else 1)
+        return self
 
-class ItemSearchPaginationBtn(PaginationBtn):
+
+class MonitorPaginationBtn(PaginationBtn):
     def __init__(self, item_id, action, call_data):
         super().__init__(item_id, action, call_data)
         self.page = 1
@@ -319,45 +360,57 @@ class ItemSearchPaginationBtn(PaginationBtn):
         self.action = action
         self.call_data = call_data
 
-    def _delete_btn(self, navigate, item_id=None):
+    def _btn(
+            self,
+            navigate: str,
+            action: Optional[str] = None,
+            num: Optional[int] = None,
+            *args,
+            **kwargs
+    ):
+        super()._btn(num=num, navigate=navigate, action=action, *args, **kwargs)
         return self.call_data(
-            action=self.action.delete,
+            action=action,
             navigate=navigate,
-            item_id=item_id if item_id else self.item_id,
-            page=self.page
+            item_id=self.item_id,
+            page=self.__add__(num)
         ).pack()
 
-    def delete_btn(self, navigate, item_id=None):
-        return self.btn_data('delete', self._delete_btn(navigate, item_id))
+    def delete_btn(self, navigate: str):
+        return self.btn_data(
+            'delete',
+            self._btn(
+                navigate=navigate,
+                action=self.action.delete,
+                item_id=self.item_id
+            )
+        )
 
-    def _graph_btn(self, navigate, item_id=None):
-        return self.call_data(
+    def graph_btn(self, navigate: str):
+        data = self._btn(
+            navigate=navigate,
             action=self.action.graph,
-            navigate=navigate,
-            item_id=item_id if item_id else self.item_id,
-            page=self.page
-        ).pack()
-
-    def graph_btn(self, navigate, item_id=None):
-        return self.btn_data('graph', self._graph_btn(navigate, item_id))
+            item_id=self.item_id
+        )
+        return self.btn_data('graph', data)
 
 
 class CommentPaginationBtn(PaginationBtn):
     def __init__(self, item_id, action, call_data):
         super().__init__(item_id, action, call_data)
-        self.action = RevAction
+        self.action = ReviewAction
         self.data = ReviewPageCBD
 
     # def next_bt(self, page):  # page + 1
     #     return self.data(
-    #         action=self.action.page,
+    #         action=self.action.paginate,
     #         navigate=self.navigate.next,
     #         page=str(int(page + 1))
     #     ).pack()
     #
     # def prev_bt(self, page):  # page - 1
     #     return self.data(
-    #         action=self.action.page,
+    #         action=self.action.paginate,
     #         navigate=self.navigate.prev,
     #         page=str(int(page - 1))
     #     ).pack()
@@ -378,9 +431,6 @@ class HistoryPaginationBtn(PaginationBtn):
         ).pack()
 
 
-###########################################################################################
-###########################################################################################
-###########################################################################################
 class ItemPaginationBtn(BasePaginationBtn):
     def __init__(
             self,
@@ -390,9 +440,9 @@ class ItemPaginationBtn(BasePaginationBtn):
             paginator_len: str | int = None):
         super().__init__()
         self.key = key
-        self.api_page = api_page
+        self.api_page = int(api_page)
         self.item_id = item_id
-        self.len = paginator_len
+        self.len = int(paginator_len)
         self.first = 1
         self.callback_data = ItemCBD
 
@@ -403,17 +453,21 @@ class ItemPaginationBtn(BasePaginationBtn):
             page=page
         ).pack()
 
-    def _next_page(self, page):
+    def _next_page(self, page: int):
+        # if page + 1 < self.len:
+        #     return page + 1
+        # return self.len + 1
+
         if page == self.len:
-            return str(page)
-        return str(int(page) + 1)
+            return page
+        return page + 1
 
-    def _prev_page(self, page):
+    def _prev_page(self, page: int):
         if page == 1:
-            return str(page)
-        return str(int(page) - 1)
+            return page
+        return page - 1
 
-    def btn(self, name, page, api_page=None):
+    def btn(self, name: str, page: int, api_page: Optional[int] = None):
         return self.btn_data(name, self._btn(page, api_page))
 
     def first_btn(self):
@@ -422,20 +476,19 @@ class ItemPaginationBtn(BasePaginationBtn):
     def last_btn(self):
         return self.btn_data("last", self._btn(self.len))
 
-    def _detail(self, page: str | int, action):
+    def _detail(self, page: int, action: str):
         return DetailCBD(
             action=action,
             item_id=str(self.item_id),
             key=self.key,
             api_page=self.api_page,
-            page=str(page),
+            page=page,
             next=self._next_page(page),
             prev=self._prev_page(page),
-            first=str(self.first),
-            last=str(self.len)
+            last=self.len
         ).pack()
 
-    def _favorite(self, page: str | int):
+    def _favorite(self, page: int):
         return FavoriteAddCBD(
             action=FavoriteAction.list,
             item_id=str(self.item_id),
@@ -443,9 +496,8 @@ class ItemPaginationBtn(BasePaginationBtn):
             api_page=self.api_page,
             next=self._next_page(page),
             prev=self._prev_page(page),
-            first=str(self.first),
-            last=str(self.len),
-            page=str(page),
+            last=self.len,
+            page=page,
         ).pack()
 
     def _comment(self, page: str | int):
@@ -456,24 +508,22 @@ class ItemPaginationBtn(BasePaginationBtn):
             api_page=self.api_page,
             next=self._next_page(page),
             prev=self._prev_page(page),
-            first=str(self.first),
-            last=str(self.len),
-            page=str(page),
+            last=self.len,
+            page=page,
             navigate=Navigation.first,
             sub_page=1
         ).pack()
 
-    def _images(self, page: str | int):
+    def _images(self, page: int):
         return ImageCBD(
             action=ImagesAction.images,
             item_id=str(self.item_id),
             key=self.key,
             api_page=self.api_page,
-            page=str(page),
+            page=page,
             next=self._next_page(page),
             prev=self._prev_page(page),
-            first=str(self.first),
-            last=str(self.len),
+            last=self.len,
             navigate=Navigation.first,
             sub_page=1
         ).pack()
@@ -494,6 +544,62 @@ class ItemPaginationBtn(BasePaginationBtn):
         counter_key("images", self._images(page))
         return self.btn_data("images", self._images(page))
 
+    async def create_paginate_buttons(self, page=None):
+        if self.api_page == 1 and int(page) == 1:
+            self.add_buttons(
+                [
+                    self.btn('next', int(page) + 1),
+                    self.last_btn()
+                ]
+            ).add_markups([1, 1])
+
+        elif self.api_page > 1 and int(page) == 1:
+            # try to find previous item_list in cache
+            prev_cache_key = CacheKey(
+                key=self.key,
+                api_page=str(self.api_page - 1),
+                extra='list'
+            ).pack()
+
+            redis_handler = RedisHandler()
+            prev_list = await redis_handler.get_data(prev_cache_key)
+            # if  previous item_list not exist in cache
+            # make new request to API
+            if prev_list is None:
+                #     params = dict(url=config.URL_API_ITEM_LIST)
+                #     params = await get_query_from_db(self.key, params)
+                #     params['page'] = str(self.api_page)
+                #     prev_list = await request_api(params)
+                # # finally fins the last page in previous item_list
+                # prev_paginate_page = len(prev_list)
+                prev_list = await previous_api_page(self.key, self.api_page)
+            prev_paginate_page = len(prev_list)
+
+            self.add_buttons([
+                self.btn('prev', prev_paginate_page, self.api_page - 1),
+                self.btn('next', 2),
+                self.last_btn()
+            ]).add_markups([2, 1])
+
+        elif self.len > int(page) > 1:
+            self.add_buttons([
+                self.btn("prev", page - 1 if page - 1 > 1 else 1),
+                self.btn("next", page + 1 if page + 1 < self.len else self.len + 1),
+                self.first_btn(),
+                self.last_btn()
+            ]).add_markups([2, 2])
+
+        elif int(page) == self.len:
+            # "последняя страница"
+            self.add_buttons([
+                self.btn("prev", page - 1 if page - 1 != 0 else 1),
+
+                self.btn("next", page + 1),
+                self.first_btn(),
+            ]).add_markups([2, 1])
+###########################################################################################
+###########################################################################################
+###########################################################################################
 
 # class BaseBtn(BasePaginationBtn):
 #     def __init__(
@@ -595,31 +701,30 @@ class ImgPaginationBtn(ItemPaginationBtn):
         self.callback_data = data
         return self
 
-    def _call_data(self, page, img_page, navigate):  # page + 1
+    def _call_data(self, page: int, sub_page: int, navigate: str):  # page + 1
         return self.callback_data(
             action=self.action.paginate,
             item_id=self.item_id,
             key=self.key,
             api_page=self.api_page,
-            page=str(page),
-            next=str(int(page + 1)),
-            prev=str(int(page - 1)),
-            first=self.first,
+            page=page,
+            next=page + 1,
+            prev=page - 1,
             last=self.len,
             navigate=navigate,
-            img_page=int(img_page),
+            sub_page=sub_page,
         ).pack()
 
-    def next_btn(self, page, img_page):
+    def next_btn(self, page, sub_page):
         return self.btn_data(
             'next',
-            self._call_data(page, img_page, navigate=self.navigate.next)
+            self._call_data(page, sub_page, navigate=self.navigate.next)
         )
 
-    def prev_btn(self, page, img_page):
+    def prev_btn(self, page, sub_page):
         return self.btn_data(
             'prev',
-            self._call_data(page, img_page, navigate=self.navigate.prev)
+            self._call_data(page, sub_page, navigate=self.navigate.prev)
         )
 
 
@@ -638,7 +743,7 @@ class RevPaginationBtn(ItemPaginationBtn):
             paginator_len,
         )
         self.data = ReviewCBD
-        self.action = RevAction
+        self.action = ReviewAction
         self.navigate = Navigation
         self.item_id = item_id
         self.paginator_len = paginator_len
@@ -695,7 +800,7 @@ class PGBtn(ItemPaginationBtn):
 
     def _next_call_data(self, page):  # page + 1
         return self.callback_data(
-            action=self.action.page,
+            action=self.action.paginate,
             navigate=self.navigate.next,
             page=str(int(page + 1))
         ).pack()
@@ -705,7 +810,7 @@ class PGBtn(ItemPaginationBtn):
 
     def _prev_bt_call_data(self, page):  # page - 1
         return self.callback_data(
-            action=self.action.page,
+            action=self.action.paginate,
             navigate=self.navigate.prev,
             page=str(int(page - 1))
         ).pack()
@@ -739,101 +844,3 @@ async def kb_builder(
             )
             kb.add(button)
     return kb.adjust(*size).as_markup()
-
-
-# KEYBOARD GENERAL BUILDER ################################################
-async def builder_kb(data: list, size: tuple):
-    """
-
-    :param data:
-    :param size:
-    :return:
-    """
-    return KeyBoardBuilder().builder(data, size)
-
-
-async def menu_kb():
-    """
-
-    :return:
-    """
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_text("search"),
-        kb.btn_text("history"),
-        kb.btn_data(
-            "favorite",
-            FavoriteCBD(
-                action=FavoriteAction.page,
-                navigate=Navigation.first
-            ).pack()
-        ),
-        kb.btn_data(
-            "list_searches",
-            MonitorCBD(
-                action=MonitorAction.list,
-                navigate=Navigation.first,
-                page=1
-            ).pack()
-        )
-    ]).add_markups([1, 3])
-    return kb.create_kb()
-
-
-async def sort_kb():
-    """
-
-    :return:
-    """
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_text("default"),
-        kb.btn_text("salesDesc"),
-        kb.btn_text("priceDesc"),
-        kb.btn_text("priceAsc")
-    ]).add_markups([2, 2])
-    return kb.create_kb()
-
-
-async def qnt_kb():
-    """
-
-    :return:
-
-    """
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_text("2"),
-        kb.btn_text("3"),
-        kb.btn_text("5"),
-        kb.btn_text("10")
-    ]).add_markups([2, ])
-    return kb.create_kb()
-
-
-async def item_kb(prefix: str, item_id: str, text: str):
-    """
-
-    :param prefix:
-    :param item_id:
-    :param text:
-    :return:
-    """
-    return KeyBoardBuilder().builder_id(prefix, item_id, text, (1,))
-
-
-async def price_range_kb():
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_text("price_min"),
-        kb.btn_text("price_skip")
-    ]).add_markups([2, ])
-    return kb.create_kb()
-
-
-async def error_kb():
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_text("menu"),
-    ]).add_markups([1, ])
-    return kb.create_kb()

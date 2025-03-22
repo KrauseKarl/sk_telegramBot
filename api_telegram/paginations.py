@@ -11,11 +11,11 @@ from api_telegram.callback_data import (
     ReviewAction
 )
 from api_telegram.crud.items import *
+from api_telegram.keyboard.builders import builder_kb
 from api_telegram.keyboards import (
     ItemPaginationBtn,
-    builder_kb,
     FavoritePaginationBtn,
-    ItemSearchPaginationBtn, ReviewPaginationBtn
+    MonitorPaginationBtn, ReviewPaginationBtn
 )
 from core import config
 from database.orm import orm_get_favorite
@@ -43,51 +43,50 @@ async def paginate_item_list_kb(params, callback_data_api_page):
         paginator_len=len_data,
         item_id=item_id
     )
-
-    if api_page == 1 and int(page) == 1:
-        kb.add_buttons(
-            [kb.btn('next', int(page) + 1), kb.last_btn()]
-        ).add_markups([1, 1])
-    elif api_page > 1 and int(page) == 1:
-
-        # todo refactor this part ######################################################################################
-        # try to find previous item_list in cache
-        prev_cache_key = CacheKey(key=key, api_page=str(api_page - 1), extra='list').pack()
-        redis_handler = RedisHandler()
-        prev_list = await redis_handler.get_data(prev_cache_key)
-
-        # if  previous item_list not exist in cache
-        # make new request to API
-        if prev_list is None:
-            params = dict(url=config.URL_API_ITEM_LIST)
-            params = await get_query_from_db(key, params)
-            params['page'] = str(callback_data_api_page)
-            prev_list = await request_api(params)
-
-        # finally fins the last page in previous item_list
-        prev_paginate_page = len(prev_list)
-        # todo refactor this part ######################################################################################
-        kb.add_buttons([
-            kb.btn('prev', prev_paginate_page, api_page - 1),
-            kb.btn('next', 2),
-            kb.last_btn()
-        ]).add_markups([2, 1])
-
-    elif len_data > int(page) > 1:
-
-        kb.add_buttons([
-            kb.btn("prev", str(page - 1 if page - 1 > 1 else 1)),
-            kb.btn("next", str(page + 1 if page + 1 < len_data else len_data + 1)),
-            kb.first_btn(),
-            kb.last_btn()
-        ]).add_markups([2, 2])
-    elif int(page) == len_data:
-        # "последняя страница"
-        kb.add_buttons([
-            kb.btn("prev", str(page - 1 if page - 1 != 0 else 1)),
-            kb.btn("next", str(page + 1)),
-            kb.first_btn(),
-        ]).add_markups([2, 1])
+    await kb.create_paginate_buttons(page)
+    # if api_page == 1 and int(page) == 1:
+    #     kb.add_buttons(
+    #         [kb.btn('next', int(page) + 1), kb.last_btn()]
+    #     ).add_markups([1, 1])
+    # elif api_page > 1 and int(page) == 1:
+    #     # todo refactor this part ######################################################################################
+    #     # try to find previous item_list in cache
+    #     prev_cache_key = CacheKey(key=key, api_page=str(api_page - 1), extra='list').pack()
+    #     redis_handler = RedisHandler()
+    #     prev_list = await redis_handler.get_data(prev_cache_key)
+    #
+    #     # if  previous item_list not exist in cache
+    #     # make new request to API
+    #     if prev_list is None:
+    #         params = dict(url=config.URL_API_ITEM_LIST)
+    #         params = await get_query_from_db(key, params)
+    #         params['page'] = str(callback_data_api_page)
+    #         prev_list = await request_api(params)
+    #
+    #     # finally fins the last page in previous item_list
+    #     prev_paginate_page = len(prev_list)
+    #     # todo refactor this part ######################################################################################
+    #     kb.add_buttons([
+    #         kb.btn('prev', prev_paginate_page, api_page - 1),
+    #         kb.btn('next', 2),
+    #         kb.last_btn()
+    #     ]).add_markups([2, 1])
+    #
+    # elif len_data > int(page) > 1:
+    #
+    #     kb.add_buttons([
+    #         kb.btn("prev", str(page - 1 if page - 1 > 1 else 1)),
+    #         kb.btn("next", str(page + 1 if page + 1 < len_data else len_data + 1)),
+    #         kb.first_btn(),
+    #         kb.last_btn()
+    #     ]).add_markups([2, 2])
+    # elif int(page) == len_data:
+    #     # "последняя страница"
+    #     kb.add_buttons([
+    #         kb.btn("prev", str(page - 1 if page - 1 != 0 else 1)),
+    #         kb.btn("next", str(page + 1)),
+    #         kb.first_btn(),
+    #     ]).add_markups([2, 1])
 
     data_web = ("url", await get_web_link(item_id))
     kb.add_buttons([
@@ -99,6 +98,8 @@ async def paginate_item_list_kb(params, callback_data_api_page):
     is_favorite = await orm_get_favorite(item_id)
     if is_favorite is None:
         kb.add_button(kb.favorite(page)).update_markup(4)
+
+    print('$$$$ ', kb.get_kb())
     return await builder_kb(kb.get_kb(), size=kb.get_markup())
 
 
@@ -135,7 +136,7 @@ async def paginate_monitor_kb(page: int, item_id, navigate: str, len_data: int):
     :param len_data:
     :return:
     """
-    kb = ItemSearchPaginationBtn(
+    kb = MonitorPaginationBtn(
         item_id=item_id,
         action=MonitorAction,
         call_data=MonitorCBD

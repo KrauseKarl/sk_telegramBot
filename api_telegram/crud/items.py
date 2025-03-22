@@ -9,6 +9,7 @@ from core import config
 from database.exceptions import *
 from database.paginator import *
 from database.pydantic import *
+from utils.cache_key import get_query_from_db
 
 redis_handler = RedisHandler()
 
@@ -64,19 +65,6 @@ async def update_query_in_db(data: dict, key: str):
     await orm_update_query_in_db(update_query_dict.get('query'), key)
 
 
-async def get_query_from_db(key: str, params: dict | None = None):
-    params_from_db = await orm_get_query_from_db(key)
-    saved_query_dict = json.loads(model_to_dict(params_from_db).get("query"))
-    print('🚩 query - {0}'.format(saved_query_dict.values()))
-    if params is None:
-        params = dict()
-    params['q'] = saved_query_dict.get('q', None)
-    params['page'] = saved_query_dict.get('page', 1)
-    params['sort'] = saved_query_dict.get('sort', None)
-    params['startPrice'] = saved_query_dict.get('startPrice', None)
-    params['endPrice'] = saved_query_dict.get('endPrice', None)
-
-    return params
 
 
 async def refresh_params_dict(params: dict, key: str):
@@ -98,6 +86,7 @@ async def get_paginator_len(data_list: list, page: str | int):
 
 
 async def get_data_by_request_to_api(params: dict):
+    print(f"{params= }")
     response = await request_api(params)
 
     try:

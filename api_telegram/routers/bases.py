@@ -13,7 +13,7 @@ from utils.media import *
 route = Router()
 
 
-# START #############################################################################################################
+# START ################################################################################################################
 @route.message(CommandStart())
 async def start_command(message: Message) -> None:
     """
@@ -35,7 +35,7 @@ async def start_command(message: Message) -> None:
         )
 
 
-# HELP #############################################################################################################
+# HELP #################################################################################################################
 @route.message(Command("help"))
 @route.callback_query(F.data.startswith("help"))
 async def info(callback: Message | CallbackQuery) -> None:
@@ -62,7 +62,7 @@ async def info(callback: Message | CallbackQuery) -> None:
         await callback.message.edit_media(media=media, reply_markup=await kbm.back())
 
 
-# MENU #############################################################################################################
+# MENU #################################################################################################################
 @route.message(Command("menu"))
 @route.callback_query(F.data.startswith("menu"))
 async def menu(callback: Message | CallbackQuery, state: FSMContext) -> None:
@@ -98,17 +98,17 @@ async def menu(callback: Message | CallbackQuery, state: FSMContext) -> None:
         )
 
 
-# ONLY FOR DEVELOP ###################################################################
+# ONLY FOR DEVELOP #####################################################################################################
 # TODO delete this routes on production
 @route.message(Command("redis"))
-async def get_key_cache():
+async def get_key_cache(message):
     print('redis route start')
     await RedisHandler().get_keys()
     print('redis route finish')
 
 
 @route.message(Command("del"))
-async def get_key_cache():
+async def get_key_cache(message):
     print('redis route start')
     await RedisHandler().flush_keys()
     print('redis route finish')

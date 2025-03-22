@@ -1,13 +1,8 @@
 from aiogram import F, Router, types as t
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from pydantic import ValidationError
 
 from api_telegram.crud.histories import *
 from api_telegram.keyboard.builders import kbm
-from api_telegram.keyboard.factories import BasePaginationBtn
-from api_telegram.keyboards import menu_kb, HistoryPaginationBtn
 from api_telegram.callback_data import HistoryAction, HistoryCBD
 from database.exceptions import *
 from database.orm import *
@@ -54,5 +49,5 @@ async def history_page(
         await callback.message.answer_photo(
             photo=photo,
             caption=msg,
-            reply_markup=await menu_kb()
+            reply_markup=await kbm.menu()
         )

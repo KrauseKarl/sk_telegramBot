@@ -6,8 +6,8 @@ from api_telegram.callback_data import (
     HistoryCBD,
     HistoryAction, FavoriteAction
 )
-from api_telegram.keyboard.factories import KeyBoardBuilder
-from api_telegram.keyboards import BasePaginationBtn
+from api_telegram.keyboard.factories import KeyBoardBuilder, BasePaginationBtn
+# from api_telegram.keyboards import BasePaginationBtn
 
 
 class KeyboardManager:
@@ -36,7 +36,7 @@ class KeyboardManager:
             self.kb.btn_data(
                 "favorite",
                 FavoriteCBD(
-                    action=FavoriteAction.page,
+                    action=FavoriteAction.paginate,
                     navigate=Navigation.first
                 ).pack()
             ),
@@ -131,7 +131,7 @@ async def menu_kb():
         kb.btn_data(
             "favorite",
             FavoriteCBD(
-                action=FavoriteAction.page,
+                action=FavoriteAction.paginate,
                 navigate=Navigation.first
             ).pack()
         ),

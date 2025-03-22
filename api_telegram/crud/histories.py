@@ -24,6 +24,7 @@ class HistoryManager:
         self.item: Optional[dict] = None
         self.photo: Optional[t.InputMediaPhoto] = None
         self.empty_message = "⭕️ история просмотра пуста."
+        self.empty_image = "history"
         self.action = HistoryAction
         self.call_data = HistoryCBD
         self.kb_factory = HistoryPaginationBtn
@@ -64,12 +65,12 @@ class HistoryManager:
                     )
                 except (ValidationError, TypeError):
                     self.photo = await get_input_media_hero_image(
-                        "history",
+                        self.empty_image,
                         await self.get_msg()
                     )
             else:
                 self.photo = await get_input_media_hero_image(
-                    "history",
+                    self.empty_image,
                     self.empty_message
                 )
         return self.photo

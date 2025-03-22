@@ -14,7 +14,7 @@ class MonitorAction(str, Enum):
     graph = "GRAPH"
     add = "ADD"
     delete = "DEL"
-    page = "PGN"
+    paginate = "PGN"
 
 
 class MonitorCBD(CallbackData, prefix="Monitor"):
@@ -23,6 +23,6 @@ class MonitorCBD(CallbackData, prefix="Monitor"):
     """
     action: MonitorAction
     navigate: Navigation | None = None
-    item_id: str | int | None = None
-    monitor_id: str | int | None = None
-    page: int | int | None = None
+    item_id: str | None = None
+    monitor_id: int | None = None
+    page: int | None = None

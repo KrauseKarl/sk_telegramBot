@@ -17,7 +17,7 @@ favorite = Router()
 
 
 @favorite.message(Command("favorite"))
-@favorite.callback_query(FavoriteCBD.filter(F.action == FavoriteAction.page))
+@favorite.callback_query(FavoriteCBD.filter(F.action == FavoriteAction.paginate))
 async def request_favorite_list(
         callback: t.CallbackQuery | t.Message,
         callback_data: Optional[FavoriteCBD] = None
@@ -32,7 +32,7 @@ async def request_favorite_list(
     try:
         if callback_data is None:
             callback_data = FavoriteCBD(
-                action=FavoriteAction.page,
+                action=FavoriteAction.paginate,
                 navigate=Navigation.first
             )
         manager = FavoriteManager(callback_data, callback.from_user.id)
@@ -67,7 +67,7 @@ async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -
     :param callback:
     :return:
     """
-    print('🟪 FAVORITE ADD ENDPOINT\n🟪 data = {call.data}')
+    print(f'🟪 FAVORITE ADD ENDPOINT\n🟪 data = {callback_data}')
     try:
 
         page = callback_data.page

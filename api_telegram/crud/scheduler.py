@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from api_aliexpress.deserializers import deserialize_item_detail
 from api_telegram.crud.items import *
 from api_telegram.keyboard.builders import kbm
-from api_telegram.keyboards import BasePaginationBtn, ItemSearchPaginationBtn
+from api_telegram.keyboards import BasePaginationBtn, MonitorPaginationBtn
 from api_telegram.paginations import paginate_monitor_kb
 from database.models import *
 from utils.media import get_input_media_hero_image
@@ -18,6 +18,7 @@ from utils.media import get_input_media_hero_image
 scheduler = AsyncIOScheduler()
 
 
+# todo get togather in class
 # Функция для удаления задачи
 def remove_job(item_search_id: int):
     job_id = f"fetch_data_{item_search_id}"  # Уникальный ID задачи
@@ -110,6 +111,7 @@ def setup_scheduler(bot: Bot):
     )
 
     scheduler.start()
+# todo get togather in class
 
 
 class MonitorManager:
@@ -122,9 +124,10 @@ class MonitorManager:
         self.item: Optional[dict] = None
         self.photo: Optional[InputMediaPhoto] = None
         self.empty_message = "⭕️ у вас пока нет отслеживаемых товаров"
+        self.empty_image = "favorite"
         self.action = MonitorAction
         self.call_data = MonitorCBD
-        self.kb_factory = ItemSearchPaginationBtn
+        self.kb_factory = MonitorPaginationBtn
 
     async def _get_monitor_list(self) -> List[History]:
         """Получает список истории и сохраняет его в self.array."""
@@ -162,27 +165,27 @@ class MonitorManager:
                     )
                 except (ValidationError, TypeError):
                     self.photo = await get_input_media_hero_image(
-                        "favorite",
+                        self.empty_image,
                         await self.get_msg()
                     )
             else:
                 self.photo = await get_input_media_hero_image(
-                    "favorite",
+                    self.empty_image,
                     self.empty_message
                 )
         return self.photo
 
     async def get_photo(self) -> Optional[str]:
         """Возвращает фото текущего элемента истории."""
-        item = await self._get_item()
-        return item.image if item else None
+        current_item = await self._get_item()
+        return current_item.image if current_item else None
 
     async def get_keyboard(self):
         """Возвращает клавиатуру для пагинации."""
         if await self._get_len() >= 1:
             current_item = await self._get_item()
             kb = self.kb_factory(
-                item_id=str(current_item.uid),
+                item_id=str(current_item.product_id),
                 action=self.action,
                 call_data=self.call_data
             )
@@ -201,29 +204,3 @@ class MonitorManager:
             return kb.create_kb()
         else:
             return await kbm.back()
-
-async def get_searched_items_list(query, data):
-    data_list = await orm_get_monitoring_list(query.from_user.id)
-    if len(data_list) > 0:
-        paginator = Paginator(data_list, page=data.page)
-        monitor_item = paginator.get_page()[0]
-        img = monitor_item.image
-        msg = await monitor_info(monitor_item, data.page, paginator.pages)
-        # kb = await paginate_searched_items_list_kb(
-        kb = await paginate_monitor_kb(
-            page=int(data.page),
-            item_id=monitor_item.product_id,
-            navigate=data.navigate,
-            len_data=paginator.len
-        )
-    else:
-        msg = "⭕️ у вас пока нет отслеживаемых товаров"
-        img = None
-        kb = BasePaginationBtn()
-        kb.add_button(kb.btn_text('menu')).add_markup(1)
-    try:
-        # img = types.FSInputFile(path=os.path.join(config.IMAGE_PATH, img))
-        photo = types.InputMediaPhoto(media=img, caption=msg)
-    except (ValidationError, TypeError):
-        photo = await get_input_media_hero_image("favorite", msg)
-    return msg, photo, kb

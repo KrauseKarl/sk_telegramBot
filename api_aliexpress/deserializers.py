@@ -3,7 +3,7 @@ import json
 from aiogram.filters.callback_data import CallbackData
 
 from api_redis.handlers import *
-from api_telegram.keyboards import builder_kb
+from api_telegram.keyboard.builders import builder_kb
 from database.orm import *
 from utils.media import *
 from utils.message_info import card_info, get_price_range

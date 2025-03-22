@@ -6,18 +6,13 @@ from api_telegram.callback_data import Navigation
 
 
 # REVIEW ######################################################################################
-class RevAction(str, Enum):
-    first = "RFP"
-    paginate = "RPG"
-
-
 class ReviewAction(str, Enum):
     first = "RFP"
     paginate = "RPG"
 
 
 class ReviewPageCBD(CallbackData, prefix='RVW'):
-    action: RevAction
+    action: ReviewAction
     navigate: Navigation
     page: int = 1
 
@@ -27,10 +22,10 @@ class ReviewCBD(CallbackData, prefix='RVW'):
     navigate: Navigation
     item_id: str | None = None
     key: str
-    api_page: int | str
-    page: str | int
-    next: str | int
-    prev: str | int
-    first: str | int
-    last: str | int
-    sub_page: str | int
+    api_page: int
+    page: int
+    next: int
+    prev: int
+    first: int = 1
+    last: int
+    sub_page: int

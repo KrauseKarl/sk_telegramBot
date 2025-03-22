@@ -106,6 +106,7 @@ PREFIX_FOLDER = {
 
 
 async def get_path_to_json(prefix, data: str | tuple):
+    print(data)
     if isinstance(data, tuple):
         file_name = "{0}_{1}.json".format(
             data[0].replace(" ", "_").lower(),
@@ -138,7 +139,7 @@ async def request_api_fake(params):
     else:
         prefix = 'list'
         path = await get_path_to_json(
-            prefix, (params.get('query'), params.get('page'))
+            prefix, (params.get('q'), params.get('page'))
         )
     try:
         with open(path, 'r') as file:
@@ -157,7 +158,7 @@ async def request_api(params) -> dict:
     for key, value in params.items():
         if value:
             conf.querystring[key] = value
-    # print("⚜️ request_api {0} [{1}]".format(params.get('q'), params.get('page')))
+    print("⚜️ request_api {0} [{1}]".format(params.get('q'), params.get('page')))
     # print("⚜️ request_api {0}".format(params.get('itemId')))
     # print("⚜️ request_api {0}".format(params))
     if config.FAKE_MODE:

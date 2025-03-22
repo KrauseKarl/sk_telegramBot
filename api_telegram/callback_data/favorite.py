@@ -10,7 +10,7 @@ class FavoriteAction(str, Enum):
     list = "FAL"
     detail = "FAD"
     delete = "FDL"
-    page = "FPG"
+    paginate = "FPG"
 
 
 class FavoriteCBD(CallbackData, prefix='FVT'):
@@ -23,15 +23,16 @@ class FavoriteAddDetailCBD(CallbackData, prefix='FVT'):
     action: FavoriteAction
     item_id: str = None
     key: str
-    api_page: str
-    next: str
-    prev: str
-    first: str
-    last: str
+    api_page: int
+    next: int
+    prev: int
+    first: int = 1
+    last: int
 
 
 class FavoriteAddCBD(FavoriteAddDetailCBD, prefix='FVT'):
-    page: str
+    page: int
+    first: int = 1
 
 
 class FavoriteDeleteCBD(CallbackData, prefix='FVT'):

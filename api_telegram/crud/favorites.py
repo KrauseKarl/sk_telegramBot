@@ -20,7 +20,6 @@ async def create_favorite_instance(call: CallbackQuery, data: FavoriteAddCBD):
     """
 
     item = await orm_get_favorite(data.item_id)
-    print(f'🌳🌳🌳 favorite exist = {item}')
     if item:
         raise IntegrityError("⚠️ уже добавлено в избранное")
     #####################################################
@@ -31,9 +30,9 @@ async def create_favorite_instance(call: CallbackQuery, data: FavoriteAddCBD):
     response = await request_api(params)
     item_data = await deserialize_item_detail(response, call.from_user.id)
     ##########################################################
-    item_data["product_id"] = data.item_id
+    # item_data["product_id"] = data.item_id
     await orm_get_or_create_favorite(item_data)
-    item_data["command"] = "item detail"
+    # item_data["command"] = "item detail"
     kb = ItemPaginationBtn(
         key=data.key,
         api_page=data.api_page,
@@ -46,14 +45,19 @@ async def create_favorite_instance(call: CallbackQuery, data: FavoriteAddCBD):
             kb.btn_text('price')
         ]).add_markups([1, 2, 3])
     if data.action == FavoriteAction.list:
+        # class ItemCBD(CallbackData, prefix='ITL'):
+        #     key: str
+        #     api_page: int | str
+        #     page: int | str
+        data_web = ("url", await get_web_link(data.item_id))
         kb.add_buttons([
-            kb.btn_data('prev', data.prev),
-            kb.btn_data('next', data.next),
-            kb.btn_data('first', data.first),
-            kb.btn_data('last', data.last),
+            kb.btn_data('prev', ItemCBD(api_page=data.api_page, page=data.prev, key=data.key).pack()),
+            kb.btn_data('next', ItemCBD(api_page=data.api_page, page=data.next, key=data.key).pack()),
+            kb.btn_data('first',  ItemCBD(api_page=data.api_page, page=data.first, key=data.key).pack()),
+            kb.btn_data('last',  ItemCBD(api_page=data.api_page, page=data.last, key=data.key).pack()),
             kb.detail('view', data.page, DetailAction.go_view),
             kb.btn_text('menu'),
-            kb.btn_text('web'),
+            kb.btn_data('web', data_web),
         ]).add_markups([2, 2, 3])
 
     return item_data, kb.create_kb()
@@ -80,6 +84,7 @@ class FavoriteManager:
         self.item: Optional[dict] = None
         self.photo: Optional[InputMediaPhoto] = None
         self.empty_message = "⭕️ у вас пока нет избранных товаров."
+        self.empty_image: str = "favorite"
         self.action = FavoriteAction
         self.call_data = FavoriteCBD
         self.kb_factory = FavoritePaginationBtn
@@ -120,12 +125,12 @@ class FavoriteManager:
                     )
                 except (ValidationError, TypeError):
                     self.photo = await get_input_media_hero_image(
-                        "history",
+                        self.empty_image,
                         await self.get_msg()
                     )
             else:
                 self.photo = await get_input_media_hero_image(
-                    "history",
+                    self.empty_image,
                     self.empty_message
                 )
         return self.photo
@@ -147,7 +152,7 @@ class FavoriteManager:
             kb.create_pagination_buttons(
                 page=self.page,
                 navigate=self.navigate,
-                len_data=int(await self._get_len())
+                len_data=await self._get_len()
             )
             kb.add_buttons([
                 kb.delete_btn(),

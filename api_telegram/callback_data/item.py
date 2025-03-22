@@ -5,8 +5,8 @@ from aiogram.filters.callback_data import CallbackData
 
 class ItemCBD(CallbackData, prefix='ITL'):
     key: str
-    api_page: int | str
-    page: int | str
+    api_page: int
+    page: int
 
 
 class DetailAction(str, Enum):
@@ -15,19 +15,19 @@ class DetailAction(str, Enum):
     back_detail = "bcDtl"
 
 
-class DetailCBD(CallbackData, prefix='ITD'):
-    action: DetailAction
-    item_id: str = None
-    key: str
-    api_page: int | str
-    page: int | str
-    next: int | str
-    prev: int | str
-    first: int | str
-    last: int | str
-
-
 class DetailsAction(str, Enum):
     view = "DGD"
     list = "DBL"
     detail = "DBD"
+
+
+class DetailCBD(CallbackData, prefix='ITD'):
+    action: DetailAction
+    item_id: str = None
+    key: str
+    api_page: int
+    page: int
+    next: int
+    prev: int
+    first: int = 1
+    last: int
