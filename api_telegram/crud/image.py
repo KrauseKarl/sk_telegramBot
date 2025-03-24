@@ -1,42 +1,43 @@
 from typing import Optional
+
 from aiogram.types import InputMediaPhoto, InlineKeyboardMarkup
 from pydantic import ValidationError
 
-from api_aliexpress.request import request_api_review
+from api_aliexpress.request import request_api
 from api_redis.handlers import RedisHandler
-from api_telegram.callback_data import (
-    ReviewCBD,
-    ReviewAction,
+from api_telegram import (
+    ImagesAction,
     CacheKeyExtended,
-    DetailAction
+    DetailAction,
+    ImageCBD,
+    kbm,
+    ImagePaginationBtn
 )
-from api_telegram.keyboard.builders import kbm
-from api_telegram.keyboard.paginators import ReviewPaginationBtn
 from core import config
 from database.paginator import Paginator
 from utils.media import get_input_media_hero_image
-from utils.message_info import create_review_tg_answer
 
 
-class ReviewManager:
+class ImageManager:
     def __init__(self, callback_data, user_id):
         self.user_id: int = user_id
-        self.page: int = int(callback_data.page)
-        self.navigate: str = callback_data.navigate
         self.key: str = callback_data.key
-        self.item_id = callback_data.item_id
-        self.api_page: str = callback_data.api_page
+        self.page: int = int(callback_data.page)
+        self.api_page = str(callback_data.api_page)
+        self.navigate: str = callback_data.navigate
         self.sub_page: int = int(callback_data.sub_page)
-        self.extra = 'review'
+        self.item_id = callback_data.item_id
+        self.extra = 'detail'
         self.array: Optional[list] = None
         self.len: Optional[int] = None
         self.item: Optional[dict] = None
         self.photo: Optional[InputMediaPhoto] = None
-        self.empty_message: str = "⭕️ нет комментариев"
+
+        self.empty_message: str = "⭕️ изображения отсутствуют"
         self.empty_image: str = "not_found"
-        self.action = ReviewAction
-        self.call_data = ReviewCBD
-        self.kb_factory = ReviewPaginationBtn
+        self.action = ImagesAction
+        self.call_data = ImageCBD
+        self.kb_factory = ImagePaginationBtn
         self.redis_handler = RedisHandler()
 
     async def _get_cache_key(self):
@@ -45,64 +46,62 @@ class ReviewManager:
             key=self.key,
             api_page=self.api_page,
             sub_page=self.sub_page,
-            extra=self.extra
+            extra='detail'
         ).pack()
 
     async def _request_data(self):
         data = dict(
-            url=config.URL_API_REVIEW,
-            page=str(self.api_page),
+            url=config.URL_API_ITEM_DETAIL,
             itemId=self.item_id,
-            sort="latest",
-            filters="allReviews"
         )
-        response = await request_api_review(data)
-        return response.get('result').get('resultList', None)
+        return await request_api(data)
 
-    async def _get_review_list(self):
-        """Получает список истории и сохраняет его в self.array."""
+    async def _get_list(self):
+        """Получает список изображений и сохраняет его в self.array."""
         if self.array is None:
             cache_key = await self._get_cache_key()
-            review_list = await self.redis_handler.get_data(cache_key)
-            if review_list is None:
-                review_list = await self._request_data()
-            if review_list is not None:
-                await self.redis_handler.set_data(key=cache_key, value=review_list)
-                self.array = review_list
+            item_img_cache = await self.redis_handler.get_data(cache_key)
+            if item_img_cache is None:
+                item_img_cache = await self._request_data()
+                if item_img_cache is not None:
+                    await self.redis_handler.set_data(key=cache_key, value=item_img_cache)
+            item_response = item_img_cache.get('result').get('item')
+            images = item_response.get('images')
+            colors_image = item_response.get('description').get('images')
+            if colors_image:
+                images.extend(colors_image)
+            self.array = images
         return self.array
 
     async def _get_len(self) -> int:
-        """Возвращает длину списка избранных товаров и сохраняет её в self.len."""
+        """Возвращает длину списка изображений товара и сохраняет её в self.len."""
         if self.len is None:
-            self.len = len(await self._get_review_list())
+            self.len = len(await self._get_list())
         return self.len
 
     async def _get_item(self):
-        """Возвращает элемент избранных товаров для текущей страницы."""
+        """Возвращает элемент изображений товара для текущей страницы."""
+
         if self.item is None and await self._get_len() > 0:
-            paginator = Paginator(await self._get_review_list(), page=self.sub_page)
+            paginator = Paginator(await self._get_list(), page=self.sub_page)
             self.item = paginator.get_page()[0]
         return self.item
 
     async def get_msg(self) -> str:
-        """Возвращает сообщение для текущего элемента избранных товаров."""
-        current_item = await self._get_item()
-        return await create_review_tg_answer(
-            current_item, str(self.sub_page), await self._get_len()
-        )
+        """Возвращает сообщение для текущего элемента изображений товара."""
+        return "{0} из {1}".format(self.sub_page, self.len)
 
     async def get_media(self) -> InputMediaPhoto:
         """Возвращает медиа (фото с подписью) для текущего элемента избранных товаров."""
         if self.photo is None:
             if await self._get_len() > 0:
                 try:
-                    current_item = await self._get_item()
-                    images = current_item.get('reviewImages', None)
-                    media = ":".join(["https", images[0]])
+                    current_img = await self._get_item()
                     self.photo = InputMediaPhoto(
-                        media=media,
+                        media=":".join(["https", current_img]),
                         caption=await self.get_msg()
                     )
+
                 except (ValidationError, TypeError, KeyError):
                     self.photo = await get_input_media_hero_image(
                         self.empty_image,
@@ -115,15 +114,9 @@ class ReviewManager:
                 )
         return self.photo
 
-    async def get_photo(self) -> Optional[str]:
-        """Возвращает фото текущего элемента истории."""
-        current_item = await self._get_item()
-        images = current_item.get('reviewImages', None)
-        media = ":".join(["https", images[0]])
-        return media if images else None
-
     async def get_keyboard(self) -> InlineKeyboardMarkup:
         """Возвращает клавиатуру для пагинации."""
+
         if await self._get_len() >= 1:
             kb = self.kb_factory(
                 action=self.action,
@@ -144,7 +137,6 @@ class ReviewManager:
                 kb.detail("back", self.page, DetailAction.back_detail)
             ]
             kb.add_buttons(extra_buttons).add_markups([1])
-            print('keyboard= ',kb.get_kb())
             return kb.create_kb()
         else:
             return await kbm.back()

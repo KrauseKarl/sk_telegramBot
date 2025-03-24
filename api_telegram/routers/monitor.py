@@ -5,7 +5,7 @@ from aiogram.filters import Command, or_f
 from aiogram.types import Message
 
 from api_telegram.crud.scheduler import remove_job, create_item_search,  MonitorManager
-from api_telegram.keyboards import BasePaginationBtn
+from api_telegram import BasePaginationBtn
 from utils.media import *
 import matplotlib.pyplot as plt
 
@@ -84,7 +84,7 @@ async def delete_search(message: types.Message):
     await message.answer(f"Поисковый запрос '{item_search.name}' (ID: {item_search.id}) удален.")
 
 
-# @scheduler.message(Command("graph"))
+# TODO refactoring graph
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.graph))
 async def send_graph(callback: types.CallbackQuery, callback_data: MonitorCBD):
     # Пример: Получаем ID поискового запроса из аргументов команды

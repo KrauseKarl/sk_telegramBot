@@ -54,10 +54,10 @@ async def request_favorite_list(
         await callback.message.answer_photo(
             photo=photo,
             caption=msg,
-            reply_markup=await menu_kb()
+            reply_markup=await kbm.menu()
         )
 
-
+# TODO refactoring favorite add
 @favorite.callback_query(FavoriteAddCBD.filter(F.action == FavoriteAction.list))
 @favorite.callback_query(FavoriteAddCBD.filter(F.action == FavoriteAction.detail))
 async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -> None:
@@ -91,7 +91,7 @@ async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -
         # todo add logger and record `error`
         await callback.answer(str(error), show_alert=True)
 
-
+# TODO refactoring favorite delete
 @favorite.callback_query(FavoriteDeleteCBD.filter(F.action == FavoriteAction.delete))
 async def delete_favorite(call: CallbackQuery, callback_data: FavoriteDeleteCBD) -> None:
     """

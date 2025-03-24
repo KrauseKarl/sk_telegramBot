@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from api_redis.handlers import RedisHandler
-from api_telegram.keyboards import *
+from api_telegram.keyboard.paginators import *
 from api_telegram.keyboard.builders import kbm
 from database.exceptions import CustomError
 from utils.media import *
@@ -25,13 +25,13 @@ async def start_command(message: Message) -> None:
         welcoming = await orm_get_or_create_user(user=message.from_user)
         msg = '{0}, {1}!'.format(welcoming, message.from_user.first_name)
         photo = await get_fs_input_hero_image("welcome")
-        await message.answer_photo(photo=photo, caption=msg, reply_markup=await menu_kb())
+        await message.answer_photo(photo=photo, caption=msg, reply_markup=await kbm.menu())
     except CustomError as error:
         msg, photo = await get_error_answer_photo(error)
         await message.answer_photo(
             photo=photo,
             caption=msg,
-            reply_markup=await menu_kb()
+            reply_markup=await kbm.menu()
         )
 
 
@@ -94,7 +94,7 @@ async def menu(callback: Message | CallbackQuery, state: FSMContext) -> None:
         media = await get_error_answer_media(error)
         await callback.message.edit_media(
             media=media,
-            reply_markup=await menu_kb()
+            reply_markup=await kbm.menu()
         )
 
 

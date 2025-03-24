@@ -1,7 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from api_redis.handlers import *
-from api_telegram.callback_data import ReviewCBD, ReviewAction
 from api_telegram.crud.reviews import ReviewManager
 from utils.media import *
 from utils.message_info import *

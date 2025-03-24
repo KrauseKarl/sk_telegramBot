@@ -1,11 +1,10 @@
 from aiogram.types import CallbackQuery
-from pydantic import ValidationError
 
 from api_aliexpress.deserializers import *
 from api_aliexpress.request import *
 from api_telegram.callback_data import *
 from api_telegram.keyboard.builders import kbm
-from api_telegram.keyboards import *
+from api_telegram.keyboard.paginators import *
 from api_telegram.paginations import *
 from core import config
 from utils.message_info import favorite_info

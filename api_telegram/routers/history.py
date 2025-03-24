@@ -1,11 +1,9 @@
-from aiogram import F, Router, types as t
+from aiogram import F, Router
 from aiogram.filters import Command
 
 from api_telegram.crud.histories import *
 from api_telegram.keyboard.builders import kbm
-from api_telegram.callback_data import HistoryAction, HistoryCBD
 from database.exceptions import *
-from database.orm import *
 from utils.media import *
 from utils.message_info import *
 

@@ -1,17 +1,11 @@
-from aiogram.types import InputMediaPhoto
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from aiogram import Bot, types
-from datetime import datetime
+from aiogram import Bot
 
-from pydantic import ValidationError
-
-from api_aliexpress.deserializers import deserialize_item_detail
 from api_telegram.crud.items import *
 from api_telegram.keyboard.builders import kbm
-from api_telegram.keyboards import BasePaginationBtn, MonitorPaginationBtn
-from api_telegram.paginations import paginate_monitor_kb
+from api_telegram.keyboard.paginators import MonitorPaginationBtn
 from database.models import *
 from utils.media import get_input_media_hero_image
 

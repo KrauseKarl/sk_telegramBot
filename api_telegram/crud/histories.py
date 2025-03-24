@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from api_telegram.callback_data import HistoryAction, HistoryCBD
 from api_telegram.keyboard.builders import kbm
-from api_telegram.keyboards import HistoryPaginationBtn
+from api_telegram.keyboard.paginators import HistoryPaginationBtn
 from database.models import History
 from database.orm import orm_get_history_list
 from database.paginator import Paginator

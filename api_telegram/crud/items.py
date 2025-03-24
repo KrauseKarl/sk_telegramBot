@@ -1,19 +1,25 @@
 from typing import Any
 
+from aiogram.types import InputMediaPhoto, InlineKeyboardMarkup
 from playhouse.shortcuts import model_to_dict
+from pydantic import ValidationError
+
+from api_aliexpress.deserializers import deserialize_item_detail
 from api_aliexpress.request import *
 from api_redis.handlers import *
 from api_telegram.callback_data import *
-from api_telegram.statments import CacheFSM
+from api_telegram.keyboard.paginators import ItemPaginationBtn
 from core import config
 from database.exceptions import *
+from database.orm import orm_make_record_request
 from database.paginator import *
 from database.pydantic import *
 from utils.cache_key import get_query_from_db
+from utils.media import get_input_media_hero_image
 
 redis_handler = RedisHandler()
 
-
+# TODO refactoring item crud funcs in one  class
 async def create_cache_key(key: str, page: str, extra: str, sub_page: str = None):
     return CacheKey(
         key=key,
@@ -63,8 +69,6 @@ async def update_query_in_db(data: dict, key: str):
     query_str = json.dumps(data, ensure_ascii=False)
     update_query_dict = CacheDataUpdateModel(query=str(query_str)).model_dump()
     await orm_update_query_in_db(update_query_dict.get('query'), key)
-
-
 
 
 async def refresh_params_dict(params: dict, key: str):
@@ -201,3 +205,113 @@ async def get_paginate_item(params: dict[str, Any], data: ItemCBD | DetailCBD):
         "item": item['item'],
         "total_pages": await get_paginator_len(item_list, page)
     }
+
+
+class DetailManager:
+    def __init__(self, callback_data, user_id):
+        self.user_id: int = user_id
+
+        self.key: str = callback_data.key
+        self.item_id = callback_data.item_id
+        self.api_page: str = callback_data.api_page
+        self.page: int = int(callback_data.page)
+        self.last: int = int(callback_data.last)
+        self.item: dict = dict()
+        self.response: Optional[dict] = None
+
+        self.action = DetailAction
+        self.call_data = DetailCBD
+        self.kb_factory = ItemPaginationBtn
+        self.redis_handler = RedisHandler()
+
+    async def _get_cache_key(self):
+        """Получает ключ для поиска кэша."""
+        return CacheKeyExtended(
+            key=self.key,
+            api_page=self.api_page,
+            sub_page=self.page,
+            extra='detail'
+        ).pack()
+
+    async def _request_data(self):
+        params = dict(
+            url=config.URL_API_ITEM_DETAIL,
+            itemId=self.item_id
+        )
+        return await request_api(params)
+
+    async def _get_item_info(self):
+        """Получает список истории и сохраняет его в self.array."""
+        if self.response is None:
+            cache_key = await self._get_cache_key()
+            item_data = await self.redis_handler.get_data(cache_key)
+            if item_data is None:
+                item_data = await self._request_data()
+            if item_data is not None:
+                await self.redis_handler.set_data(key=cache_key, value=item_data)
+                self.response = item_data
+        return self.response
+
+    async def _deserialized(self):
+        """
+        """
+        if self.response is None:
+            self.response = await self._get_item_info()
+        item_key = self.response["result"]["item"]
+        reviews_key = self.response["result"]["reviews"]
+        self.item["user"] = self.user_id
+        self.item["product_id"] = item_key.get('itemId')
+        self.item["title"] = item_key.get("title")
+        self.item["price"] = item_key.get("sku").get("base")[0].get("promotionPrice")
+        self.item["reviews"] = reviews_key.get("count")
+        self.item["star"] = reviews_key.get("averageStar")
+        self.item["reviews"] = reviews_key.get("count")
+        self.item["url"] = ":".join(["https", item_key.get("itemUrl")])
+        try:
+            self.item["image"] = ":".join(["https", item_key["images"][0]])
+        except KeyError:
+            self.item["image"] = None
+        return self.item
+
+    async def get_msg(self) -> str:
+        """Возвращает сообщение с подробной информацией о товаре."""
+        self.item = await self._deserialized()
+        self.item['command'] = 'detail'
+        await orm_make_record_request(self.item)
+        if self.response is None:
+            self.response = await self._get_item_info()
+        return await get_detail_info(self.response)
+
+    async def get_media(self):
+        msg = await self.get_msg()
+        return InputMediaPhoto(
+            media=self.item['image'],
+            caption=msg
+        )
+
+    async def get_keyboard(self) -> InlineKeyboardMarkup:
+        """Возвращает клавиатуру."""
+        kb = ItemPaginationBtn(
+            key=self.key,
+            api_page=self.api_page,
+            item_id=self.item_id,
+            paginator_len=int(self.last)
+        )
+        kb.add_buttons([
+            kb.comment(self.page),
+            kb.images(self.page),
+            kb.detail('back', self.page, DetailAction.back_list),
+        ])
+        is_monitoring = await orm_get_monitoring_item(self.item_id)
+        if is_monitoring is None:
+            data = MonitorCBD(
+                action=MonitorAction.add,
+                item_id=self.item_id
+            ).pack()
+            kb.add_button(kb.btn_data("price", data))
+        is_favorite = await orm_get_favorite(item_id=self.item_id)
+        if is_favorite is None:
+            kb.add_button(kb.favorite(self.page))
+        kb.add_markups([2, 2, 1])
+        print(kb.get_kb())
+        return kb.create_kb()

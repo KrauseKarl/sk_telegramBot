@@ -1,3 +1,6 @@
+from aiogram import types
+from aiogram.utils import keyboard
+
 from api_telegram.callback_data import (
     FavoriteCBD,
     MonitorCBD,
@@ -7,7 +10,6 @@ from api_telegram.callback_data import (
     HistoryAction, FavoriteAction
 )
 from api_telegram.keyboard.factories import KeyBoardBuilder, BasePaginationBtn
-# from api_telegram.keyboards import BasePaginationBtn
 
 
 class KeyboardManager:
@@ -113,96 +115,21 @@ async def builder_kb(data: list, size: tuple):
     return KeyBoardBuilder().builder(data, size)
 
 
-async def menu_kb():
+async def kb_builder(
+        size: tuple = None, data_list: list = None
+) -> types.InlineKeyboardMarkup:
     """
 
+    :param size:
+    :param data_list:
     :return:
     """
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_data(
-            "history",
-            HistoryCBD(
-                action=HistoryAction.first,
-                navigate=Navigation.first,
-                page=1
-            ).pack()
-        ),
-        kb.btn_data(
-            "favorite",
-            FavoriteCBD(
-                action=FavoriteAction.paginate,
-                navigate=Navigation.first
-            ).pack()
-        ),
-        kb.btn_data(
-            "list_searches",
-            MonitorCBD(
-                action=MonitorAction.list,
-                navigate=Navigation.first,
-                page=1
-            ).pack()
-        ),
-        kb.btn_text("search")
-    ]).add_markups([3, 1])
-
-    return kb.create_kb()
-
-
-async def sort_kb():
-    """
-
-    :return:
-    """
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_text("default"),
-        kb.btn_text("salesDesc"),
-        kb.btn_text("priceDesc"),
-        kb.btn_text("priceAsc")
-    ]).add_markups([2, 2])
-    return kb.create_kb()
-
-
-async def qnt_kb():
-    """
-
-    :return:
-
-    """
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_text("2"),
-        kb.btn_text("3"),
-        kb.btn_text("5"),
-        kb.btn_text("10")
-    ]).add_markups([2, ])
-    return kb.create_kb()
-
-
-async def item_kb(prefix: str, item_id: str, text: str):
-    """
-
-    :param prefix:
-    :param item_id:
-    :param text:
-    :return:
-    """
-    return KeyBoardBuilder().builder_id(prefix, item_id, text, (1,))
-
-
-async def price_range_kb():
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_text("price_min"),
-        kb.btn_text("price_skip")
-    ]).add_markups([2, ])
-    return kb.create_kb()
-
-
-async def error_kb():
-    kb = BasePaginationBtn()
-    kb.add_buttons([
-        kb.btn_text("menu"),
-    ]).add_markups([1, ])
-    return kb.create_kb()
+    kb = keyboard.InlineKeyboardBuilder()
+    for data in data_list:
+        for text, callback in data.items():
+            button = types.InlineKeyboardButton(
+                text=text,
+                callback_data=callback
+            )
+            kb.add(button)
+    return kb.adjust(*size).as_markup()

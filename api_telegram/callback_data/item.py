@@ -10,15 +10,9 @@ class ItemCBD(CallbackData, prefix='ITL'):
 
 
 class DetailAction(str, Enum):
-    go_view = "gtDtl"
-    back_list = "bcLst"
-    back_detail = "bcDtl"
-
-
-class DetailsAction(str, Enum):
-    view = "DGD"
-    list = "DBL"
-    detail = "DBD"
+    go_view = "DGD"
+    back_list = "DBL"
+    back_detail = "DBD"
 
 
 class DetailCBD(CallbackData, prefix='ITD'):

@@ -12,6 +12,12 @@ class ImagesAction(str, Enum):
     back = "IBD"
 
 
+class ImagePageCBD(CallbackData, prefix='IMG'):
+    action: ImagesAction
+    navigate: Navigation
+    page: int = 1
+
+
 class ImageCBD(CallbackData, prefix='IMG'):
     action: ImagesAction
     navigate: Navigation

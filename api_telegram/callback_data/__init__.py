@@ -13,13 +13,13 @@ from .history import HistoryAction
 from .history import HistoryCBD
 
 from .image import ImagesAction
+from .image import ImagePageCBD
 from .image import ImageCBD
 
 from .item import ItemCBD
 
 from .item import DetailAction
 from .item import DetailCBD
-from .item import DetailsAction
 
 from .monitor import MonitorAction
 from .monitor import MonitorCBD

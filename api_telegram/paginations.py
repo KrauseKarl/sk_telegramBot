@@ -1,6 +1,6 @@
 from api_aliexpress.request import request_api
 from api_redis.handlers import RedisHandler
-from api_telegram.callback_data import (
+from api_telegram import (
     DetailAction,
     CacheKey,
     ReviewCBD,
@@ -12,7 +12,7 @@ from api_telegram.callback_data import (
 )
 from api_telegram.crud.items import *
 from api_telegram.keyboard.builders import builder_kb
-from api_telegram.keyboards import (
+from api_telegram import (
     ItemPaginationBtn,
     FavoritePaginationBtn,
     MonitorPaginationBtn, ReviewPaginationBtn
