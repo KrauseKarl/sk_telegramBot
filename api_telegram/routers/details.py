@@ -1,19 +1,17 @@
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
 
+from api_telegram import DetailAction, ImageCBD, ImagesAction
 from api_telegram.crud.image import ImageManager
-from api_telegram.crud.items import DetailManager
+from api_telegram.crud.detail import DetailManager
 from api_aliexpress.deserializers import *
-from api_telegram.keyboard import *
 from api_telegram.keyboard.builders import kbm
 from database.exceptions import *
 from utils.message_info import *
 
 detail = Router()
-redis_handler = RedisHandler()
 
 
-# ITEM DETAIL ##########################################################################################################
 @detail.callback_query(DetailCBD.filter(F.action == DetailAction.go_view))
 @detail.callback_query(DetailCBD.filter(F.action == DetailAction.back_detail))
 async def get_item_detail(callback: CallbackQuery, callback_data: DetailCBD) -> None:
@@ -25,7 +23,7 @@ async def get_item_detail(callback: CallbackQuery, callback_data: DetailCBD) -> 
             reply_markup=await manage.get_keyboard()
         )
     except FreeAPIExceededError as error:
-        await callback.answer(show_alert=True, text="⚠️ ОШИБКА\n\n{0}".format(error))
+        await callback.answer( text="⚠️ ОШИБКА\n\n{0}".format(error), show_alert=True)
     except CustomError as error:
         msg, photo = await get_error_answer_photo(error)
         await callback.message.answer_photo(
@@ -45,7 +43,7 @@ async def get_images(callback: CallbackQuery, callback_data: ImageCBD):
             reply_markup=await manager.get_keyboard()
         )
     except FreeAPIExceededError as error:
-        await callback.answer(show_alert=True, text="⚠️ ОШИБКА\n\n{0}".format(error))
+        await callback.answer(text="⚠️ ОШИБКА\n\n{0}".format(error), show_alert=True)
     except CustomError as error:
         msg, photo = await get_error_answer_photo(error)
         await callback.message.answer_photo(

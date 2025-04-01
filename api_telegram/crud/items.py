@@ -1,317 +1,213 @@
-from typing import Any
+from typing import Optional
 
-from aiogram.types import InputMediaPhoto, InlineKeyboardMarkup
-from playhouse.shortcuts import model_to_dict
-from pydantic import ValidationError
+from aiogram.types import InputMediaPhoto
 
-from api_aliexpress.deserializers import deserialize_item_detail
+from api_aliexpress.deserializers import DeserializedHandler
 from api_aliexpress.request import *
 from api_redis.handlers import *
-from api_telegram.callback_data import *
+from api_telegram import DetailAction
 from api_telegram.keyboard.paginators import ItemPaginationBtn
-from core import config
+from database import orm_update_query_in_db, orm_get_favorite, orm_save_query_in_db
 from database.exceptions import *
-from database.orm import orm_make_record_request
 from database.paginator import *
 from database.pydantic import *
-from utils.cache_key import get_query_from_db
-from utils.media import get_input_media_hero_image
+from utils.cache_key import get_query_from_db, check_current_state, CacheKeyManager
 
 redis_handler = RedisHandler()
 
-# TODO refactoring item crud funcs in one  class
-async def create_cache_key(key: str, page: str, extra: str, sub_page: str = None):
-    return CacheKey(
-        key=key,
-        api_page=int(page),
-        extra=extra
-    ).pack()
+
+async def get_web_link(item_id: str):
+    return "https://www.aliexpress.com/item/{0}.html".format(item_id)
 
 
-async def get_data_from_cache(call_data: ItemCBD | DetailCBD, extra: str | None = None):
-    cache_key = CacheKey(
-        key=call_data.key,
-        api_page=call_data.api_page,
-        extra=extra
-    ).pack()
-    data_list = await redis_handler.get_data(cache_key)
-    # data_list = await redis_get_data_from_cache(cache_key)
-    if data_list:
-        print('DATA ♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️♻️ FROM CACHE')
-    return data_list
+class ItemManager:
+    def __init__(self, state, callback_data, callback):
+        self.state = state
+        self.callback_data = callback_data
+        self.callback = callback
+        self.user_id = callback.from_user.id
 
+        self.params: Optional[dict] = None
+        self.paginator_params: Optional[dict] = None
+        self.array: Optional[list] = None
+        self.page: Optional[int] = None
+        self.cache_key: Optional[str] = None
+        self.extra = 'list'
 
-async def set_data_in_cache(data, call_data: ItemCBD | DetailCBD, extra: str | None = None):
-    cache_key = CacheKey(
-        key=call_data.key,
-        api_page=call_data.api_page,
-        extra=extra
-    ).pack()
-    data_list = await redis_handler.get_data(cache_key)
-    # cache_data = await redis_get_data_from_cache(cache_key)
-    if data_list is None:
-        # await redis_set_data_to_cache(key=cache_key, value=data)
-        await redis_handler.set_data(key=cache_key, value=data)
-
-
-async def save_query_in_db(data: dict, key: str, page: str | int):
-    data['page'] = str(page)
-    query_str = json.dumps(data, ensure_ascii=False)
-    save_query_dict = CacheDataModel(
-        user=int(data['user_id']),
-        key=str(key),
-        query=str(query_str)
-    ).model_dump()
-    await orm_save_query_in_db(save_query_dict)
-
-
-async def update_query_in_db(data: dict, key: str):
-    query_str = json.dumps(data, ensure_ascii=False)
-    update_query_dict = CacheDataUpdateModel(query=str(query_str)).model_dump()
-    await orm_update_query_in_db(update_query_dict.get('query'), key)
-
-
-async def refresh_params_dict(params: dict, key: str):
-    if params.get('q', None) is None:
-        params = await get_query_from_db(key, params)
-        print('㊗️ >>>> GET PARAMS FROM DB')
-        return params
-    return params
-
-
-async def get_item(data_list: list, page: str | int):
-    paginator = Paginator(array=data_list, page=page)
-    return paginator.get_page()[0]
-
-
-async def get_paginator_len(data_list: list, page: str | int):
-    paginator = Paginator(array=data_list, page=page)
-    return paginator.len
-
-
-async def get_data_by_request_to_api(params: dict):
-    print(f"{params= }")
-    response = await request_api(params)
-
-    try:
-        if params.get('q'):
-            return response["result"]["resultList"]
-        else:
-            return response
-    except KeyError:
-        if "message" in response:
-            raise FreeAPIExceededError(
-                message="⚠️HTTP error\n{0}".format(
-                    response.get('message')
-                )
-            )
-
-
-# async def get_paginate_item(params: dict[str, Any], data: ItemCBD | DetailCBD):
-#     """
-#
-#     :param params: FSMContext
-#     :param data: ItemCBD | DetailCBD Callback_Data
-#     :return: Paginator
-#     """
-#     params['url'] = config.URL_API_ITEM_LIST
-#     print("♻️ DATA = {0}\n♻️ PARAMS = {1} [{2}]".format(
-#         data, params.get('q', None),
-#         params.get('page', None)
-#     ))
-#     # cache_key = await create_cache_key(data.key, data.api_page, 'list')
-#     # item_list = await redis_get_data_from_cache(cache_key)
-#     item_list = await get_data_from_cache(data, extra="list")
-#     page = int(data.page) if int(data.page) else 1
-#     if item_list is None:
-#         ########################################################################
-#         print('\n❌>>>> NO CACHE NEW REQUEST ')
-#         params = await refresh_params_dict(params, data.key)
-#         page = int(data.page)
-#         if data.api_page:
-#             params['page'] = data.api_page
-#         #######################################################################
-#         response = await request_api(params)
-#         item_list = response["result"]["resultList"]
-#
-#         # todo `save_to_cache(data: dict, key: str)`############################
-#         # is_cached = await redis_get_data_from_cache(cache_key)
-#         # if not is_cached:
-#         #     print('SAVE IN ♻️CACHE♻️')
-#         #     await redis_set_data_to_cache(key=cache_key, value=item_list)
-#         await set_data_to_cache(item_list, data, extra='list')
-#         # todo `save_to_cache(data: dict, key: str)`############################
-#         ########################################################################
-#     if int(data.api_page) == 0 or page > len(item_list):
-#         params = await refresh_params_dict(params, data.key)
-#         page = 1
-#         api_page = data.api_page if data.api_page else params['page']
-#         params['page'] = str(int(api_page) + 1)
-#         response = await request_api(params)
-#         item_list = response["result"]["resultList"]
-#         # cache_key = await create_cache_key(data.key, params['page'], 'list')
-#         # todo `save_to_cache(data: dict, key: str)`############################
-#         await set_data_to_cache(item_list, data, extra='list')
-#         # is_cached = await redis_get_data_from_cache(cache_key)
-#         # if not is_cached:
-#         #     await redis_set_data_to_cache(key=cache_key, value=item_list)
-#         # await update_query_in_db(params, data.key)
-#         # todo `save_to_cache(data: dict, key: str)`############################
-#
-#     item = await get_item(item_list, page)
-#
-#     return dict(
-#         key=data.key,
-#         api_page=int(params['page']),
-#         page=str(page),
-#         item=item['item'],
-#         total_pages=await get_paginator_len(item_list, page)
-#     )
-async def get_paginate_item(params: dict[str, Any], data: ItemCBD | DetailCBD):
-    """
-
-    :param params: FSMContext
-    :param data: ItemCBD | DetailCBD Callback_Data
-    :return: Paginator
-    """
-    params['url'] = config.URL_API_ITEM_LIST
-    item_list = await get_data_from_cache(data, extra="list")
-    page = int(data.page) if int(data.page) else 1
-
-    if item_list is None:
-        page = int(data.page)
-        params = await refresh_params_dict(params, data.key)
-        if data.api_page:
-            params['page'] = data.api_page
-        item_list = await get_data_by_request_to_api(params)
-        await update_query_in_db(params, data.key)
-        await set_data_in_cache(item_list, data, extra='list')
-
-    if int(data.api_page) == 0 or page > len(item_list):
-        page = 1
-        params = await refresh_params_dict(params, data.key)
-        api_page = data.api_page if data.api_page else params['page']
-        params['page'] = str(int(api_page) + 1)
-        item_list = await get_data_by_request_to_api(params)
-        await update_query_in_db(params, data.key)
-        await set_data_in_cache(item_list, data, extra='list')
-
-    item = await get_item(item_list, page)
-
-    return {
-        "key": data.key,
-        "api_page": int(params['page']),
-        "page": str(page),
-        "item": item['item'],
-        "total_pages": await get_paginator_len(item_list, page)
-    }
-
-
-class DetailManager:
-    def __init__(self, callback_data, user_id):
-        self.user_id: int = user_id
-
-        self.key: str = callback_data.key
-        self.item_id = callback_data.item_id
-        self.api_page: str = callback_data.api_page
-        self.page: int = int(callback_data.page)
-        self.last: int = int(callback_data.last)
-        self.item: dict = dict()
-        self.response: Optional[dict] = None
-
-        self.action = DetailAction
-        self.call_data = DetailCBD
-        self.kb_factory = ItemPaginationBtn
+        self.cache_key_handler = CacheKeyManager()
         self.redis_handler = RedisHandler()
+        self.deserializer = DeserializedHandler()
 
-    async def _get_cache_key(self):
-        """Получает ключ для поиска кэша."""
-        return CacheKeyExtended(
-            key=self.key,
-            api_page=self.api_page,
-            sub_page=self.page,
-            extra='detail'
-        ).pack()
-
-    async def _request_data(self):
-        params = dict(
-            url=config.URL_API_ITEM_DETAIL,
-            itemId=self.item_id
+    async def message(self):
+        if self.paginator_params is None:
+            self.paginator_params = await self.get_paginate_params()
+        msg, img, item_id = await self.deserializer.item_list(
+            self.paginator_params
         )
-        return await request_api(params)
+        is_favorite = await orm_get_favorite(item_id)
+        if is_favorite:
+            msg += "👍\tв избранном"
+        return InputMediaPhoto(media=img, caption=msg)
 
-    async def _get_item_info(self):
-        """Получает список истории и сохраняет его в self.array."""
-        if self.response is None:
-            cache_key = await self._get_cache_key()
-            item_data = await self.redis_handler.get_data(cache_key)
-            if item_data is None:
-                item_data = await self._request_data()
-            if item_data is not None:
-                await self.redis_handler.set_data(key=cache_key, value=item_data)
-                self.response = item_data
-        return self.response
+    async def keyboard(self):
+        if self.paginator_params is None:
+            self.paginator_params = await self.get_paginate_params()
+        key = self.paginator_params.get("key")
+        api_page = self.paginator_params.get("api_page")
+        page = self.paginator_params.get("page")
+        item_id = self.paginator_params.get("item").get('itemId')
+        len_data = self.paginator_params.get("total_pages")
 
-    async def _deserialized(self):
-        """
-        """
-        if self.response is None:
-            self.response = await self._get_item_info()
-        item_key = self.response["result"]["item"]
-        reviews_key = self.response["result"]["reviews"]
-        self.item["user"] = self.user_id
-        self.item["product_id"] = item_key.get('itemId')
-        self.item["title"] = item_key.get("title")
-        self.item["price"] = item_key.get("sku").get("base")[0].get("promotionPrice")
-        self.item["reviews"] = reviews_key.get("count")
-        self.item["star"] = reviews_key.get("averageStar")
-        self.item["reviews"] = reviews_key.get("count")
-        self.item["url"] = ":".join(["https", item_key.get("itemUrl")])
-        try:
-            self.item["image"] = ":".join(["https", item_key["images"][0]])
-        except KeyError:
-            self.item["image"] = None
-        return self.item
-
-    async def get_msg(self) -> str:
-        """Возвращает сообщение с подробной информацией о товаре."""
-        self.item = await self._deserialized()
-        self.item['command'] = 'detail'
-        await orm_make_record_request(self.item)
-        if self.response is None:
-            self.response = await self._get_item_info()
-        return await get_detail_info(self.response)
-
-    async def get_media(self):
-        msg = await self.get_msg()
-        return InputMediaPhoto(
-            media=self.item['image'],
-            caption=msg
-        )
-
-    async def get_keyboard(self) -> InlineKeyboardMarkup:
-        """Возвращает клавиатуру."""
         kb = ItemPaginationBtn(
-            key=self.key,
-            api_page=self.api_page,
-            item_id=self.item_id,
-            paginator_len=int(self.last)
+            key=key,
+            api_page=int(api_page),
+            paginator_len=len_data,
+            item_id=item_id
         )
+        await kb.create_paginate_buttons(page)
+        data_web = ("url", await get_web_link(item_id))
         kb.add_buttons([
-            kb.comment(self.page),
-            kb.images(self.page),
-            kb.detail('back', self.page, DetailAction.back_list),
-        ])
-        is_monitoring = await orm_get_monitoring_item(self.item_id)
-        if is_monitoring is None:
-            data = MonitorCBD(
-                action=MonitorAction.add,
-                item_id=self.item_id
-            ).pack()
-            kb.add_button(kb.btn_data("price", data))
-        is_favorite = await orm_get_favorite(item_id=self.item_id)
+            kb.detail('detail', page, DetailAction.go_view),
+            kb.btn_text("menu"),
+            kb.btn_data("web", data_web),
+        ]).add_markup(3)
+
+        is_favorite = await orm_get_favorite(item_id)
         if is_favorite is None:
-            kb.add_button(kb.favorite(self.page))
-        kb.add_markups([2, 2, 1])
-        print(kb.get_kb())
+            kb.add_button(kb.favorite(page)).update_markup(4)
         return kb.create_kb()
+
+    async def _generate_key(self, api_page):
+        print('generate_key ⚠️ api_page = ', self.callback_data.api_page, '|', api_page)
+        return await CacheKeyManager.generate_key(
+            key=self.callback_data.key,
+            api_page=api_page,
+            extra=self.extra
+        )
+
+    async def items_array(self):
+        """
+        """
+        if self.params is None:
+            self.params = await self.get_params_from_state()
+        self.cache_key = await self._generate_key(self.callback_data.api_page)
+        self.array = await self.redis_handler.get_from_cache(self.cache_key)
+        self.page = int(self.callback_data.page) if int(self.callback_data.page) else 1
+
+        if self.array is None:
+            self.page = int(self.callback_data.page)
+            self.params['page'] = self.callback_data.api_page
+            self.array = await self._get_data_by_request_to_api()
+            await self.redis_handler.set_in_cache(self.cache_key, self.array)
+            await self._update_query_in_db(self.callback_data.key)
+
+        if int(self.callback_data.api_page) == 0 or self.page > len(self.array):
+            self.page = 1
+            api_page = self.callback_data.api_page \
+                if self.callback_data.api_page \
+                else self.params['page']
+            self.params['page'] = str(int(api_page) + 1)
+            self.array = await self._get_data_by_request_to_api()
+            self.cache_key = await self._generate_key(self.params['page'])
+            await self.redis_handler.set_in_cache(self.cache_key, self.array)
+            await self._update_query_in_db(self.callback_data.key)
+        else:
+            self.page = int(self.callback_data.page)
+            if int(self.params['page']) > int(self.callback_data.api_page):
+                self.params['page'] = self.callback_data.api_page
+                self.cache_key = await self._generate_key(self.params['page'])
+                self.array = await self.redis_handler.get_from_cache(self.cache_key)
+                if self.array is None:
+                    self.array = await self._get_data_by_request_to_api()
+                    await self.redis_handler.set_in_cache(self.cache_key, self.array)
+                    await self._update_query_in_db(self.callback_data.key)
+
+        return self.array
+
+    async def get_params_from_state(self):
+
+        # self.params state | DB
+        # self.callback_data get | None
+
+        if self.callback_data is None:
+            self.callback_data = await self._create_callback_data()
+        is_state = await check_current_state(self.state, self.callback)
+        if is_state:
+
+            await self.state.update_data(sort=self.callback.data)
+            state_data = await self.state.get_data()
+            params = dict(
+                q=state_data.get('product'),
+                page=self.callback_data.api_page if self.callback_data else 1,
+                sort=state_data.get('sort'),
+                startPrice=state_data.get('price_min'),
+                endPrice=state_data.get('price_max'),
+                user_id=self.callback.from_user.id,
+                command='search'
+            )
+            await self.state.set_state(state=None)
+        else:
+            params = await get_query_from_db(self.callback_data.key)
+        params['url'] = config.URL_API_ITEM_LIST
+        return params
+
+    async def get_paginate_params(self):
+        if self.array is None:
+            self.array = await self.items_array()
+        paginator = PaginatorHandler(self.array, self.page)
+        itm_data = await paginator.get_item
+        total_pages = await paginator.get_paginator_len
+        return {
+            "key": self.callback_data.key,
+            "api_page": int(self.params['page']),
+            "page": self.page,
+            "item": itm_data['item'],
+            "total_pages": total_pages
+        }
+
+    async def _create_callback_data(self) -> ItemCBD:
+        new_key, created = await self.cache_key_handler.get_or_create_key(
+            self.callback_data,
+            self.user_id
+        )
+        self.callback_data = ItemCBD(
+            key=new_key if created else self.callback_data.key,
+            api_page=1,
+            page=1
+        )
+        if created:
+            await self._save_query_in_db(new_key, 1)
+        return self.callback_data
+
+    async def _save_query_in_db(self, key: str, page: int):
+        data = dict(self.callback_data)
+        data['page'] = str(page)
+        query_str = json.dumps(data, ensure_ascii=False)
+        save_query_dict = CacheDataModel(
+            user=int(self.user_id),
+            key=str(key),
+            query=str(query_str)
+        ).model_dump()
+        await orm_save_query_in_db(save_query_dict)
+
+    async def _update_query_in_db(self, key: str):
+        query_str = json.dumps(self.params, ensure_ascii=False)
+        update_query_dict = CacheDataUpdateModel(query=str(query_str)).model_dump()
+        await orm_update_query_in_db(update_query_dict.get('query'), key)
+
+    async def _get_data_by_request_to_api(self):
+        if self.params is None:
+            self.params = await self.get_params_from_state()
+        response = await request_api(self.params)
+        try:
+            if self.params.get('q'):
+                return response["result"]["resultList"]
+            else:
+                return response
+        except KeyError:
+            if "message" in response:
+                raise FreeAPIExceededError(
+                    message="⚠️HTTP error\n{0}".format(
+                        response.get('message')
+                    )
+                )

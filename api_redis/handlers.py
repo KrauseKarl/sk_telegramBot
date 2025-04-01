@@ -1,11 +1,12 @@
 import json
 from datetime import timedelta
+from typing import Any
 
 from redis import asyncio as aioredis
 
+from api_telegram import ItemCBD, DetailCBD
 from core import config
 from database.exceptions import CustomError
-
 
 import json
 from datetime import timedelta
@@ -34,13 +35,10 @@ class RedisHandler:
         """Flush all keys from Redis."""
         if not self.client:
             await self.connect()
-
         keys = await self.client.keys()
         print(f"🔑 {sorted(keys)}")
-
         await self.client.flushall()
         print("🚫 Redis keys deleted")
-
         keys = await self.client.keys()
         print(f"🔑 {sorted(keys)}")
 
@@ -50,6 +48,7 @@ class RedisHandler:
             await self.connect()
 
         value = await self.client.get(key)
+        print(f"🔑 REDIS KEY {key} VALUE IS EXIST = {bool(value)}")
         return json.loads(value) if value else None
 
     async def set_data(self, key: str, value: str | dict) -> bool:
@@ -63,86 +62,24 @@ class RedisHandler:
             timedelta(seconds=config.CACHE_LIVE_TIME),
             value=value,
         )
-
-        keys = await self.client.keys()
-        if keys:
-            print('\n'.join([f"🔑🔑🔑 {k}" for k in sorted(keys)]))
-
         return state
 
     async def get_keys(self) -> list:
         """Get all keys from Redis."""
         if not self.client:
             await self.connect()
-
         keys = await self.client.keys()
         if keys:
             print("keys count = {0} {1}".format(
                 len(keys),
-                '\n'.join([f"🔑 {k}" for k in sorted(keys)]))
+                '\n'.join([f"\t\t\t🔑 {k}" for k in sorted(keys)]))
             )
         return keys
 
-#
-# async def redis_connect() -> aioredis.Redis:
-#     """Get connect with redis."""
-#     try:
-#         client = await aioredis.Redis()
-#         ping = await client.ping()
-#         if ping is True:
-#             return client
-#     except aioredis.client.ConnectionError:
-#         raise CustomError('❌📶 REDIS не может установить связь.')
-#
-#
-# async def redis_flush_keys() -> aioredis.Redis:
-#     """Flush all keys  from redis."""
-#     client = await redis_connect()
-#
-#     keys = await client.keys()
-#     print(f"🔑{sorted(keys)}")
-#
-#     await client.flushall()
-#     print("🚫 Redis keys deleted")
-#
-#     keys = await client.keys()
-#     print(f"🔑{sorted(keys)}")
-#
-#     return client
-#
-#
-# async def redis_get_data_from_cache(key: str):
-#     """Get data from redis."""
-#     try:
-#         client = await redis_connect()
-#         value = await client.get(key)
-#         return json.loads(value)
-#     except TypeError:
-#         return None
-#
-#
-# async def redis_set_data_to_cache(key: str, value: str) -> bool:
-#     """Set data to redis."""
-#     client = await redis_connect()
-#     value = json.dumps(value, ensure_ascii=False, indent=4)
-#     state = await client.setex(
-#         key,
-#         timedelta(seconds=config.CACHE_LIVE_TIME),
-#         value=value,
-#     )
-#     keys = await client.keys()
-#     if keys:
-#         print('\n'.join([f"🔑🔑🔑 {k}" for k in sorted(keys)]))
-#     return state
-#
-#
-# async def redis_get_keys() -> aioredis.Redis:
-#     """Get all keys  from redis."""
-#     client = await redis_connect()
-#     keys = await client.keys()
-#     if keys:
-#         print("keys count = {0} {1}".format(
-#             len(keys),
-#             '\n'.join([f"🔑 {k}" for k in sorted(keys)]))
-#         )
-#     return client
+    async def get_from_cache(self, cache_key: str):
+        return await self.get_data(cache_key)
+
+    async def set_in_cache(self, cache_key: str, data: Any):
+        data_list = await self.get_data(cache_key)
+        if data_list is None:
+            await self.set_data(key=cache_key, value=data)

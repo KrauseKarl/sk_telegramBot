@@ -4,11 +4,11 @@ from pydantic import BaseModel
 class HistoryModel(BaseModel):
 
     user: int
-    product_id: str | int
+    product_id: str
     title: str
-    price: float | int
+    price: float
     reviews: int
-    stars: float | int
+    stars: float
     url: str
     image: str
 

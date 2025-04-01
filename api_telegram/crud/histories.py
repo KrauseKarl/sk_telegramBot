@@ -4,6 +4,7 @@ from aiogram import types as t
 from aiogram.types import InputMediaPhoto
 from pydantic import ValidationError
 
+from api_aliexpress.deserializers import DeserializedHandler
 from api_telegram.callback_data import HistoryAction, HistoryCBD
 from api_telegram.keyboard.builders import kbm
 from api_telegram.keyboard.paginators import HistoryPaginationBtn
@@ -11,7 +12,6 @@ from database.models import History
 from database.orm import orm_get_history_list
 from database.paginator import Paginator
 from utils.media import get_input_media_hero_image
-from utils.message_info import history_info
 
 
 class HistoryManager:
@@ -28,6 +28,7 @@ class HistoryManager:
         self.action = HistoryAction
         self.call_data = HistoryCBD
         self.kb_factory = HistoryPaginationBtn
+        self.deserializer = DeserializedHandler()
 
     async def _get_history_list(self) -> List[History]:
         """Получает список истории и сохраняет его в self.array."""
@@ -51,7 +52,11 @@ class HistoryManager:
     async def get_msg(self) -> str:
         """Возвращает сообщение для текущего элемента истории."""
         current_item = await self._get_item()
-        return await history_info(current_item, str(self.page), await self._get_len())
+        return await self.deserializer.history(
+            current_item,
+            str(self.page),
+            await self._get_len()
+        )
 
     async def get_media(self) -> InputMediaPhoto:
         """Возвращает медиа (фото с подписью) для текущего элемента истории."""

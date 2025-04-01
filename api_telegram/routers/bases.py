@@ -102,13 +102,15 @@ async def menu(callback: Message | CallbackQuery, state: FSMContext) -> None:
 # TODO delete this routes on production
 @route.message(Command("redis"))
 async def get_key_cache(message):
-    print('redis route start')
-    await RedisHandler().get_keys()
-    print('redis route finish')
+    keys = await RedisHandler().get_keys()
+    if keys:
+        print("keys count = {0} {1}".format(
+            len(keys),
+            '\n'.join([f"🔑 {k}" for k in sorted(keys)]))
+        )
 
 
 @route.message(Command("del"))
-async def get_key_cache(message):
-    print('redis route start')
+async def del_key_cache(message):
     await RedisHandler().flush_keys()
-    print('redis route finish')
+    print('redis delete all keys')

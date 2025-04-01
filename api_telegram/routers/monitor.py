@@ -1,11 +1,13 @@
 import locale
 
 from aiogram import Router, F, types
-from aiogram.filters import Command, or_f
+from aiogram.filters import Command
 from aiogram.types import Message
 
-from api_telegram.crud.scheduler import remove_job, create_item_search,  MonitorManager
-from api_telegram import BasePaginationBtn
+from api_telegram.callback_data import Navigation
+from api_telegram.crud.scheduler import remove_job, create_item_search, MonitorManager
+from api_telegram import BasePaginationBtn, MonitorAction, MonitorCBD, HistoryCBD, HistoryAction
+from database import orm_get_monitoring_list, ItemSearch, DataEntry
 from utils.media import *
 import matplotlib.pyplot as plt
 
@@ -16,14 +18,13 @@ monitor = Router()
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.add))
 async def add_search(callback: types.CallbackQuery, callback_data: MonitorCBD):
     try:
-        item_id = callback_data.item_id
+        item_id = int(callback_data.item_id)
         await create_item_search(item_id, callback.from_user.id)
         await callback.answer(
             f"Поисковый запрос '{item_id}' добавлен.",
             show_alert=True
         )
     except Exception as error:
-        print('error = ', error)
         await callback.answer(str(error), show_alert=True)
 
 
@@ -62,6 +63,7 @@ async def list_searches(callback: types.CallbackQuery, callback_data: MonitorCBD
 
 # Команда /delete_search
 @monitor.message(Command("delete_search"))
+@monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.delete))
 async def delete_search(message: types.Message):
     # Пример: Получаем ID поискового запроса из аргументов команды
     args = message.text.split()

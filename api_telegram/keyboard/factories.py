@@ -6,7 +6,7 @@ from aiogram.utils import keyboard
 from core import config
 
 
-class KeysBuilder:
+class KeyFactory:
     def __init__(self, data: dict):
         for key, value in data.items():
             setattr(self, key, value)
@@ -28,8 +28,8 @@ class KeysBuilder:
 class KeyBoardBuilder:
     def __init__(self):
         self.kb = keyboard.InlineKeyboardBuilder()
-        self.keys = KeysBuilder(config.KEYS).to_dict()
-        self.factory = KeysBuilder(config.KEYS)
+        self.keys = KeyFactory(config.KEYS).to_dict()
+        self.factory = KeyFactory(config.KEYS)
 
     def builder(
             self, data: list, size: tuple

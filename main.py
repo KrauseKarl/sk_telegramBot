@@ -49,7 +49,7 @@ async def main():
         r.review
     )
     create_tables()
-    setup_scheduler(bot)
+    await setup_scheduler(bot)
 
     await bot.delete_webhook(
         drop_pending_updates=True

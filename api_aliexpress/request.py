@@ -14,6 +14,13 @@ DETAIL_FAKE_FOLDER = "_detail_view"
 ITEM_LIST_FAKE_FOLDER = "_real_data"
 REVIEW_FAKE_FOLDER = "_reviews"
 
+PREFIX_FOLDER = {
+    "list": ITEM_LIST_FAKE_FOLDER,
+    "detail": DETAIL_FAKE_FOLDER,
+    "review": REVIEW_FAKE_FOLDER,
+    "error": "_fake"
+}
+
 
 async def save_fake_data(result: dict, params: dict):
     # Определяем конфигурацию для каждого типа URL
@@ -97,14 +104,6 @@ async def save_data_json(data, config_data, folder: str = None, ):
 
 
 #####################################################################################
-PREFIX_FOLDER = {
-    "list": ITEM_LIST_FAKE_FOLDER,
-    "detail": DETAIL_FAKE_FOLDER,
-    "review": REVIEW_FAKE_FOLDER,
-    "error": "_fake"
-}
-
-
 async def get_path_to_json(prefix, data: str | tuple):
     print(data)
     if isinstance(data, tuple):
@@ -158,9 +157,7 @@ async def request_api(params) -> dict:
     for key, value in params.items():
         if value:
             conf.querystring[key] = value
-    print("⚜️ request_api {0} [{1}]".format(params.get('q'), params.get('page')))
-    print("⚜️ request_api {0}".format(params.get('itemId')))
-    print("⚜️ request_api {0}".format(params))
+    print("⚜️⚜️⚜️⚜️⚜️⚜️ request_api {0}".format(params))
     if config.FAKE_MODE:
         result = await request_api_fake(params)
     else:
@@ -174,7 +171,6 @@ async def request_api(params) -> dict:
                     timeout=timeout
                 )
         except httpx.HTTPError as error:
-            print(error)
             raise FreeAPIExceededError(
                 message="⚠️ HTTP ERROR\n{0}".format(error)
             )
@@ -188,10 +184,6 @@ async def request_api(params) -> dict:
                 )
             )
         # todo delete after develop #########################################
-        # print("⚠️ REQUEST TO ALIEXPRESS http://.../{1} - {0}".format(
-        #         ' '.join([f"{k}:{v}" for k, v in conf.querystring.items()]),
-        #     params.get("url"))
-        # )
         await save_fake_data(result, params)
         # todo delete after develop #########################################
 
@@ -268,3 +260,19 @@ async def request_api_review(data) -> dict:
     result = response.json()
     await save_data_json(data=result, config_data=data, folder=REVIEW_FAKE_FOLDER)
     return result
+
+
+async def get_data_by_request_to_api(params: dict):
+    response = await request_api(params)
+    try:
+        if params.get('q'):
+            return response["result"]["resultList"]
+        else:
+            return response
+    except KeyError:
+        if "message" in response:
+            raise FreeAPIExceededError(
+                message="⚠️HTTP error\n{0}".format(
+                    response.get('message')
+                )
+            )

@@ -1,15 +1,17 @@
 import io
 import os.path
 import urllib
+from pathlib import Path
 from typing import List, Optional
 from urllib.parse import unquote, urlparse
 from urllib.request import urlretrieve
 
-from aiogram.types import FSInputFile, InlineKeyboardMarkup, InputMediaPhoto
+from aiogram.types import FSInputFile, InputMediaPhoto
 from PIL import Image
 
 from core import config
-from database.paginator import *
+from core.config import conf, HERO
+from database import Favorite
 
 
 # MEDIA HANDLERS ######################################################################

@@ -2,58 +2,54 @@ from typing import Optional
 from aiogram.types import InputMediaPhoto, InlineKeyboardMarkup
 from pydantic import ValidationError
 
+from api_aliexpress.deserializers import DeserializedHandler
 from api_aliexpress.request import request_api_review
 from api_redis.handlers import RedisHandler
-from api_telegram.callback_data import (
+from api_telegram import (
     ReviewCBD,
     ReviewAction,
-    CacheKeyExtended,
     DetailAction
 )
-from api_telegram.keyboard.builders import kbm
-from api_telegram.keyboard.paginators import ReviewPaginationBtn
+from api_telegram import kbm
+from api_telegram import ReviewPaginationBtn
 from core import config
-from database.paginator import Paginator
+from database import Paginator
+from utils.cache_key import CacheKeyManager
 from utils.media import get_input_media_hero_image
-from utils.message_info import create_review_tg_answer
 
 
 class ReviewManager:
     def __init__(self, callback_data, user_id):
         self.user_id: int = user_id
+        self.callback_data = callback_data
         self.page: int = int(callback_data.page)
         self.navigate: str = callback_data.navigate
         self.key: str = callback_data.key
         self.item_id = callback_data.item_id
         self.api_page: str = callback_data.api_page
         self.sub_page: int = int(callback_data.sub_page)
-        self.extra = 'review'
+        self.extra = 'detail'
         self.array: Optional[list] = None
         self.len: Optional[int] = None
         self.item: Optional[dict] = None
         self.photo: Optional[InputMediaPhoto] = None
+
         self.empty_message: str = "⭕️ нет комментариев"
         self.empty_image: str = "not_found"
+
         self.action = ReviewAction
         self.call_data = ReviewCBD
         self.kb_factory = ReviewPaginationBtn
         self.redis_handler = RedisHandler()
-
-    async def _get_cache_key(self):
-        """Получает ключ для поиска кэша."""
-        return CacheKeyExtended(
-            key=self.key,
-            api_page=self.api_page,
-            sub_page=self.sub_page,
-            extra=self.extra
-        ).pack()
+        self.deserializer = DeserializedHandler()
+        self.key_handler = CacheKeyManager()
 
     async def _request_data(self):
         data = dict(
             url=config.URL_API_REVIEW,
             page=str(self.api_page),
             itemId=self.item_id,
-            sort="latest",
+            sort="hasImage",
             filters="allReviews"
         )
         response = await request_api_review(data)
@@ -62,7 +58,10 @@ class ReviewManager:
     async def _get_review_list(self):
         """Получает список истории и сохраняет его в self.array."""
         if self.array is None:
-            cache_key = await self._get_cache_key()
+            cache_key = await self.key_handler.generate_review_key(
+                self.callback_data,
+                self.extra
+            )
             review_list = await self.redis_handler.get_data(cache_key)
             if review_list is None:
                 review_list = await self._request_data()
@@ -87,8 +86,10 @@ class ReviewManager:
     async def get_msg(self) -> str:
         """Возвращает сообщение для текущего элемента избранных товаров."""
         current_item = await self._get_item()
-        return await create_review_tg_answer(
-            current_item, str(self.sub_page), await self._get_len()
+        return await self.deserializer.reviews(
+            current_item,
+            str(self.sub_page),
+            await self._get_len()
         )
 
     async def get_media(self) -> InputMediaPhoto:
@@ -97,7 +98,8 @@ class ReviewManager:
             if await self._get_len() > 0:
                 try:
                     current_item = await self._get_item()
-                    images = current_item.get('reviewImages', None)
+                    images = current_item.get("review").get('reviewImages', None)
+                    print('>>>> review image = ', bool(images[0]))
                     media = ":".join(["https", images[0]])
                     self.photo = InputMediaPhoto(
                         media=media,
@@ -144,7 +146,6 @@ class ReviewManager:
                 kb.detail("back", self.page, DetailAction.back_detail)
             ]
             kb.add_buttons(extra_buttons).add_markups([1])
-            print('keyboard= ',kb.get_kb())
             return kb.create_kb()
         else:
             return await kbm.back()

@@ -3,19 +3,8 @@ from typing import Optional
 from api_redis.handlers import RedisHandler
 from api_telegram import *
 from api_telegram.callback_data import *
-from api_telegram import KeyBoardFactory
+from api_telegram.keyboard.factories import KeyBoardFactory, BasePaginationBtn
 from utils.cache_key import previous_api_page, counter_key
-
-
-class BasePaginationBtn(KeyBoardFactory):
-    def __init__(self):
-        super().__init__()
-
-    def btn_text(self, name):
-        return self.factory.create_btn_text(name)
-
-    def btn_data(self, name, data):
-        return self.factory.create_btn_callback_data(name, data)
 
 
 class PaginationBtn(BasePaginationBtn):
@@ -114,16 +103,17 @@ class FavoritePaginationBtn(PaginationBtn):
         return self.call_data(
             action=self.action.paginate,
             navigate=navigate,
-            page=self.__add__(num)
+            page=self.__add__(num),
+            item_id=self.id
         ).pack()
 
-    def next_btn(self, num: int, *args, **kwargs):  # page + 1
+    def next_btn(self, num: int = 1, *args, **kwargs):  # page + 1
         return self.btn_data(
             name='next',
             data=self._btn(num, self.navigate.next, *args, **kwargs)
         )
 
-    def prev_btn(self, num, *args, **kwargs):  # page - 1
+    def prev_btn(self, num: int = -1, *args, **kwargs):  # page - 1
         return self.btn_data(
             name='prev',
             data=self._btn(num, self.navigate.prev, *args, **kwargs)
@@ -134,6 +124,7 @@ class FavoritePaginationBtn(PaginationBtn):
             name='delete',
             data=FavoriteDeleteCBD(
                 action=self.action.delete,
+                navigate=self.navigate.first,
                 item_id=item_id if item_id else self.id,
                 page=self.page
             ).pack()
@@ -377,7 +368,7 @@ class ItemPaginationBtn(BasePaginationBtn):
     def __init__(
             self,
             key: str,
-            api_page: str | int,
+            api_page: int,
             item_id: str = None,
             paginator_len: str | int = None):
         super().__init__()
@@ -495,12 +486,12 @@ class ItemPaginationBtn(BasePaginationBtn):
             # try to find previous item_list in cache
             prev_cache_key = CacheKey(
                 key=self.key,
-                api_page=str(self.api_page - 1),
+                api_page=self.api_page - 1,
                 extra='list'
             ).pack()
-
             redis_handler = RedisHandler()
             prev_list = await redis_handler.get_data(prev_cache_key)
+            print(f'______ redis {len(prev_list)= }')
             # if  previous item_list not exist in cache
             # make new request to API
             if prev_list is None:
@@ -510,12 +501,13 @@ class ItemPaginationBtn(BasePaginationBtn):
                 #     prev_list = await request_api(params)
                 # # finally fins the last page in previous item_list
                 # prev_paginate_page = len(prev_list)
-                prev_list = await previous_api_page(self.key, self.api_page)
+                prev_list = await previous_api_page(self.key, self.api_page - 1)
+                print(f'______ request {len(prev_list)= }')
             prev_paginate_page = len(prev_list)
 
             self.add_buttons([
-                self.btn('prev', prev_paginate_page, self.api_page - 1),
-                self.btn('next', 2),
+                self.btn(name='prev', page=prev_paginate_page, api_page=self.api_page - 1),
+                self.btn(name='next', page=2),
                 self.last_btn()
             ]).add_markups([2, 1])
 

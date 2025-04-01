@@ -28,7 +28,7 @@ async def orm_make_record_request(data: dict) -> None:
             title=data.get('title'),
             price=float(data.get('price')),
             reviews=int(data.get('reviews')),
-            stars=float(data.get('star')),
+            stars=float(data.get('stars')),
             url=data.get('url'),
             image=data.get('image'),
         ).model_dump()
@@ -68,7 +68,7 @@ async def orm_get_or_create_favorite(data: dict):
 
 
 async def orm_delete_favorite(item_id: str):
-    return Favorite.delete().where(Favorite.product_id == item_id).execute()
+    return Favorite.delete().where(Favorite.uid == item_id).execute()
 
 
 async def orm_get_favorite(item_id: str):
@@ -104,3 +104,7 @@ async def orm_get_monitoring_list(user_id: int):
 
 async def orm_get_monitoring_item(product_id: int | str):
     return ItemSearch.select().where(ItemSearch.product_id == product_id).get_or_none()
+
+
+async def orm_get_all_monitor_items():
+    return [itm.id for itm in ItemSearch.select()]

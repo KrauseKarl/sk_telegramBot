@@ -11,7 +11,7 @@ from api_telegram import (
     DetailAction,
     ImageCBD,
     kbm,
-    ImagePaginationBtn
+    ImagePaginationBtn, CacheKey
 )
 from core import config
 from database.paginator import Paginator
@@ -42,10 +42,9 @@ class ImageManager:
 
     async def _get_cache_key(self):
         """Получает ключ для поиска кэша."""
-        return CacheKeyExtended(
+        return CacheKey(
             key=self.key,
-            api_page=self.api_page,
-            sub_page=self.sub_page,
+            api_page=self.page,
             extra='detail'
         ).pack()
 
@@ -60,6 +59,7 @@ class ImageManager:
         """Получает список изображений и сохраняет его в self.array."""
         if self.array is None:
             cache_key = await self._get_cache_key()
+            print(f'IMAGE  {cache_key= }')
             item_img_cache = await self.redis_handler.get_data(cache_key)
             if item_img_cache is None:
                 item_img_cache = await self._request_data()

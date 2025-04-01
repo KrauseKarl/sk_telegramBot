@@ -8,7 +8,6 @@ from api_redis.handlers import *
 from api_telegram.callback_data import *
 from api_telegram.crud.items import *
 from api_telegram.keyboard.builders import kbm
-from api_telegram.paginations import *
 from api_telegram.statments import *
 from database.exceptions import *
 from utils.cache_key import *
@@ -219,7 +218,6 @@ async def search_sort(message: Message, state: FSMContext) -> None:
         )
         min_price = int(await state.get_value('price_min'))
         max_price = int(message.text)
-
         if int(max_price) < 1:
             raise CustomError(
                 "Максимальная цена не должна быть отрицательной\t"
@@ -256,9 +254,7 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
         :return: None
         """
     try:
-
         await state.set_state(ItemFSM.sort)
-
         await callback.message.edit_media(
             media=await get_input_media_hero_image(
                 "sort",
@@ -383,7 +379,7 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
 #     try:
 #         data = await state.get_data()
 #         params = await get_paginate_item(data, callback_data)
-#         #####################################################################
+# #         #####################################################################
 #         kb = await paginate_item_list_kb(params)
 #         photo = await create_tg_answer(params)
 #         #####################################################################
@@ -413,64 +409,21 @@ async def search_result(
     :param state: 
     :return: 
     """
-
     try:
-        ####################################################################################
-        is_state = await check_current_state(state, callback)
-        if is_state:
-            await state.update_data(sort=callback.data)
-            state_data = await state.get_data()
-            await state.set_state(state=None)
-
-            api_page = 1
-            page = 1
-            key, created = await get_or_create_key(callback_data, callback.from_user.id)
-
-            callback_data = ItemCBD(
-                key=key if created else callback_data.key,
-                api_page=api_page,
-                page=str(page)
-            )
-            data = dict(
-                q=state_data.get('product'),
-                sort=state_data.get('sort'),
-                page=api_page,
-                startPrice=state_data.get('price_min'),
-                endPrice=state_data.get('price_max'),
-                user_id=callback.from_user.id,
-                command='search'
-            )
-            if created:
-                await save_query_in_db(data, key, page)
-        else:
-            state_data = await state.get_data()
-            data = dict(
-                q=state_data.get('product'),
-                sort=state_data.get('sort'),
-                page=callback_data.api_page,
-                startPrice=state_data.get('price_min'),
-                endPrice=state_data.get('price_max'),
-                user_id=callback.from_user.id,
-                command='search'
-            )
-        #####################################################################################
-        params = await get_paginate_item(data, callback_data)
-        ####################################################################################
-        kb = await paginate_item_list_kb(params, callback_data.api_page)
-        photo = await create_tg_answer(params)
-        #####################################################################################
-        print("=" * 50)
-        await callback.message.edit_media(media=photo, reply_markup=kb)
+        print('<<<<<>>>>>> ', callback_data)
+        await callback.answer()
+        manager = ItemManager(state=state, callback=callback, callback_data=callback_data)
+        await callback.message.edit_media(
+            media=await manager.message(),
+            reply_markup=await manager.keyboard()
+        )
     except CustomError as error:
-        # msg, photo = await get_error_answer_photo(error)
-        # await call.message.answer_photo(photo=photo, caption=msg)
         await callback.answer(text=str(error), show_alert=True)
 
 
 @search.callback_query(F.data.startswith("delete"))
 async def search_delete_callback(callback: CallbackQuery) -> None:
     """
-
     :param callback:
     :return:
     """

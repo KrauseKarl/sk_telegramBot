@@ -1,15 +1,28 @@
+import typing as t
+
+from aiogram.client import bot
+from aiogram.types import InputMediaPhoto
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from aiogram import Bot
+from pydantic import ValidationError
 
+from api_aliexpress.request import get_data_by_request_to_api
+from api_telegram import MonitorAction, MonitorCBD
 from api_telegram.crud.items import *
-from api_telegram.keyboard.builders import kbm
-from api_telegram.keyboard.paginators import MonitorPaginationBtn
+from api_telegram import kbm,  MonitorPaginationBtn
+from database import (
+    orm_get_monitoring_item,
+    orm_create_item_search,
+    orm_get_monitoring_list,
+    orm_get_all_monitor_items
+)
 from database.models import *
 from utils.media import get_input_media_hero_image
 
 scheduler = AsyncIOScheduler()
+deserializer = DeserializedHandler()
 
 
 # todo get togather in class
@@ -23,24 +36,22 @@ def remove_job(item_search_id: int):
         print(f"Задача {job_id} не найдена.")
 
 
-async def create_item_search(item_search_id: int | str, user_id: int):
+async def create_item_search(item_search_id: int, user_id: int):
     response = await get_data_by_request_to_api(
         params={
             "itemId": item_search_id,
             "url": config.URL_API_ITEM_DETAIL
         }
     )
-
-    item = await deserialize_item_detail(response, user_id)
-    item_search = ItemSearch.select().where(ItemSearch.product_id == item_search_id).get_or_none()
+    item = await deserializer.item_for_db(response, user_id)
+    item_search = await orm_get_monitoring_item(item_search_id)
     if item_search:
         raise CustomError('Товар уже отслеживается')
     await orm_create_item_search(item)
 
 
 # Функция для запроса данных и сохранения в базу данных
-async def fetch_and_save_data(item_search_id: int | str):
-    # response = requests.get(Config.API_URL)
+async def fetch_and_save_data(item_search_id: int):
     item_search = ItemSearch.get_by_id(item_search_id)
     response = await get_data_by_request_to_api(
         params={
@@ -60,11 +71,11 @@ async def fetch_and_save_data(item_search_id: int | str):
 
 
 # Функция для синхронизации планировщика с базой данных
-def sync_scheduler_with_db():
+async def sync_scheduler_with_db():
     """
     Синхронизирует задачи в планировщике с записями ItemSearch в базе данных.
     """
-    existing_item_search_ids = [item.id for item in ItemSearch.select()]
+    existing_item_search_ids = await orm_get_all_monitor_items()
     jobs_to_remove = []
 
     # Проверяем задачи в планировщике
@@ -88,14 +99,13 @@ def sync_scheduler_with_db():
                 args=[item_search.uid],  # Передаем ID ItemSearch
                 id=job_id,  # Уникальный ID задачи
             )
-            print(f'время {config.SCHEDULE_HOUR}:{config.SCHEDULE_MIN}')
-            print(f"Задача {job_id} добавлена в планировщик.")
+            print(f'время {config.SCHEDULE_HOUR}:{config.SCHEDULE_MIN}.\tЗадача {job_id} добавлена в планировщик.')
 
 
 # Настройка планировщика
-def setup_scheduler(bot: Bot):
+async def setup_scheduler(bot: Bot):
     # Синхронизация при запуске
-    sync_scheduler_with_db()
+    await sync_scheduler_with_db()
 
     # Добавляем периодическую задачу для синхронизации (например, каждые 10 минут)
     scheduler.add_job(
@@ -105,6 +115,8 @@ def setup_scheduler(bot: Bot):
     )
 
     scheduler.start()
+
+
 # todo get togather in class
 
 
@@ -122,8 +134,9 @@ class MonitorManager:
         self.action = MonitorAction
         self.call_data = MonitorCBD
         self.kb_factory = MonitorPaginationBtn
+        self.deserializer = DeserializedHandler()
 
-    async def _get_monitor_list(self) -> List[History]:
+    async def _get_monitor_list(self) -> t.List[History]:
         """Получает список истории и сохраняет его в self.array."""
         if self.array is None:
             self.array = await orm_get_monitoring_list(self.user_id)
@@ -145,7 +158,11 @@ class MonitorManager:
     async def get_msg(self) -> str:
         """Возвращает сообщение для текущего элемента истории."""
         current_item = await self._get_item()
-        return await monitor_info(current_item, str(self.page), await self._get_len())
+        return await self.deserializer.monitor(
+            current_item,
+            str(self.page),
+            await self._get_len()
+        )
 
     async def get_media(self) -> InputMediaPhoto:
         """Возвращает медиа (фото с подписью) для текущего элемента истории."""

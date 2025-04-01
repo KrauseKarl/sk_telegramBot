@@ -17,6 +17,7 @@ class FavoriteCBD(CallbackData, prefix='FVT'):
     action: FavoriteAction
     navigate: Navigation
     page: int = 1
+    item_id: str | int | None = None
 
 
 class FavoriteAddDetailCBD(CallbackData, prefix='FVT'):
@@ -32,10 +33,10 @@ class FavoriteAddDetailCBD(CallbackData, prefix='FVT'):
 
 class FavoriteAddCBD(FavoriteAddDetailCBD, prefix='FVT'):
     page: int
-    first: int = 1
 
 
 class FavoriteDeleteCBD(CallbackData, prefix='FVT'):
     action: FavoriteAction
-    item_id: str | int
+    navigate: Navigation
     page: int
+    item_id: str | int | None = None

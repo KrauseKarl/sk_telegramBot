@@ -1,9 +1,4 @@
 import math
-from typing import List
-
-from api_telegram.callback_data import *
-from database.models import *
-from utils.message_info import *
 
 
 # PAGINATOR CLASS ###############################################################
@@ -79,7 +74,6 @@ class Paginator:
         if self.total_pages == 1:
             # [1] - > [x] -> None
             if delete_page == 1:
-
                 result = None
                 print(f"_____________1️⃣Ⓜ️ {result = }")
 
@@ -111,6 +105,25 @@ class Paginator:
 
     def display_page(self):
         return "{0} из {1}".format(self.page, self.total_pages)
+
+
+class PaginatorHandler:
+    def __init__(self, array: list, page: int):
+        self.array = array
+        self.page = page
+
+    async def get_paginator(self):
+        return Paginator(array=self.array, page=self.page)
+
+    @property
+    async def get_item(self):
+        paginator = await self.get_paginator()
+        return paginator.get_page()[0]
+
+    @property
+    async def get_paginator_len(self):
+        paginator = await self.get_paginator()
+        return paginator.len
 
 
 # PAGINATOR BUTTONS FUNC #############################################################
