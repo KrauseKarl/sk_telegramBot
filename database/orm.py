@@ -99,7 +99,7 @@ async def orm_create_item_search(data: dict):
 
 
 async def orm_get_monitoring_list(user_id: int):
-    return ItemSearch.select().where(ItemSearch.user == user_id)
+    return ItemSearch.select().where(ItemSearch.user == user_id).order_by(ItemSearch.date.desc())
 
 
 async def orm_get_monitoring_item(product_id: int | str):
@@ -108,3 +108,7 @@ async def orm_get_monitoring_item(product_id: int | str):
 
 async def orm_get_all_monitor_items():
     return [itm.id for itm in ItemSearch.select()]
+
+
+async def orm_delete_monitor_item(item_id: ItemSearch):
+    ItemSearch.delete().where(ItemSearch.uid == item_id).execute()

@@ -118,4 +118,6 @@ class ItemSearch(Base):
 class DataEntry(Base):
     value = peewee.FloatField()  # Пример: числовое значение из API
     # timestamp = peewee.DateTimeField(default=datetime.now)  # Время записи
-    item_search = peewee.ForeignKeyField(ItemSearch, backref="data_entries")  # Связь с ItemSearch item
+    item_search = peewee.ForeignKeyField(
+        ItemSearch, backref="data_entries", on_delete='cascade'
+    )  # Связь с ItemSearch item

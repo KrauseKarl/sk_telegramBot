@@ -78,7 +78,7 @@ class ItemManager:
         return kb.create_kb()
 
     async def _generate_key(self, api_page):
-        print('generate_key ⚠️ api_page = ', self.callback_data.api_page, '|', api_page)
+        # print('generate_key ⚠️ api_page = ', self.callback_data.api_page, '|', api_page)
         return await CacheKeyManager.generate_key(
             key=self.callback_data.key,
             api_page=api_page,

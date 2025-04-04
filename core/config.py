@@ -57,7 +57,7 @@ IMG_LIMIT = 8
 
 # SCHEDULER ################################################################################
 now = datetime.datetime.now()
-future = now + datetime.timedelta(minutes=1000)
+future = now + datetime.timedelta(minutes=20)
 
 SCHEDULE_HOUR = now.hour
 SCHEDULE_MIN = future.minute

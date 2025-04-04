@@ -105,15 +105,14 @@ async def delete_favorite(callback: CallbackQuery, callback_data: FavoriteDelete
     """
     try:
         manager = FavoriteDeleteManager(callback_data, callback.from_user.id)
-        keyboard = await manager.get_keyboard()
-        media = await manager.get_media()
+        await manager.delete_from_favorites()
         await callback.answer(
             text='✅️ товар удален из избранного',
             show_alert=True
         )
         await callback.message.edit_media(
-            media=media,
-            reply_markup=keyboard
+            media=await manager.get_media(),
+            reply_markup=await manager.get_keyboard()
         )
     except FreeAPIExceededError as error:
         await callback.answer(

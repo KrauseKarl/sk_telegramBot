@@ -5,34 +5,20 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from api_telegram.callback_data import Navigation
-from api_telegram.crud.scheduler import remove_job, create_item_search, MonitorManager
+from api_telegram.crud.scheduler import remove_job, create_item_search, MonitorManager, MonitorDeleteManager
 from api_telegram import BasePaginationBtn, MonitorAction, MonitorCBD, HistoryCBD, HistoryAction
-from database import orm_get_monitoring_list, ItemSearch, DataEntry
+from database import orm_get_monitoring_list, ItemSearch, DataEntry, orm_get_monitoring_item, orm_delete_monitor_item
 from utils.media import *
 import matplotlib.pyplot as plt
 
 monitor = Router()
 
 
-# @scheduler.callback_query(F.data.startswith("item_search"))
-@monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.add))
-async def add_search(callback: types.CallbackQuery, callback_data: MonitorCBD):
-    try:
-        item_id = int(callback_data.item_id)
-        await create_item_search(item_id, callback.from_user.id)
-        await callback.answer(
-            f"Поисковый запрос '{item_id}' добавлен.",
-            show_alert=True
-        )
-    except Exception as error:
-        await callback.answer(str(error), show_alert=True)
-
-
 @monitor.message(Command("monitor"))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.paginate))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.list))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.back))
-async def list_searches(callback: types.CallbackQuery, callback_data: MonitorCBD):
+async def list_monitoring(callback: types.CallbackQuery, callback_data: MonitorCBD = None):
     try:
         searched_items = await orm_get_monitoring_list(callback.from_user.id)
         if not searched_items:
@@ -58,32 +44,40 @@ async def list_searches(callback: types.CallbackQuery, callback_data: MonitorCBD
         # msg, photo, kb = await get_searched_items_list(callback, callback_data)
         # await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
     except Exception as error:
-        await callback.answer(str(error)[:100])
+        print(str(error))
+        await callback.answer(str(error)[:180], show_alert=True)
+
+
+# @scheduler.callback_query(F.data.startswith("item_search"))
+@monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.add))
+async def add_monitoring(callback: types.CallbackQuery, callback_data: MonitorCBD):
+    try:
+        item_id = int(callback_data.item_id)
+        key = callback_data.key
+        page = callback_data.page
+        await create_item_search(item_id, callback.from_user.id, key, page)
+        await callback.answer(
+            text=f"✅ Товар добавлен в список мониторинга цен.",
+            show_alert=True
+        )
+    except Exception as error:
+        await callback.answer(str(error), show_alert=True)
 
 
 # Команда /delete_search
-@monitor.message(Command("delete_search"))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.delete))
-async def delete_search(message: types.Message):
-    # Пример: Получаем ID поискового запроса из аргументов команды
-    args = message.text.split()
-    if len(args) < 2:
-        await message.answer("Укажите ID поискового запроса: /delete_search <item_search_id>")
-        return
+async def delete_monitoring(callback: types.CallbackQuery, callback_data: MonitorCBD):
 
-    try:
-        item_search_id = int(args[1])
-        item_search = ItemSearch.get_by_id(item_search_id)
-    except (ValueError, ItemSearch.DoesNotExist):
-        await message.answer("Неверный ID поискового запроса.")
-        return
-
-    # Удаляем задачу из планировщика
-    remove_job(item_search.id)
-
-    # Удаляем поисковый запрос из базы данных
-    item_search.delete_instance()
-    await message.answer(f"Поисковый запрос '{item_search.name}' (ID: {item_search.id}) удален.")
+    manager = MonitorDeleteManager(callback_data, callback.from_user.id)
+    await manager.stop_monitoring_item()
+    await callback.answer(
+        text="🗑 удален из списка мониторинга цен.",
+        show_alert=True
+    )
+    await callback.message.edit_media(
+        media= await manager.get_media(),
+        reply_markup=await manager.get_keyboard()
+    )
 
 
 # TODO refactoring graph
@@ -179,7 +173,6 @@ async def send_graph(callback: types.CallbackQuery, callback_data: MonitorCBD):
               f"📅 текущая цена = {values[-1]}\t({timestamps[-1]})\r\n"
         photo = InputMediaPhoto(media=FSInputFile("graph.png"), caption=msg)
         kb = BasePaginationBtn()
-        print(callback_data)
         kb_data = MonitorCBD(
             action=MonitorAction.list,
             navigate=callback_data.navigate,
@@ -188,9 +181,6 @@ async def send_graph(callback: types.CallbackQuery, callback_data: MonitorCBD):
             page=callback_data.page
         ).pack()
         kb.add_button(kb.btn_data('back', kb_data)).add_markup(1)
-        # kb.add_button(kb.btn_text('li')).add_markup(1)
-        print(kb.get_kb())
         await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
     except Exception as error:
-        print(error)
         await callback.message.answer(str(error))

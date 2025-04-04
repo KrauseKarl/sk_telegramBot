@@ -19,17 +19,6 @@ from database import (
 deserializer = DeserializedHandler()
 
 
-async def delete_favorite_instance(item_id: str) -> bool:
-    favorite_obj = await orm_get_favorite(item_id)
-    # await delete_img_from_static(favorite_obj)
-    try:
-        await orm_delete_favorite(item_id)
-        return True
-    except Exception as error:
-        print("delete error = ", error)
-        return False
-
-
 class FavoriteListManager:
     def __init__(self, callback_data, user_id):
         self.user_id = user_id
@@ -121,7 +110,7 @@ class FavoriteListManager:
                     len_data=await self._get_len()
                 )
             kb.add_buttons([
-                kb.delete_btn(),
+                kb.delete_btn(self.navigate),
                 kb.btn_text("menu")
             ]).add_markup(2)
             return kb.create_kb()
@@ -157,11 +146,21 @@ class FavoriteAddManager:
     #    raise IntegrityError("⚠️ уже добавлено в избранное")
 
     async def _request_data(self):
-        params = dict(
-            url=config.URL_API_ITEM_DETAIL,
-            itemId=self.data.item_id
-        )
-        return await request_api(params)
+        _cache_key = CacheKey(
+            key=self.data.key,
+            api_page=self.page,
+            extra='detail'
+        ).pack()
+        response = await redis_handler.get_data(_cache_key)
+        if response is None:
+            response = await request_api(
+                params=dict(
+                    url=config.URL_API_ITEM_DETAIL,
+                    itemId=self.data.item_id
+                )
+            )
+
+        return response
 
     async def _get_item_data(self):
         await self._is_favorite()
@@ -216,7 +215,7 @@ class FavoriteDeleteManager:
         self.user_id = user_id
         self.page = int(callback_data.page)
         self.item_id = callback_data.item_id
-        self.current_page = 1
+        self.navigate = callback_data.navigate
         self.array: Optional[list] = None
         self.len: Optional[int] = None
         self.item: Optional[dict] = None
@@ -228,44 +227,42 @@ class FavoriteDeleteManager:
         self.kb_factory = FavoritePaginationBtn
         self.deserializer = DeserializedHandler()
 
-    async def _get_favorite_list(self) -> List[History]:
+    async def _get_list(self) -> List[History]:
         """Получает список истории и сохраняет его в self.array."""
-        await orm_delete_favorite(self.item_id)
+
         if self.array is None:
             self.array = await orm_get_favorite_list(self.user_id)
         return self.array
 
+    async def delete_from_favorites(self):
+        await orm_delete_favorite(self.item_id)
+
     async def _get_len(self) -> int:
         """Возвращает длину списка избранных товаров и сохраняет её в self.len."""
         if self.len is None:
-            self.len = len(await self._get_favorite_list())
+            self.len = len(await self._get_list())
         return self.len
 
     async def _get_item(self) -> Favorite:
         """Возвращает элемент избранных товаров для текущей страницы."""
-        try:
-            if await self._get_len() > 0:
-                # if self.item is None and await self._get_len() > 0:
-                paginator = Paginator(await self._get_favorite_list(), page=self.page)
-                self.item = paginator.get_page()[0]
-            return self.item
-        except IndexError:
-            paginator = Paginator(await self._get_favorite_list(), page=self.page - 1)
+        if await self._get_len() > 0:
+            if self.page > await self._get_len():
+                self.page -= 1
+            if self.page < 1:
+                self.page = 1
+            paginator = Paginator(await self._get_list(), page=self.page)
             self.item = paginator.get_page()[0]
         return self.item
 
     async def get_msg(self) -> str:
         """Возвращает сообщение для текущего элемента избранных товаров."""
         current_item = await self._get_item()
-        print('get msg page =', self.page)
+        # print('get msg page =', self.page)
         return await self.deserializer.favorite(
             current_item,
-            await self._get_page(),
+            self.page,
             await self._get_len()
         )
-
-    async def _get_page(self):
-        return self.page
 
     async def get_media(self) -> InputMediaPhoto:
         """Возвращает медиа (фото с подписью) для текущего элемента избранных товаров."""
@@ -297,11 +294,6 @@ class FavoriteDeleteManager:
     async def get_keyboard(self) -> InlineKeyboardMarkup:
         """Возвращает клавиатуру для пагинации."""
         current_item = await self._get_item()
-        print(f"🟥 page{self.page}")
-        try:
-            print(f"🟥 price before{current_item.price}")
-        except AttributeError:
-            pass
         paginator_length = await self._get_len()
 
         if paginator_length >= 1:
@@ -311,59 +303,69 @@ class FavoriteDeleteManager:
                 action=self.action,
                 call_data=self.call_data
             )
-            if paginator_length == 1:
-                msg = "❤️1 page = 1 items"
-            else:
-                if paginator_length == 2:
-                    if self.page == 1:
-                        # Если удаляем первый товар из двух - переходим на следующую страницу
-                        if is_first:  # Предполагаем, что есть такой атрибут
-                            self.page += 1
-                        kb.add_button(kb.pg(self.page).next_btn())
-                        msg = '🧡first page 2 items'
-                    elif self.page == paginator_length:
-                        # Если удаляем последний товар - переходим на предыдущую страницу
-                        if not is_first:
-                            self.page -= 1
-                        kb.add_button(kb.pg(self.page).prev_btn())
-                        msg = '💛last page 2 items'
-                    elif self.page > paginator_length:
-                        self.page = paginator_length
-                        self.current_page = self.page
-                        kb.add_button(kb.pg(self.page).prev_btn())
-                        msg = '🤎 last page 2 items'
-                elif paginator_length > 2:
-                    if self.page == 1:
-                        # Если удаляем первый товар - переходим вперед
-                        if is_first:
-                            self.page += 1
-                        kb.add_button(kb.pg(self.page).next_btn())
-                        msg = '💚first page many items'
-                    elif 1 < self.page < paginator_length:
-                        # В середине списка - переходим назад, если не первый товар на странице
-                        if not is_first:
-                            self.page -= 1
-                        kb.add_buttons([
-                            kb.pg(self.page).prev_btn(),
-                            kb.pg(self.page).next_btn()
-                        ])
-                        msg = '💙middle page many items'
-                    elif self.page == paginator_length:
-                        # На последней странице - переходим назад, если не первый товар
-                        if not is_first:
-                            self.page -= 1
-                        kb.add_button(kb.pg(self.page).prev_btn())
-                        msg = '🤍 last page many items == '
-                    elif self.page > paginator_length:
-                        self.page -= 1
-                        self.current_page = self.page
-                        kb.add_button(kb.pg(self.page).prev_btn())
-                        msg = '💜 last page many items'
+            if paginator_length > 1:
+                kb.create_pagination_buttons(
+                    page=self.page,
+                    navigate=self.navigate,
+                    len_data=int(await self._get_len())
+                )
+            # if paginator_length == 2:
+            #     if self.page == 1:
+            #         # Если удаляем первый товар из двух - переходим на следующую страницу
+            #         if is_first:  # Предполагаем, что есть такой атрибут
+            #             self.page += 1
+            #         kb.add_button(kb.pg(self.page).next_btn())
+            #         # msg = '🧡first page 2 items'
+            #     elif self.page == paginator_length:
+            #         # Если удаляем последний товар - переходим на предыдущую страницу
+            #         if not is_first:
+            #             self.page -= 1
+            #         kb.add_button(kb.pg(self.page).prev_btn())
+            #         # msg = '💛last page 2 items'
+            #     elif self.page > paginator_length:
+            #         self.page = paginator_length
+            #         # self.current_page = self.page
+            #         kb.add_button(kb.pg(self.page).prev_btn())
+            #         # msg = '🤎 last page 2 items'
+            # elif paginator_length > 2:
+            # if self.page == 1:
+            #     # Если удаляем первый товар - переходим вперед
+            #     if is_first:
+            #         self.page += 1
+            #     kb.add_button(kb.pg(self.page).next_btn())
+            #     msg = '💚first page many items'
+            # elif 1 < self.page < paginator_length:
+            #     # В середине списка - переходим назад, если не первый товар на странице
+            #     if not is_first:
+            #         self.page -= 1
+            #     kb.add_buttons([
+            #         kb.pg(self.page).prev_btn(),
+            #         kb.pg(self.page).next_btn()
+            #     ])
+            #     msg = '💙middle page many items'
+            # elif self.page == paginator_length:
+            #     # На последней странице - переходим назад, если не первый товар
+            #     if not is_first:
+            #         self.page -= 1
+            #     kb.add_button(kb.pg(self.page).prev_btn())
+            #     msg = '🤍 last page many items == '
+            # elif self.page > paginator_length:
+            #     self.page -= 1
+            #     self.current_page = self.page
+            #     kb.add_button(kb.pg(self.page).prev_btn())
+            #     msg = '💜 last page many items'
+
             current_item = await self._get_item()
             if current_item:
-                kb.add_button(kb.delete_btn(current_item.product_id))
-            kb.add_button({"🏠 меню": "menu"}).add_markups([2, 2])
-
+                kb.add_buttons([
+                    kb.delete_btn(self.navigate),
+                    kb.btn_text("menu")
+                ]).add_markups([2, 2])
+            print('\t', self.page)
+            print('\t', self.navigate)
+            for k in kb.get_kb():
+                if list(k.keys())[0] in ['⬅️ Пред.', 'След. ➡️']:
+                    print('\t', k)
             return kb.create_kb()
 
         else:

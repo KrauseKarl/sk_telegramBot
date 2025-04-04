@@ -48,7 +48,7 @@ class RedisHandler:
             await self.connect()
 
         value = await self.client.get(key)
-        print(f"🔑 REDIS KEY {key} VALUE IS EXIST = {bool(value)}")
+        print(f"🔑  EXIST = {bool(value)}[{key}]")
         return json.loads(value) if value else None
 
     async def set_data(self, key: str, value: str | dict) -> bool:

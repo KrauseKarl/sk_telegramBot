@@ -21,11 +21,11 @@ from .callback_data.item import DetailCBD
 
 from .callback_data.monitor import MonitorAction
 from .callback_data.monitor import MonitorCBD
+from .callback_data.monitor import JobCBD
 
 from .callback_data.review import ReviewAction
 from .callback_data.review import ReviewCBD
 from .callback_data.review import ReviewPageCBD
-
 
 from .keyboard.paginators import BasePaginationBtn
 from .keyboard.paginators import PaginationBtn

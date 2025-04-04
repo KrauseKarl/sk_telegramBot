@@ -17,6 +17,8 @@ from .orm import orm_get_monitoring_list
 from .orm import orm_get_monitoring_item
 from .orm import orm_create_record_favorite
 from .orm import orm_get_all_monitor_items
+from .orm import orm_get_monitoring_list
+from .orm import orm_delete_monitor_item
 
 from .models import Base
 from .models import User

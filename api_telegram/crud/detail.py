@@ -54,7 +54,7 @@ class DetailManager:
         if self.response is None:
             if self.cache_key is None:
                 self.cache_key = await self._get_cache_key()
-            print(f'detail cache key {self.cache_key}')
+            # print(f'detail cache key {self.cache_key}')
             item_data = await self.redis_handler.get_data(self.cache_key)
             if item_data is None:
                 item_data = await self._request_data()
@@ -103,7 +103,9 @@ class DetailManager:
         if is_monitoring is None:
             data = MonitorCBD(
                 action=MonitorAction.add,
-                item_id=self.item_id
+                item_id=self.item_id,
+                key=self.key,
+                page=self.page
             ).pack()
             kb.add_button(kb.btn_data("price", data))
         is_favorite = await orm_get_favorite(item_id=self.item_id)

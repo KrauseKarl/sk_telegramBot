@@ -53,7 +53,7 @@ async def save_fake_data(result: dict, params: dict):
                 data=params.get("itemId")
             )
             if my_file.is_file():
-                print(f"File already exists for {params.get('url')}")
+                print(f"File {my_file} already exists for {params.get('url')}")
                 return
 
         # Сохраняем данные
@@ -105,7 +105,6 @@ async def save_data_json(data, config_data, folder: str = None, ):
 
 #####################################################################################
 async def get_path_to_json(prefix, data: str | tuple):
-    print(data)
     if isinstance(data, tuple):
         file_name = "{0}_{1}.json".format(
             data[0].replace(" ", "_").lower(),
@@ -121,7 +120,6 @@ async def get_path_to_json(prefix, data: str | tuple):
             file_name
         )
     )
-
 
 #####################################################################################
 async def request_api_fake(params):
@@ -157,7 +155,7 @@ async def request_api(params) -> dict:
     for key, value in params.items():
         if value:
             conf.querystring[key] = value
-    print("⚜️⚜️⚜️⚜️⚜️⚜️ request_api {0}".format(params))
+    print("\n▶️▶️▶️ REQUEST API {0}\n".format(params))
     if config.FAKE_MODE:
         result = await request_api_fake(params)
     else:
@@ -175,7 +173,6 @@ async def request_api(params) -> dict:
                 message="⚠️ HTTP ERROR\n{0}".format(error)
             )
         result = response.json()
-
         if "message" in result:
             print(f"❌ лимит API превышен")
             raise FreeAPIExceededError(
@@ -271,6 +268,7 @@ async def get_data_by_request_to_api(params: dict):
             return response
     except KeyError:
         if "message" in response:
+            print(response)
             raise FreeAPIExceededError(
                 message="⚠️HTTP error\n{0}".format(
                     response.get('message')

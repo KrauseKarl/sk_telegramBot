@@ -410,7 +410,6 @@ async def search_result(
     :return: 
     """
     try:
-        print('<<<<<>>>>>> ', callback_data)
         await callback.answer()
         manager = ItemManager(state=state, callback=callback, callback_data=callback_data)
         await callback.message.edit_media(

@@ -1,10 +1,9 @@
 from .favorites import FavoriteListManager
 from .favorites import FavoriteAddManager
-from .favorites import delete_favorite_instance
+from .favorites import FavoriteDeleteManager
 
 from .histories import HistoryManager
 
-# from .items import ItemsManager
 from .items import ItemManager
 
 from .reviews import ReviewManager

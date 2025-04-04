@@ -152,7 +152,7 @@ class DeserializedHandler:
         return msg
 
     @staticmethod
-    async def monitor(obj, page: str, total_page: int) -> str:
+    async def monitor(obj, page: int, total_page: int) -> str:
         """
 
         :param total_page:
