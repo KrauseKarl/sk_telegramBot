@@ -46,5 +46,12 @@ class FavoriteFSM(state.StatesGroup):
     url = state.State()
     image = state.State()
 
+
 class Review(state.StatesGroup):
     product = state.State()
+
+
+class TargetFSM(state.StatesGroup):
+    product_id = state.State()
+    callback = state.State()
+    price = state.State()

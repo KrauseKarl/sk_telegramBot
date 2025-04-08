@@ -1,4 +1,6 @@
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InputMediaPhoto
+from typing import Dict
+
+from aiogram import types
 from pydantic import ValidationError
 
 from api_aliexpress.deserializers import *
@@ -7,16 +9,7 @@ from api_telegram.crud.items import get_web_link
 from api_telegram.keyboard.paginators import *
 from api_telegram import *
 from core import config
-from database import (
-    orm_get_favorite_list,
-    orm_get_favorite,
-    orm_delete_favorite,
-    orm_get_or_create_favorite,
-    History,
-    Paginator
-)
-
-deserializer = DeserializedHandler()
+from database import orm, History, Paginator
 
 
 class FavoriteListManager:
@@ -38,7 +31,7 @@ class FavoriteListManager:
     async def _get_favorite_list(self) -> List[History]:
         """Получает список истории и сохраняет его в self.array."""
         if self.array is None:
-            self.array = await orm_get_favorite_list(self.user_id)
+            self.array = await orm.favorite.get_list(self.user_id)
         return self.array
 
     async def _get_len(self) -> int:
@@ -94,7 +87,7 @@ class FavoriteListManager:
         current_item = await self._get_item()
         return current_item.image if current_item else None
 
-    async def get_keyboard(self) -> InlineKeyboardMarkup:
+    async def get_keyboard(self) -> types.InlineKeyboardMarkup:
         """Возвращает клавиатуру для пагинации."""
         current_item = await self._get_item()
         if await self._get_len() >= 1:
@@ -137,13 +130,10 @@ class FavoriteAddManager:
         self.deserializer = DeserializedHandler()
 
     async def _is_favorite(self) -> bool:
-        item_is_favorite = await orm_get_favorite(self.data.item_id)
+        item_is_favorite = await orm.favorite.get_item(self.data.item_id)
         if item_is_favorite:
             raise IntegrityError("⚠️ уже добавлено в избранное")
         return bool(item_is_favorite)
-
-    # if item:
-    #    raise IntegrityError("⚠️ уже добавлено в избранное")
 
     async def _request_data(self):
         _cache_key = CacheKey(
@@ -163,18 +153,24 @@ class FavoriteAddManager:
         return response
 
     async def _get_item_data(self):
-        await self._is_favorite()
-        if self.response is None:
-            self.response = await self._request_data()
+        if not await self._is_favorite():
+            if self.response is None:
+                self.response = await self._request_data()
+            self.item = await self.deserializer.item_for_db(
+                self.response,
+                self.user_id
+            )
+        return self.item
+
+    async def add_to_favorites(self) -> None:
         if self.item is None:
-            self.item = await deserializer.item_for_db(self.response, self.user_id)
-            await orm_get_or_create_favorite(self.item)
+            self.item = await self._get_item_data()
+        await orm.favorite.get_or_create(self.item)
+
+    async def get_item(self) -> Dict[str, Any]:
         return self.item
 
-    async def get_item(self):
-        return self.item
-
-    async def keyboard(self):
+    async def keyboard(self) -> types.InlineKeyboardMarkup:
         kb = ItemPaginationBtn(
             key=self.data.key,
             api_page=self.data.api_page,
@@ -197,14 +193,14 @@ class FavoriteAddManager:
 
         return kb.create_kb()
 
-    async def message(self):
+    async def message(self) -> InputMediaPhoto:
         item_data = await self._get_item_data()
         msg = "<b>{0:.50}</b>\n".format(item_data["title"])
         msg += "💰\t\tцена:\t\t<b>{0}</b> RUB\n".format(item_data["price"])
         msg += "👀\t\tзаказы:\t\t<b>{0}</b>\n".format(item_data["reviews"])
         msg += "🌐\t\t{0}\n\n".format(item_data["url"])
         msg += "<b>{0}</b> из {1} стр. {2}\t".format(self.page, self.data.last, self.api_page)
-        is_favorite = await orm_get_favorite(self.data.item_id)
+        is_favorite = await orm.favorite.get_item(self.data.item_id)
         if is_favorite:
             msg += "👍\tв избранном"
         return InputMediaPhoto(media=item_data["image"], caption=msg)
@@ -231,11 +227,11 @@ class FavoriteDeleteManager:
         """Получает список истории и сохраняет его в self.array."""
 
         if self.array is None:
-            self.array = await orm_get_favorite_list(self.user_id)
+            self.array = await orm.favorite.get_list(self.user_id)
         return self.array
 
     async def delete_from_favorites(self):
-        await orm_delete_favorite(self.item_id)
+        await orm.favorite.delete(self.item_id)
 
     async def _get_len(self) -> int:
         """Возвращает длину списка избранных товаров и сохраняет её в self.len."""
@@ -291,13 +287,11 @@ class FavoriteDeleteManager:
         current_item = await self._get_item()
         return current_item.image if current_item else None
 
-    async def get_keyboard(self) -> InlineKeyboardMarkup:
+    async def get_keyboard(self) -> types.InlineKeyboardMarkup:
         """Возвращает клавиатуру для пагинации."""
         current_item = await self._get_item()
         paginator_length = await self._get_len()
-
         if paginator_length >= 1:
-            is_first = self.array[0].uid == current_item.uid
             kb = self.kb_factory(
                 item_id=str(current_item.uid),
                 action=self.action,
@@ -309,63 +303,12 @@ class FavoriteDeleteManager:
                     navigate=self.navigate,
                     len_data=int(await self._get_len())
                 )
-            # if paginator_length == 2:
-            #     if self.page == 1:
-            #         # Если удаляем первый товар из двух - переходим на следующую страницу
-            #         if is_first:  # Предполагаем, что есть такой атрибут
-            #             self.page += 1
-            #         kb.add_button(kb.pg(self.page).next_btn())
-            #         # msg = '🧡first page 2 items'
-            #     elif self.page == paginator_length:
-            #         # Если удаляем последний товар - переходим на предыдущую страницу
-            #         if not is_first:
-            #             self.page -= 1
-            #         kb.add_button(kb.pg(self.page).prev_btn())
-            #         # msg = '💛last page 2 items'
-            #     elif self.page > paginator_length:
-            #         self.page = paginator_length
-            #         # self.current_page = self.page
-            #         kb.add_button(kb.pg(self.page).prev_btn())
-            #         # msg = '🤎 last page 2 items'
-            # elif paginator_length > 2:
-            # if self.page == 1:
-            #     # Если удаляем первый товар - переходим вперед
-            #     if is_first:
-            #         self.page += 1
-            #     kb.add_button(kb.pg(self.page).next_btn())
-            #     msg = '💚first page many items'
-            # elif 1 < self.page < paginator_length:
-            #     # В середине списка - переходим назад, если не первый товар на странице
-            #     if not is_first:
-            #         self.page -= 1
-            #     kb.add_buttons([
-            #         kb.pg(self.page).prev_btn(),
-            #         kb.pg(self.page).next_btn()
-            #     ])
-            #     msg = '💙middle page many items'
-            # elif self.page == paginator_length:
-            #     # На последней странице - переходим назад, если не первый товар
-            #     if not is_first:
-            #         self.page -= 1
-            #     kb.add_button(kb.pg(self.page).prev_btn())
-            #     msg = '🤍 last page many items == '
-            # elif self.page > paginator_length:
-            #     self.page -= 1
-            #     self.current_page = self.page
-            #     kb.add_button(kb.pg(self.page).prev_btn())
-            #     msg = '💜 last page many items'
-
             current_item = await self._get_item()
             if current_item:
                 kb.add_buttons([
                     kb.delete_btn(self.navigate),
                     kb.btn_text("menu")
                 ]).add_markups([2, 2])
-            print('\t', self.page)
-            print('\t', self.navigate)
-            for k in kb.get_kb():
-                if list(k.keys())[0] in ['⬅️ Пред.', 'След. ➡️']:
-                    print('\t', k)
             return kb.create_kb()
 
         else:

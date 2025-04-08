@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Сервис бота на aiogram
+  bot:
+    build: .
+    restart: unless-stopped
+    dns: 8.8.8.8  # Google DNS
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - TZ=Asia/Yekaterinburg
+      - REDIS_HOST=redis
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASS:-postgres}
+      - POSTGRES_DB=${DB_NAME:-aliexpress}
+    volumes:
+      - .:/app
+
+
+  # Сервис Redis для кэша
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Yekaterinburg
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Сервис PostgreSQL
+  postgres:
+    image: postgres:13-alpine
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Yekaterinburg
+      - PGTZ=Asia/Yekaterinburg
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASS:-postgres}
+      - POSTGRES_DB=${DB_NAME:-aliexpress}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  default:
+    driver: bridge
+    enable_ipv6: false

@@ -1,8 +1,6 @@
 from database.models import *
 
 
-# Look, sync code is working!
-
 # objects = peewee_async.Manager(database)
 #
 # with objects.allow_sync():
@@ -20,21 +18,28 @@ def create_tables():
     DataEntry.create_table(True)
     db.close()
 
-
 def drop_table():
-    with objects.allow_sync():
-        User.drop_table(True)
-        Favorite.drop_table(True)
-        History.drop_table(True)
-        CacheData.drop_table(True)
-        ItemSearch.drop_table(True)
-        DataEntry.drop_table(True)
+    db.set_allow_sync(True)
+    User.drop_table(True)
+    History.drop_table(True)
+    Favorite.drop_table(True)
+    CacheData.drop_table(True)
+    ItemSearch.drop_table(True)
+    DataEntry.drop_table(True)
+    db.close()
+
+# def drop_table():
+#     with objects.allow_sync():
+#         User.drop_table(True)
+#         Favorite.drop_table(True)
+#         History.drop_table(True)
+#         CacheData.drop_table(True)
+#         ItemSearch.drop_table(True)
+#         DataEntry.drop_table(True)
 
 
-# Create async models manager:
 objects = peewee_async.register_database(db)
 
-# No need for sync anymore!
 db.set_allow_sync(False)
 
 # async def handler():

@@ -6,10 +6,9 @@ from api_aliexpress.deserializers import DeserializedHandler
 from api_aliexpress.request import *
 from api_redis.handlers import *
 from api_telegram import DetailAction
-from api_telegram.keyboard.paginators import ItemPaginationBtn
-from database import orm_update_query_in_db, orm_get_favorite, orm_save_query_in_db
+from api_telegram import ItemPaginationBtn
+from database import orm, PaginatorHandler
 from database.exceptions import *
-from database.paginator import *
 from database.pydantic import *
 from utils.cache_key import get_query_from_db, check_current_state, CacheKeyManager
 
@@ -44,7 +43,7 @@ class ItemManager:
         msg, img, item_id = await self.deserializer.item_list(
             self.paginator_params
         )
-        is_favorite = await orm_get_favorite(item_id)
+        is_favorite = await orm.favorite.get_item(item_id)
         if is_favorite:
             msg += "👍\tв избранном"
         return InputMediaPhoto(media=img, caption=msg)
@@ -72,7 +71,7 @@ class ItemManager:
             kb.btn_data("web", data_web),
         ]).add_markup(3)
 
-        is_favorite = await orm_get_favorite(item_id)
+        is_favorite = await orm.favorite.get_item(item_id)
         if is_favorite is None:
             kb.add_button(kb.favorite(page)).update_markup(4)
         return kb.create_kb()
@@ -167,8 +166,7 @@ class ItemManager:
 
     async def _create_callback_data(self) -> ItemCBD:
         new_key, created = await self.cache_key_handler.get_or_create_key(
-            self.callback_data,
-            self.user_id
+            self.callback_data
         )
         self.callback_data = ItemCBD(
             key=new_key if created else self.callback_data.key,
@@ -188,12 +186,12 @@ class ItemManager:
             key=str(key),
             query=str(query_str)
         ).model_dump()
-        await orm_save_query_in_db(save_query_dict)
+        await orm.query.save_in_db(save_query_dict)
 
     async def _update_query_in_db(self, key: str):
         query_str = json.dumps(self.params, ensure_ascii=False)
         update_query_dict = CacheDataUpdateModel(query=str(query_str)).model_dump()
-        await orm_update_query_in_db(update_query_dict.get('query'), key)
+        await orm.query.update_in_db(update_query_dict.get('query'), key)
 
     async def _get_data_by_request_to_api(self):
         if self.params is None:

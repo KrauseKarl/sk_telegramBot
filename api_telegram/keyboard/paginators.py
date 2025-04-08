@@ -327,6 +327,14 @@ class MonitorPaginationBtn(PaginationBtn):
         )
         return self.btn_data('graph', data)
 
+    def target_btn(self, navigate: str):
+        data = self._btn(
+            navigate=navigate,
+            action=self.action.target,
+            item_id=self.item_id
+        )
+        return self.btn_data('target', data)
+
 
 class CommentPaginationBtn(PaginationBtn):
     def __init__(self, item_id, action, call_data):

@@ -2,15 +2,11 @@ from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram import types as t
 
-from api_aliexpress.deserializers import *
-from api_aliexpress.request import *
-from api_telegram.callback_data import *
-from api_telegram.crud.favorites import *
-from api_telegram.statments import ItemFSM
+from api_telegram import FavoriteCBD, FavoriteAction, FavoriteAddCBD, FavoriteDeleteCBD
+from api_telegram.callback_data import Navigation
+from api_telegram.crud import FavoriteListManager, FavoriteDeleteManager, FavoriteAddManager
 from database.exceptions import *
-from database.orm import *
 from utils.media import *
-from utils.message_info import *
 
 favorite = Router()
 
@@ -47,20 +43,18 @@ async def get_favorite_list(
                 reply_markup=await manager.get_keyboard()
             )
     except TelegramBadRequest as error:
-        await callback.answer(f"⚠️ {str(error)}")
+        await callback.answer(f"⚠️ Ошибка{str(error)}", show_alert=True)
     except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await callback.message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await kbm.menu()
-        )
+        await callback.answer(f"⚠️ Ошибка{str(error)}", show_alert=True)
 
 
 # TODO refactoring favorite add
 @favorite.callback_query(FavoriteAddCBD.filter(F.action == FavoriteAction.list))
 @favorite.callback_query(FavoriteAddCBD.filter(F.action == FavoriteAction.detail))
-async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -> None:
+async def add_favorite(
+        callback: t.CallbackQuery,
+        callback_data: FavoriteAddCBD
+) -> None:
     """
 
     :param callback_data:
@@ -69,34 +63,36 @@ async def add_favorite(callback: CallbackQuery, callback_data: FavoriteAddCBD) -
     """
     try:
         manager = FavoriteAddManager(callback_data, callback.from_user.id)
-        keyboard = await manager.keyboard()
-        media = await manager.message()
-        current_item = await manager.get_item()
+        await manager.add_to_favorites()
+        added_item = await manager.get_item()
         # сплывающие окно информирует о добавлении товара
         await callback.answer(
-            text='{0:.100}\n\n✅⭐️\t\tдобавлено в избранное'.format(
-                current_item.get("title")
+            text='{0:.100}\n\n✅⭐️\tдобавлено в избранное'.format(
+                added_item.get("title")
             ),
             show_alert=True
         )
         await callback.message.edit_media(
-            media=media,
-            reply_markup=keyboard
+            media=await manager.message(),
+            reply_markup=await manager.keyboard()
         )
 
     except FreeAPIExceededError as error:
         await callback.answer(
             show_alert=True,
-            text="⚠️ ОШИБКА\n\n{0}".format(error)
+            text="⚠️ Ошибка!\n\n{0}".format(str(error))
         )
     except IntegrityError as error:
         # todo add logger and record `error`
-        await callback.answer(str(error), show_alert=True)
+        await callback.answer(f"⚠️ Ошибка{str(error)}", show_alert=True)
 
 
 # # TODO refactoring favorite delete
 @favorite.callback_query(FavoriteDeleteCBD.filter(F.action == FavoriteAction.delete))
-async def delete_favorite(callback: CallbackQuery, callback_data: FavoriteDeleteCBD) -> None:
+async def delete_favorite(
+        callback: t.CallbackQuery,
+        callback_data: FavoriteDeleteCBD
+) -> None:
     """
 
     :param callback:
@@ -116,9 +112,11 @@ async def delete_favorite(callback: CallbackQuery, callback_data: FavoriteDelete
         )
     except FreeAPIExceededError as error:
         await callback.answer(
-            show_alert=True,
-            text="⚠️ ОШИБКА\n\n{0}".format(error)
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True
         )
     except IntegrityError as error:
         # todo add logger and record `error`
-        await callback.answer(str(error), show_alert=True)
+        await callback.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True)

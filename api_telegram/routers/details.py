@@ -2,12 +2,11 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 
 from api_telegram import DetailAction, ImageCBD, ImagesAction
-from api_telegram.crud.image import ImageManager
-from api_telegram.crud.detail import DetailManager
+from api_telegram.crud.images import ImageManager
+from api_telegram.crud.details import DetailManager
 from api_aliexpress.deserializers import *
 from api_telegram.keyboard.builders import kbm
 from database.exceptions import *
-from utils.message_info import *
 
 detail = Router()
 
@@ -23,14 +22,13 @@ async def get_item_detail(callback: CallbackQuery, callback_data: DetailCBD) -> 
             reply_markup=await manage.get_keyboard()
         )
     except FreeAPIExceededError as error:
-        await callback.answer( text="⚠️ ОШИБКА\n\n{0}".format(error), show_alert=True)
+        await callback.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True)
     except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await callback.message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await kbm.menu()
-        )
+        await callback.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True)
 
 
 @detail.callback_query(ImageCBD.filter(F.action == ImagesAction.images))
@@ -43,12 +41,10 @@ async def get_images(callback: CallbackQuery, callback_data: ImageCBD):
             reply_markup=await manager.get_keyboard()
         )
     except FreeAPIExceededError as error:
-        await callback.answer(text="⚠️ ОШИБКА\n\n{0}".format(error), show_alert=True)
+        await callback.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True)
     except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await callback.message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await kbm.menu()
-        )
-
+        await callback.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True)

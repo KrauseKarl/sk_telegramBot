@@ -9,7 +9,7 @@ from playhouse.shortcuts import model_to_dict
 from api_aliexpress.request import request_api
 from api_telegram import CacheKey, CacheKeyExtended, CacheKeyReview
 from core import config
-from database.orm import orm_get_query_from_db
+from database import orm
 
 
 async def check_current_state(state: FSMContext, callback: CallbackQuery) -> bool:
@@ -70,11 +70,9 @@ class CacheKeyManager:
         return "{0:.10}".format(str(uuid.uuid4().hex)[:length])
 
     @staticmethod
-    async def get_or_create_key(data, user_id):
-        if data and await orm_get_query_from_db(data.key):
+    async def get_or_create_key(data):
+        if data and await orm.query.get_from_db(data.key):
             return data.key, False
-        # elif await orm_get_query_by_id_from_db(user_id):
-        #     return await orm_get_query_by_id_from_db(user_id)
         else:
             new_key = await CacheKeyManager.create_uuid_key(6)
             return new_key, True
@@ -82,7 +80,7 @@ class CacheKeyManager:
 
 def counter_key(name, data):
     count = 0
-    max_len = 64
+    # max_len = 64
     # print('=' * 20)
     # print(name.upper().rjust(10, "_"))
     # print(f"[{max_len}] [{count}]")
@@ -93,7 +91,7 @@ def counter_key(name, data):
 
 
 async def get_query_from_db(key: str):
-    params_from_db = await orm_get_query_from_db(key)
+    params_from_db = await orm.query.get_from_db(key)
     saved_query_dict = json.loads(model_to_dict(params_from_db).get("query"))
     return dict(
         q=saved_query_dict.get('q', None),

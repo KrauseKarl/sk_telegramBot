@@ -1,11 +1,12 @@
 from aiogram import F, Router
 from aiogram.filters import Command
+from aiogram import types as t
 
-from api_telegram.crud.histories import *
-from api_telegram.keyboard.builders import kbm
+from api_telegram import HistoryCBD, HistoryAction, Navigation
+from api_telegram.crud import HistoryManager
+from api_telegram import kbm
 from database.exceptions import *
 from utils.media import *
-from utils.message_info import *
 
 history = Router()
 
@@ -43,9 +44,7 @@ async def history_page(
                 reply_markup=await manager.get_keyboard()
             )
     except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await callback.message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await kbm.menu()
+        await callback.answer(
+            text="⚠️ Ошибка\n{0:.150}".format(str(error)),
+            show_alert=True
         )

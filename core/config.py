@@ -57,11 +57,12 @@ IMG_LIMIT = 8
 
 # SCHEDULER ################################################################################
 now = datetime.datetime.now()
-future = now + datetime.timedelta(minutes=20)
+future = now + datetime.timedelta(minutes=1)
 
-SCHEDULE_HOUR = now.hour
-SCHEDULE_MIN = future.minute
 
+SCHEDULE_HOUR = now.hour  # 9
+SCHEDULE_MIN = future.minute  # 0
+SCHEDULE_RANGE = 1
 # REDIS ####################################################################################
 CACHE_LIVE_TIME = 60 * 60 * 24  # 24 часа
 
@@ -98,6 +99,8 @@ HERO = {
     "result": os.path.join(DEFAULT_FOLDER, "result_2.png"),
     "welcome": os.path.join(DEFAULT_FOLDER, "welcome_2.png"),
     "not_found": os.path.join(DEFAULT_FOLDER, "not_found.png"),
+    "target": os.path.join(DEFAULT_FOLDER, "target.png"),
+    "success": os.path.join(DEFAULT_FOLDER, "success_2.png"),
 }
 HELP = """
 Бот умеет находить товары 

@@ -19,6 +19,7 @@ class MonitorAction(str, Enum):
     add = "ADD"
     delete = "DEL"
     paginate = "PGN"
+    target = "TGT"
 
 
 class MonitorCBD(CallbackData, prefix="Monitor"):

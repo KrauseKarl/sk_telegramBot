@@ -24,7 +24,7 @@ class RedisHandler:
     async def connect(self) -> aioredis.Redis:
         """Establish a connection to Redis."""
         try:
-            self.client = await aioredis.Redis()
+            self.client = await aioredis.Redis(host='redis')
             ping = await self.client.ping()
             if ping is True:
                 return self.client

@@ -1,22 +1,19 @@
-from aiogram import F, Router
+from aiogram import F, Router, types as t
 from aiogram.filters import Command
-from aiogram.types import CallbackQuery, Message
 
-from api_aliexpress.deserializers import *
-from api_aliexpress.request import *
-from api_redis.handlers import *
-from api_telegram.callback_data import *
-from api_telegram.crud.items import *
-from api_telegram.keyboard.builders import kbm
+from api_redis import RedisHandler
+from api_telegram.crud import ItemManager
+from api_telegram import kbm, ItemCBD, DetailCBD, DetailAction
 from api_telegram.statments import *
 from database.exceptions import *
 from utils.cache_key import *
 from utils.media import *
+from utils.validators import min_price_validator, max_price_validator
 
 search = Router()
 
 
-async def delete_prev_message(message: Message):
+async def delete_prev_message(message: t.Message):
     await message.bot.delete_message(
         chat_id=message.chat.id,
         message_id=message.message_id
@@ -26,10 +23,10 @@ async def delete_prev_message(message: Message):
 
 # ITEM LIST ############################################################################################################
 @search.message(Command("search"))
-async def search_name_message(message: Message, state: FSMContext) -> None:
+async def search_name_message(message: t.Message, state: FSMContext) -> None:
     """
     
-    :param message: 
+    :param message:
     :param state: 
     :return: 
     """
@@ -57,7 +54,7 @@ async def search_name_message(message: Message, state: FSMContext) -> None:
 
 
 @search.callback_query(F.data.startswith("search"))
-async def search_name_callback(callback: CallbackQuery, state: FSMContext) -> None:
+async def search_name_callback(callback: t.CallbackQuery, state: FSMContext) -> None:
     """
     Request product name.
 
@@ -93,7 +90,7 @@ async def search_name_callback(callback: CallbackQuery, state: FSMContext) -> No
 
 
 @search.message(ItemFSM.product)
-async def search_price_range(message: Message, state: FSMContext) -> None:
+async def search_price_range(message: t.Message, state: FSMContext) -> None:
     """
 
     :param message:
@@ -126,16 +123,14 @@ async def search_price_range(message: Message, state: FSMContext) -> None:
             reply_markup=await kbm.price_range()
         )
     except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await kbm.error()
+        await message.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True
         )
 
 
 @search.callback_query(F.data.startswith("price_min"))
-async def search_price_min(callback: CallbackQuery, state: FSMContext) -> None:
+async def search_price_min(callback: t.CallbackQuery, state: FSMContext) -> None:
     """
 
     :param callback:
@@ -152,16 +147,14 @@ async def search_price_min(callback: CallbackQuery, state: FSMContext) -> None:
             )
         )
     except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await callback.message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await kbm.menu()
+        await callback.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True
         )
 
 
 @search.message(ItemFSM.price_min)
-async def search_price_max(message: Message, state: FSMContext) -> None:
+async def search_price_max(message: t.Message, state: FSMContext) -> None:
     """
 
     :param message:
@@ -176,11 +169,7 @@ async def search_price_max(message: Message, state: FSMContext) -> None:
             message_id=message.message_id
         )
         min_price = message.text
-        if int(min_price) < 1:
-            raise CustomError(
-                "Минимальная цена не должна быть отрицательной\t"
-                "🔄\tпопробуйте еще раз"
-            )
+        await min_price_validator(min_price)
         await state.update_data(price_min=min_price)
         await state.set_state(ItemFSM.price_max)
 
@@ -197,13 +186,15 @@ async def search_price_max(message: Message, state: FSMContext) -> None:
         #     caption="Укажите максимальную цену?"
         # )
     except (CustomError, ValueError) as error:
-        msg, photo = await get_error_answer_photo(error)
-        await message.answer_photo(photo=photo, caption=msg)
+        await message.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True
+        )
 
 
 # SORT #####################################################################
 @search.message(ItemFSM.price_max)
-async def search_sort(message: Message, state: FSMContext) -> None:
+async def search_sort(message: t.Message, state: FSMContext) -> None:
     """
     
     :param message: 
@@ -218,16 +209,8 @@ async def search_sort(message: Message, state: FSMContext) -> None:
         )
         min_price = int(await state.get_value('price_min'))
         max_price = int(message.text)
-        if int(max_price) < 1:
-            raise CustomError(
-                "Максимальная цена не должна быть отрицательной\t"
-                "🔄\tпопробуйте еще раз"
-            )
-        if min_price > max_price:
-            raise CustomError(
-                "Максимальная цена должна быть больше минимальной\t"
-                "🔄\tпопробуйте еще раз"
-            )
+        await min_price_validator(min_price)
+        await max_price_validator(min_price, max_price)
         await state.update_data(price_max=max_price)
         await state.set_state(ItemFSM.sort)
 
@@ -241,12 +224,14 @@ async def search_sort(message: Message, state: FSMContext) -> None:
             reply_markup=await kbm.sort()
         )
     except (CustomError, ValueError) as error:
-        msg, photo = await get_error_answer_photo(error)
-        await message.answer_photo(photo=photo, caption=msg)
+        await message.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True
+        )
 
 
 @search.callback_query(F.data.startswith("price_skip"))
-async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
+async def search_sort_call(callback: t.CallbackQuery, state: FSMContext) -> None:
     """
 
         :param callback: CallbackQuery
@@ -263,11 +248,9 @@ async def search_sort_call(callback: CallbackQuery, state: FSMContext) -> None:
             reply_markup=await kbm.sort()
         )
     except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
-        await callback.message.answer_photo(
-            photo=photo,
-            caption=msg,
-            reply_markup=await kbm.menu()
+        await callback.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True
         )
 
 
@@ -411,13 +394,20 @@ async def search_result(
     """
     try:
         await callback.answer()
-        manager = ItemManager(state=state, callback=callback, callback_data=callback_data)
+        manager = ItemManager(
+            state=state,
+            callback=callback,
+            callback_data=callback_data
+        )
         await callback.message.edit_media(
             media=await manager.message(),
             reply_markup=await manager.keyboard()
         )
     except CustomError as error:
-        await callback.answer(text=str(error), show_alert=True)
+        await callback.answer(
+            text=f"⚠️ Ошибка\n{str(error)}",
+            show_alert=True
+        )
 
 
 @search.callback_query(F.data.startswith("delete"))

@@ -1,3 +1,5 @@
+from .callback_data.base import Navigation
+
 from .callback_data.cache_key import CacheKey
 from .callback_data.cache_key import CacheKeyExtended
 from .callback_data.cache_key import CacheKeyReview

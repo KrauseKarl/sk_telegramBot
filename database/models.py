@@ -28,10 +28,10 @@ class Base(Model):
 class User(Base):
     """Таблица пользователей."""
 
-    user_id = peewee.IntegerField(primary_key=True, unique=True)  # Первичный ключ Telegram ID
-    user_name = peewee.TextField(null=True)  # Никнейм в telegram
-    first_name = peewee.TextField(null=True)  # Имя в telegram
-    last_name = peewee.TextField(null=True)  # Фамилия в telegram опционально.
+    user_id = peewee.IntegerField(primary_key=True, unique=True)
+    user_name = peewee.TextField(null=True)
+    first_name = peewee.TextField(null=True)
+    last_name = peewee.TextField(null=True)
 
     class Meta:
         db_table = "user"
@@ -102,6 +102,7 @@ class ItemSearch(Base):
     product_id = peewee.CharField(max_length=200, unique=True)
     title = peewee.CharField(null=True, max_length=200)
     price = peewee.FloatField()
+    target = peewee.FloatField(null=True)
     max_price = peewee.FloatField(null=True)
     min_price = peewee.FloatField(null=True)
     url = peewee.CharField(null=True)
@@ -114,10 +115,8 @@ class ItemSearch(Base):
     )
 
 
-# Модель для хранения данных
 class DataEntry(Base):
-    value = peewee.FloatField()  # Пример: числовое значение из API
-    # timestamp = peewee.DateTimeField(default=datetime.now)  # Время записи
+    value = peewee.FloatField()
     item_search = peewee.ForeignKeyField(
         ItemSearch, backref="data_entries", on_delete='cascade'
-    )  # Связь с ItemSearch item
+    )

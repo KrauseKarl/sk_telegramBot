@@ -145,7 +145,7 @@ class DeserializedHandler:
         msg += "🆔\t<u>id</u>:\t{0}\n".format(obj.product_id)
         msg += "✅\t{:.50}\n".format(obj.title)
         msg += "🟠\t<i>цена</i>:\t{0}\tRUB\n".format(obj.price)
-        msg += "👀\t<i>просмотров</i>:\t{0}\n".format(obj.reviews)
+        msg += "👀\t<i>просмотров</i>:\t{0}\n\n".format(obj.reviews)
         msg += "⭐️\t<i>рейтинг</i>:\t{0}\n".format(obj.stars)
         msg += "{0}\n".format(obj.url.split("//")[1])
         msg += "\n{0} из {1}".format(page, total_page)
@@ -160,11 +160,15 @@ class DeserializedHandler:
         :param obj:
         :return:
         """
+
         msg = "📅\t{0}\n".format(obj.date.strftime('%d %b %Y'))
         msg += "🕐\t{0}\n".format(obj.date.strftime('%H:%M:%S'))
         msg += "🆔\t<u>id</u>:\t{0}\n".format(obj.product_id)
         msg += "✅\t{:.50}\n".format(obj.title)
         msg += "🟠\t<i>цена</i>:\t{0}\tRUB\n".format(obj.price)
+        msg += "🎯\t<i>цель</i>:\t{0}\tRUB\n".format(obj.target if obj.target else "❌")
+        if obj.target is not None and float(obj.price) <= float(obj.target):
+            msg += "\n✅ Заданная цена достигнута\n\n"
         msg += "\n{0} из {1}".format(page, total_page)
         return msg
 
@@ -187,4 +191,3 @@ class DeserializedHandler:
         msg += "\n\n<b>{0}</b> из {1}\t".format(page, total_page)
 
         return msg
-

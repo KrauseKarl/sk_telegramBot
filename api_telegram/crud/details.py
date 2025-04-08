@@ -11,10 +11,10 @@ from api_telegram import (
     MonitorAction,
     ItemPaginationBtn,
     DetailCBD,
-    CacheKeyExtended, CacheKey
+    CacheKey
 )
 from core import config
-from database import orm_make_record_request, orm_get_monitoring_item, orm_get_favorite
+from database import orm
 
 
 class DetailManager:
@@ -76,7 +76,7 @@ class DetailManager:
             self.response,
             self.user_id
         )
-        await orm_make_record_request(self.item)
+        await orm.history.create(self.item)
         return await self.deserializer.item_detail(self.response)
 
     async def get_media(self):
@@ -99,7 +99,7 @@ class DetailManager:
             kb.images(self.page),
             kb.detail('back', self.page, DetailAction.back_list),
         ])
-        is_monitoring = await orm_get_monitoring_item(self.item_id)
+        is_monitoring = await orm.monitoring.get_item(self.item_id)
         if is_monitoring is None:
             data = MonitorCBD(
                 action=MonitorAction.add,
@@ -108,7 +108,7 @@ class DetailManager:
                 page=self.page
             ).pack()
             kb.add_button(kb.btn_data("price", data))
-        is_favorite = await orm_get_favorite(item_id=self.item_id)
+        is_favorite = await orm.favorite.get_item(self.item_id)
         if is_favorite is None:
             kb.add_button(kb.favorite(self.page))
         kb.add_markups([2, 2, 1])
