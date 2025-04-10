@@ -2,10 +2,9 @@ from enum import Enum
 
 from aiogram.filters.callback_data import CallbackData
 
-from api_telegram.callback_data import Navigation
+from api_telegram.callback_data.base import Navigation
 
 
-# IMAGE ######################################################################################
 class ImagesAction(str, Enum):
     images = "IFP"
     paginate = 'IPG'

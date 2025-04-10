@@ -1,39 +1,38 @@
 import asyncio
 import logging
 import sys
+from pathlib import Path
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, enums, types as t
 from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramBadRequest
 
-from api_telegram import commands, routers as r
-from api_telegram.crud.schedules import ScheduleManager
-from core import config
-from database.db import *
-from database.models import *
-
+from api_telegram import commands, crud, routers as r
+from core import config, conf
+from database import db
+from logger import logger as log
 
 
 async def main():
     bot = Bot(
         token=conf.bot_token.get_secret_value(),
         default=DefaultBotProperties(
-            parse_mode=ParseMode.HTML,
+            parse_mode=enums.ParseMode.HTML,
             show_caption_above_media=False
         )
     )
     dp = Dispatcher()
     dp.include_routers(
-        r.route,
         r.monitor,
         r.history,
         r.favorite,
         r.search,
         r.detail,
-        r.review
+        r.review,
+        r.base,
     )
-    create_tables()
-    schedule_manager = ScheduleManager(bot)
+    db.create_tables()
+    schedule_manager = crud.ScheduleManager(bot)
     await schedule_manager.setup_scheduler()
     # await setup_scheduler(bot)
 
@@ -42,40 +41,38 @@ async def main():
     )
     await bot.set_my_commands(
         commands=commands.private,
-        scope=types.BotCommandScopeAllPrivateChats()
+        scope=t.BotCommandScopeAllPrivateChats()
     )
     await dp.start_polling(bot)
 
-    drop_table()
+    db.drop_table()
 
 
 # todo delete after dev. Make folder-tree
 def print_tree(directory, prefix=''):
     paths = sorted(Path(directory).iterdir())
     for i, path in enumerate(paths):
-
         if path.name not in ['__pycache__', '__init__.py']:
             if i == len(paths) - 1:
                 new_prefix = prefix + '    '
                 print(prefix + '└── ' + path.name)
             else:
-
                 new_prefix = prefix + '│   '
                 print(prefix + '├── ' + path.name)
             if path.is_dir():
                 print_tree(path, new_prefix)
 
-
 # todo delete after dev. Make folder-tree
+
 
 if __name__ == "__main__":
     try:
-        logging.basicConfig(level=logging.INFO, stream=sys.stdout)
-        msg = f"🟨☢️ BOT START FAKE_MODE = {config.FAKE_MODE}" if config.FAKE_MODE \
-            else f"🟩🌐 BOT START FAKE_MODE = {config.FAKE_MODE}"
-        logging.info(msg)
-        print(msg)
+        log.info_log.info(sys.platform)
+        log.info_log.info(config.MODE_MASSAGE)
         asyncio.run(main())
+    except TelegramBadRequest as error:
+        log.error_log.error(str(error))
     except KeyboardInterrupt:
-        print("❌ BOT STOP")
+        log.error_log.info("❌ BOT STOP")
+
     # print_tree(r'C:\Users\Kucheriavenko Dmitri\github\telegramBot\api_telegram')

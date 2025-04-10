@@ -1,4 +1,4 @@
-from .bases import route
+from .bases import base
 from .details import detail
 from .favorites import favorite
 from .history import history

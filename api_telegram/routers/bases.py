@@ -1,20 +1,17 @@
-from aiogram import F, Router, types as t
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import Command, CommandStart
+from aiogram import F, Router, exceptions, filters, types as t
 from aiogram.fsm.context import FSMContext
 
-from api_redis.handlers import RedisHandler
-from api_telegram.keyboard.paginators import *
-from api_telegram.keyboard.builders import kbm
-from database import orm
-from database.exceptions import CustomError
-from utils.media import *
+from api_redis import RedisHandler
+from api_telegram import kbm
+from core import config
+from database import orm, exceptions as exp
+from utils import media
 
-route = Router()
+base = Router()
 
 
 # START ################################################################################################################
-@route.message(CommandStart())
+@base.message(filters.CommandStart())
 async def start_command(message: t.Message) -> None:
     """
 
@@ -24,14 +21,14 @@ async def start_command(message: t.Message) -> None:
     try:
         welcoming = await orm.users.get_or_create(user=message.from_user)
         msg = '{0}, {1}!'.format(welcoming, message.from_user.first_name)
-        photo = await get_fs_input_hero_image("welcome")
+        photo = await media.get_fs_input_hero_image("welcome")
         await message.answer_photo(
             photo=photo,
             caption=msg,
             reply_markup=await kbm.menu()
         )
-    except CustomError as error:
-        msg, photo = await get_error_answer_photo(error)
+    except exp.CustomError as error:
+        msg, photo = await media.get_error_answer_photo(error)
         await message.answer_photo(
             photo=photo,
             caption=msg,
@@ -40,8 +37,8 @@ async def start_command(message: t.Message) -> None:
 
 
 # HELP #################################################################################################################
-@route.message(Command("help"))
-@route.callback_query(F.data.startswith("help"))
+@base.message(filters.Command("help"))
+@base.callback_query(F.data.startswith("help"))
 async def info(callback: t.Message | t.CallbackQuery) -> None:
     """
 
@@ -50,26 +47,26 @@ async def info(callback: t.Message | t.CallbackQuery) -> None:
     """
     try:
         if isinstance(callback, t.CallbackQuery):
-            media = await get_input_media_hero_image("help", config.HELP)
+            photo = await media.get_input_media_hero_image("help", config.HELP)
             await callback.message.edit_media(
-                media=media,
+                media=photo,
                 reply_markup=await kbm.back()
             )
         else:
             await callback.answer_photo(
-                photo=await get_fs_input_hero_image("help"),
+                photo=await media.get_fs_input_hero_image("help"),
                 caption=config.HELP,
                 reply_markup=await kbm.back()
             )
-    except CustomError as error:
+    except exp.CustomError as error:
         await callback.answer(
             text=f"⚠️ Ошибка\n{str(error)}",
             show_alert=True)
 
 
 # MENU #################################################################################################################
-@route.message(Command("menu"))
-@route.callback_query(F.data.startswith("menu"))
+@base.message(filters.Command("menu"))
+@base.callback_query(F.data.startswith("menu"))
 async def menu(callback: t.Message | t.CallbackQuery, state: FSMContext) -> None:
     """
 
@@ -80,22 +77,22 @@ async def menu(callback: t.Message | t.CallbackQuery, state: FSMContext) -> None
     await state.clear()
     try:
         if isinstance(callback, t.CallbackQuery):
-            media = await get_input_media_hero_image("menu")
+            photo = await media.get_input_media_hero_image("menu")
             await callback.message.edit_media(
-                media=media,
+                media=photo,
                 reply_markup=await kbm.menu()
             )
         else:
             await callback.answer_photo(
-                photo=await get_fs_input_hero_image("menu"),
+                photo=await media.get_fs_input_hero_image("menu"),
                 reply_markup=await kbm.menu()
             )
-    except TelegramBadRequest:
+    except exceptions.TelegramBadRequest:
         await callback.message.answer_photo(
-            photo=await get_fs_input_hero_image('menu'),
+            photo=await media.get_fs_input_hero_image('menu'),
             reply_markup=await kbm.menu()
         )
-    except CustomError as error:
+    except exp.CustomError as error:
         await callback.answer(
             text=f"⚠️ Ошибка\n{str(error)}",
             show_alert=True
@@ -104,7 +101,7 @@ async def menu(callback: t.Message | t.CallbackQuery, state: FSMContext) -> None
 
 # ONLY FOR DEVELOP #####################################################################################################
 # TODO delete this routes on production
-@route.message(Command("redis"))
+@base.message(filters.Command("redis"))
 async def get_key_cache(message):
     keys = await RedisHandler().get_keys()
     if keys:
@@ -114,7 +111,20 @@ async def get_key_cache(message):
         )
 
 
-@route.message(Command("del"))
+@base.message(filters.Command("del"))
 async def del_key_cache(message):
     await RedisHandler().flush_keys()
     print('redis delete all keys')
+
+
+########################################################################################################################
+
+
+@base.message()
+async def unidentified_massage(message: t.Message):
+    msg = (
+        "❓❓❓\n"
+        "команда {0} мне не известна\n\n"
+        "/help для списка всех команд".format(message.text)
+    )
+    await message.answer(text=msg)

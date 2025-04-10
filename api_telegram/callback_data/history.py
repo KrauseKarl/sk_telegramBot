@@ -2,7 +2,7 @@ from enum import Enum
 
 from aiogram.filters.callback_data import CallbackData
 
-from api_telegram.callback_data import Navigation
+from api_telegram.callback_data.base import Navigation
 
 
 class HistoryAction(str, Enum):

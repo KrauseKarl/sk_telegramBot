@@ -29,7 +29,7 @@ from .callback_data.review import ReviewAction
 from .callback_data.review import ReviewCBD
 from .callback_data.review import ReviewPageCBD
 
-from .keyboard.paginators import BasePaginationBtn
+from .keyboard.factories import BasePaginationBtn
 from .keyboard.paginators import PaginationBtn
 from .keyboard.paginators import FavoritePaginationBtn
 from .keyboard.paginators import ReviewPaginationBtn
@@ -37,7 +37,6 @@ from .keyboard.paginators import ImagePaginationBtn
 from .keyboard.paginators import MonitorPaginationBtn
 from .keyboard.paginators import HistoryPaginationBtn
 from .keyboard.paginators import ItemPaginationBtn
-from .keyboard.paginators import CommentPaginationBtn
 
 from .keyboard.builders import kbm
 

@@ -3,7 +3,6 @@ from .paginators import FavoritePaginationBtn
 from .paginators import ReviewPaginationBtn
 from .paginators import ImagePaginationBtn
 from .paginators import MonitorPaginationBtn
-from .paginators import CommentPaginationBtn
 from .paginators import HistoryPaginationBtn
 from .paginators import ItemPaginationBtn
 

@@ -121,6 +121,7 @@ async def get_path_to_json(prefix, data: str | tuple):
         )
     )
 
+
 #####################################################################################
 async def request_api_fake(params):
     if params.get('itemId'):
@@ -185,32 +186,6 @@ async def request_api(params) -> dict:
         # todo delete after develop #########################################
 
     return result
-
-
-# async def request_api_fake(page: str | int, query: str = None):
-#     try:
-#         json_file = await get_path_to_json('list', (query, page))
-#         with open(json_file, 'r') as file:
-#             data = json.load(file)
-#         return data
-#     except FileNotFoundError:
-#         path = os.path.join(
-#             config.BASE_DIR,
-#             FAKE_MAIN_FOLDER,
-#             "_fake",
-#             "list_{0}.json".format(page)
-#         )
-#         with open(path, 'r') as file:
-#             data = json.load(file)
-#         return data
-
-
-# async def request_api_detail_fake(data):
-#     json_file = await get_path_to_json(
-#         'detail', data.get("url"))
-#     with open(json_file, 'r') as file:
-#         data = json.load(file)
-#     return data
 
 
 async def request_api_fake_favorite(itemid, query: str = 'футболка_мужская', page=1):

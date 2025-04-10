@@ -1,46 +1,36 @@
-from database.models import *
+import peewee_async
 
+from database import models as m
 
-# objects = peewee_async.Manager(database)
-#
-# with objects.allow_sync():
-#     UserModel.create_table(True)
-#     ItemListModel.create_table(True)
-#     ItemDetailModel.create_table(True)
 
 def create_tables():
-    db.set_allow_sync(True)
-    User.create_table(True)
-    History.create_table(True)
-    Favorite.create_table(True)
-    CacheData.create_table(True)
-    ItemSearch.create_table(True)
-    DataEntry.create_table(True)
-    db.close()
+    """Создает таблицы в БД."""
+
+    m.db.set_allow_sync(True)
+    m.User.create_table(True)
+    m.History.create_table(True)
+    m.Favorite.create_table(True)
+    m.CacheData.create_table(True)
+    m.ItemSearch.create_table(True)
+    m.DataEntry.create_table(True)
+    m.db.close()
+
 
 def drop_table():
-    db.set_allow_sync(True)
-    User.drop_table(True)
-    History.drop_table(True)
-    Favorite.drop_table(True)
-    CacheData.drop_table(True)
-    ItemSearch.drop_table(True)
-    DataEntry.drop_table(True)
-    db.close()
-
-# def drop_table():
-#     with objects.allow_sync():
-#         User.drop_table(True)
-#         Favorite.drop_table(True)
-#         History.drop_table(True)
-#         CacheData.drop_table(True)
-#         ItemSearch.drop_table(True)
-#         DataEntry.drop_table(True)
+    """Удаляет таблицы в БД."""
+    m.db.set_allow_sync(True)
+    m.User.drop_table(True)
+    m.History.drop_table(True)
+    m.Favorite.drop_table(True)
+    m.CacheData.drop_table(True)
+    m.ItemSearch.drop_table(True)
+    m.DataEntry.drop_table(True)
+    m.db.close()
 
 
-objects = peewee_async.register_database(db)
+objects = peewee_async.register_database(m.db)
 
-db.set_allow_sync(False)
+m.db.set_allow_sync(False)
 
 # async def handler():
 #     await objects.create(TestModel, text="Not bad. Watch this, I'm async!")

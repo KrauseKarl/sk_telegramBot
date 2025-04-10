@@ -5,39 +5,38 @@ services:
   bot:
     build: .
     restart: unless-stopped
-    dns: 8.8.8.8  # Google DNS
+    dns: 8.8.8.8
     depends_on:
       - redis
       - postgres
     environment:
-      - TZ=Asia/Yekaterinburg
       - REDIS_HOST=redis
-      - POSTGRES_HOST=postgres
+      - TZ=${TIME_ZONE:-Europe/Moscow}
+      - POSTGRES_HOST=${DB_HOST:-postgres}
       - POSTGRES_USER=${DB_USER:-postgres}
       - POSTGRES_PASSWORD=${DB_PASS:-postgres}
       - POSTGRES_DB=${DB_NAME:-aliexpress}
     volumes:
       - .:/app
 
-
   # Сервис Redis для кэша
   redis:
     image: redis:alpine
     restart: unless-stopped
     environment:
-      - TZ=Asia/Yekaterinburg
+      - TZ=${TIME_ZONE:-Europe/Moscow}
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
 
-  # Сервис PostgreSQL
+  # Сервис PostgresSQL для БД
   postgres:
     image: postgres:13-alpine
     restart: unless-stopped
     environment:
-      - TZ=Asia/Yekaterinburg
-      - PGTZ=Asia/Yekaterinburg
+      - TZ=${TIME_ZONE:-Europe/Moscow}
+      - PGTZ=${PGTZ:-Europe/Moscow}
       - POSTGRES_USER=${DB_USER:-postgres}
       - POSTGRES_PASSWORD=${DB_PASS:-postgres}
       - POSTGRES_DB=${DB_NAME:-aliexpress}

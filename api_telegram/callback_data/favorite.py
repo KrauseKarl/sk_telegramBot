@@ -1,7 +1,6 @@
-# FAVORITE ######################################################################################
 from enum import Enum
 
-from aiogram.filters.callback_data import CallbackData
+from aiogram.filters import callback_data
 
 from api_telegram.callback_data.base import Navigation
 
@@ -13,14 +12,14 @@ class FavoriteAction(str, Enum):
     paginate = "FPG"
 
 
-class FavoriteCBD(CallbackData, prefix='FVT'):
+class FavoriteCBD(callback_data.CallbackData, prefix='FVT'):
     action: FavoriteAction
     navigate: Navigation
     page: int = 1
     item_id: str | int | None = None
 
 
-class FavoriteAddDetailCBD(CallbackData, prefix='FVT'):
+class FavoriteAddDetailCBD(callback_data.CallbackData, prefix='FVT'):
     action: FavoriteAction
     item_id: str = None
     key: str
@@ -35,7 +34,7 @@ class FavoriteAddCBD(FavoriteAddDetailCBD, prefix='FVT'):
     page: int
 
 
-class FavoriteDeleteCBD(CallbackData, prefix='FVT'):
+class FavoriteDeleteCBD(callback_data.CallbackData, prefix='FVT'):
     action: FavoriteAction
     navigate: Navigation
     page: int

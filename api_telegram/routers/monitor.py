@@ -1,25 +1,20 @@
-import locale
-
-from aiogram import Router, F, types
+from aiogram import Router, F, types as t
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, InputMediaPhoto, FSInputFile
 
-from api_telegram.callback_data import Navigation
-from api_telegram.crud import (
-    MonitorListManager,
-    MonitorDeleteManager,
-    MonitorAddManager,
-    DefineTargetManger
+from api_telegram import crud
+from api_telegram import (
+    BasePaginationBtn,
+    MonitorAction,
+    MonitorCBD,
+    HistoryCBD,
+    HistoryAction,
+    Navigation
 )
-from api_telegram import BasePaginationBtn, MonitorAction, MonitorCBD, HistoryCBD, HistoryAction
 from api_telegram.statments import TargetFSM
-from database import orm, ItemSearch
+from database import orm
 from database.exceptions import CustomError
-from utils import target_price_validator
-
-from utils.media import get_fs_input_hero_image, get_input_media_hero_image
-import matplotlib.pyplot as plt
+from utils import target_price_validator, media
 
 monitor = Router()
 
@@ -28,7 +23,13 @@ monitor = Router()
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.paginate))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.list))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.back))
-async def list_monitoring(callback: types.CallbackQuery, callback_data: MonitorCBD = None):
+async def list_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD = None):
+    """
+
+    :param callback:
+    :param callback_data:
+    :return:
+    """
     try:
         searched_items = await orm.monitoring.get_list(callback.from_user.id)
         if not searched_items:
@@ -39,8 +40,8 @@ async def list_monitoring(callback: types.CallbackQuery, callback_data: MonitorC
                 action=HistoryAction.first,
                 navigate=Navigation.first
             )
-        manager = MonitorListManager(callback_data, callback.from_user.id)
-        if isinstance(callback, Message):
+        manager = crud.MonitorListManager(callback_data, callback.from_user.id)
+        if isinstance(callback, t.Message):
             await callback.answer_photo(
                 photo=await manager.get_photo(),
                 caption=await manager.get_msg(),
@@ -60,9 +61,15 @@ async def list_monitoring(callback: types.CallbackQuery, callback_data: MonitorC
 
 
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.add))
-async def add_monitoring(callback: types.CallbackQuery, callback_data: MonitorCBD):
+async def add_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD):
+    """
+
+    :param callback:
+    :param callback_data:
+    :return:
+    """
     try:
-        manager = MonitorAddManager(callback_data, callback.from_user.id)
+        manager = crud.MonitorAddManager(callback_data, callback.from_user.id)
         await manager.start_monitoring_item()
         await callback.answer(
             text=f"✅ Товар добавлен в список мониторинга цен.",
@@ -76,7 +83,14 @@ async def add_monitoring(callback: types.CallbackQuery, callback_data: MonitorCB
 
 
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.target))
-async def add_target(callback: types.CallbackQuery, callback_data: MonitorCBD, state: FSMContext):
+async def add_target(callback: t.CallbackQuery, callback_data: MonitorCBD, state: FSMContext):
+    """
+
+    :param callback:
+    :param callback_data:
+    :param state:
+    :return:
+    """
     kb_data = MonitorCBD(
         action=MonitorAction.list,
         navigate=callback_data.navigate,
@@ -95,13 +109,22 @@ async def add_target(callback: types.CallbackQuery, callback_data: MonitorCBD, s
     kb.add_button(kb.btn_data('back', kb_data)).add_markup(1)
 
     await callback.message.edit_media(
-        media=await get_input_media_hero_image('target', msg="укажите желаемую цену"),
+        media=await media.get_input_media_hero_image(
+            value='target',
+            msg="укажите желаемую цену"
+        ),
         reply_markup=kb.create_kb()
     )
 
 
 @monitor.message(TargetFSM.price)
-async def define_target_price(message: types.Message, state: FSMContext) -> None:
+async def define_target_price(message: t.Message, state: FSMContext) -> None:
+    """
+
+    :param message:
+    :param state:
+    :return:
+    """
     try:
         defined_price = float(message.text)
         await target_price_validator(defined_price)
@@ -109,13 +132,13 @@ async def define_target_price(message: types.Message, state: FSMContext) -> None
         state_data = await state.get_data()
         await state.clear()
 
-        manager = DefineTargetManger(state_data)
+        manager = crud.DefineTargetManger(state_data)
         await manager.define_target()
         try:
             await message.bot.edit_message_media(
                 chat_id=message.chat.id,
                 message_id=int(message.message_id) - 1,
-                media=await get_input_media_hero_image(
+                media=await media.get_input_media_hero_image(
                     "success",
                     await manager.message()
                 ),
@@ -129,7 +152,7 @@ async def define_target_price(message: types.Message, state: FSMContext) -> None
             await message.bot.send_photo(
                 chat_id=message.chat.id,
                 caption=await manager.message(),
-                photo=await get_fs_input_hero_image('success'),
+                photo=await media.get_fs_input_hero_image('success'),
                 reply_markup=await manager.keyboard()
             )
     except CustomError as error:
@@ -140,9 +163,15 @@ async def define_target_price(message: types.Message, state: FSMContext) -> None
 
 
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.delete))
-async def delete_monitoring(callback: types.CallbackQuery, callback_data: MonitorCBD):
+async def delete_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD):
+    """
+
+    :param callback:
+    :param callback_data:
+    :return:
+    """
     try:
-        manager = MonitorDeleteManager(callback_data, callback.from_user.id)
+        manager = crud.MonitorDeleteManager(callback_data, callback.from_user.id)
         await manager.stop_monitoring_item()
         await callback.answer(
             text="🗑 удален из списка мониторинга цен.",
@@ -161,117 +190,23 @@ async def delete_monitoring(callback: types.CallbackQuery, callback_data: Monito
 
 # TODO refactoring graph
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.graph))
-async def send_chart_image(callback: types.CallbackQuery, callback_data: MonitorCBD):
-    # Пример: Получаем ID поискового запроса из аргументов команды
+async def send_chart_image(callback: t.CallbackQuery, callback_data: MonitorCBD):
+    """
+
+    :param callback:
+    :param callback_data:
+    :return:
+    """
     try:
-        # get item search ##############################################################
-        try:
-            item_search = await orm.monitoring.get_item_by_id(callback_data.item_id)
-            if item_search is None:
-                raise ValueError
-        except (ValueError, ItemSearch.DoesNotExist):
-            await callback.answer(
-                text="Неверный ID поискового запроса.",
-                show_alert=True
-            )
-            return
-        # get item search ##############################################################
-
-        # get data search ##############################################################
-        # Получаем данные, связанные с поисковым запросом
-        entries = await orm.monitoring.get_monitor_data(item_search)
-        if not entries:
-            await callback.answer("Данные отсутствуют.")
-            return
-        # get data search ##############################################################
-
-        # install local ######################################################################
-        locale.setlocale(category=locale.LC_ALL, locale="Russian")
-        # install local ######################################################################
-
-        # graph maker ######################################################################
-        # todo create def graf_bar_maker()
-        values = [entry.value for entry in entries]
-        timestamps = [entry.date.strftime('%b %d') for entry in entries]
-        plt.style.use('dark_background')
-        plt.figure(figsize=(20, 9), dpi=300)
-        plt.ylim(min(values) - min(values) * 0.25, max(values) + min(values) * 0.25)
-        plt.plot(timestamps, values, color='grey', marker="o", markersize=20, linewidth=5)
-
-        # todo func `if min value is not the only`
-        def last_elem(x_axis, y_axis, sort_value):
-            result_dict = dict()
-            for x, y in zip(x_axis, y_axis):
-                if sort_value == 'min':
-                    if min(values) == y:
-                        result_dict[x] = y
-                if sort_value == 'max':
-                    if max(values) == y:
-                        result_dict[x] = y
-            last_item = sorted(result_dict.items())[-1]
-            return last_item[0], last_item[1]
-
-        # todo func `if min value is not the only`
-        max_time_value, max_value = last_elem(timestamps, values, "max")
-        min_time_value, min_value = last_elem(timestamps, values, "min")
-        for x, y in zip(timestamps, values):
-            max_time_value, max_value = last_elem(timestamps, values, "max")
-            min_time_value, min_value = last_elem(timestamps, values, "min")
-            if x == max_time_value:
-                plt.text(x, y, f'{y}', fontsize=20, ha='center', va='bottom', color='white',
-                         bbox=dict(facecolor='red', alpha=0.8))
-            if x == min_time_value:
-                plt.text(x, y, f'{y}', fontsize=20, ha='center', va='bottom', color='white',
-                         bbox=dict(facecolor='green', alpha=0.8))
-            if values[-1] == y:
-                plt.text(x, y, f'{y}', fontsize=20, ha='center', va='bottom', color='white',
-                         bbox=dict(facecolor='orange', alpha=0.8))
-
-        plt.text(0.99, 0.99,
-                 f'Максимум: {max(values)}',
-                 horizontalalignment='right',
-                 verticalalignment='top',
-                 transform=plt.gca().transAxes,
-                 fontsize=25, color='white', bbox=dict(facecolor='red', alpha=0.8))
-        plt.text(0.99, 0.90,
-                 f'Минимум: {min(values)}',
-                 horizontalalignment='right',
-                 verticalalignment='top',
-                 transform=plt.gca().transAxes,
-                 fontsize=25, color='white', bbox=dict(facecolor='green', alpha=0.8))
-        plt.title(
-            "График изменения цены для '{0:.25}'".format(item_search.title),
-            fontdict=dict(color='white', fontsize=22)
+        graph_manager = crud.GraphManager(callback_data, callback.from_user.id)
+        photo = await graph_manager.get_media()
+        keyboard = await graph_manager.get_keyboard()
+        await callback.message.edit_media(
+            media=photo,
+            reply_markup=keyboard
         )
-        plt.xlabel("Период", fontdict=dict(color='white', fontsize=25))
-        plt.ylabel("Цена", fontdict=dict(color='white', fontsize=25))
-        plt.grid(axis='y', visible=True, linestyle='-', alpha=0.5)
-        plt.grid(axis='x', visible=True, linestyle='-', alpha=0.3)
-        plt.xticks(timestamps)
-        plt.savefig("graph.png")
-        # graph maker ######################################################################
 
-        # message ######################################################################
-        msg = f"\r\n📈 max цена = {max(values)}\t({max_time_value})\r\n" \
-              f"📉 min цена = {min(values)}\t({min_time_value})\r\n" \
-              f"📅 текущая цена = {values[-1]}\t({timestamps[-1]})\r\n"
-        photo = InputMediaPhoto(media=FSInputFile("graph.png"), caption=msg)
-        # message ######################################################################
-
-        # keyboard ######################################################################
-        kb = BasePaginationBtn()
-        kb_data = MonitorCBD(
-            action=MonitorAction.list,
-            navigate=callback_data.navigate,
-            monitor_id=callback_data.monitor_id,
-            item_id=callback_data.item_id,
-            page=callback_data.page
-        ).pack()
-        kb.add_button(kb.btn_data('back', kb_data)).add_markup(1)
-        # keyboard ######################################################################
-
-        await callback.message.edit_media(media=photo, reply_markup=kb.create_kb())
-    except CustomError as error:
+    except (ValueError, CustomError) as error:
         await callback.answer(
             text=f"⚠️ Ошибка\n{str(error)}",
             show_alert=True

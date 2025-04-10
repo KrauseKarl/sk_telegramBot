@@ -5,7 +5,7 @@ from typing import Any
 from redis import asyncio as aioredis
 
 from api_telegram import ItemCBD, DetailCBD
-from core import config
+from core import config, conf
 from database.exceptions import CustomError
 
 import json
@@ -24,7 +24,7 @@ class RedisHandler:
     async def connect(self) -> aioredis.Redis:
         """Establish a connection to Redis."""
         try:
-            self.client = await aioredis.Redis(host='redis')
+            self.client = await aioredis.Redis(host=conf.redis_host)
             ping = await self.client.ping()
             if ping is True:
                 return self.client

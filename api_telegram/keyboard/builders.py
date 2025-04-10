@@ -1,15 +1,8 @@
 from aiogram import types
 from aiogram.utils import keyboard
 
-from api_telegram.callback_data import (
-    FavoriteCBD,
-    MonitorCBD,
-    Navigation,
-    MonitorAction,
-    HistoryCBD,
-    HistoryAction, FavoriteAction
-)
-from api_telegram.keyboard.factories import KeyBoardBuilder, BasePaginationBtn
+from api_telegram import callback_data as cbd
+from api_telegram.keyboard import factories
 
 
 class KeyboardManager:
@@ -17,7 +10,7 @@ class KeyboardManager:
         self.kb = None
 
     async def back(self):
-        self.kb = BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_button(
             self.kb.btn_text("menu")
         ).add_markups([1])
@@ -25,28 +18,28 @@ class KeyboardManager:
         return self.kb.create_kb()
 
     async def menu(self):
-        self.kb = BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons([
             self.kb.btn_data(
                 "history",
-                HistoryCBD(
-                    action=HistoryAction.first,
-                    navigate=Navigation.first,
+                cbd.HistoryCBD(
+                    action=cbd.HistoryAction.first,
+                    navigate=cbd.Navigation.first,
                     page=1
                 ).pack()
             ),
             self.kb.btn_data(
                 "favorite",
-                FavoriteCBD(
-                    action=FavoriteAction.paginate,
-                    navigate=Navigation.first
+                cbd.FavoriteCBD(
+                    action=cbd.FavoriteAction.paginate,
+                    navigate=cbd.Navigation.first
                 ).pack()
             ),
             self.kb.btn_data(
                 "list_searches",
-                MonitorCBD(
-                    action=MonitorAction.list,
-                    navigate=Navigation.first,
+                cbd.MonitorCBD(
+                    action=cbd.MonitorAction.list,
+                    navigate=cbd.Navigation.first,
                     page=1
                 ).pack()
             ),
@@ -56,7 +49,7 @@ class KeyboardManager:
         return self.kb.create_kb()
 
     async def quantity(self):
-        self.kb = BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons([
             self.kb.btn_text("2"),
             self.kb.btn_text("3"),
@@ -66,7 +59,7 @@ class KeyboardManager:
         return self.kb.create_kb()
 
     async def sort(self):
-        self.kb = BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons([
             self.kb.btn_text("default"),
             self.kb.btn_text("salesDesc"),
@@ -79,7 +72,7 @@ class KeyboardManager:
     #     return KeyBoardBuilder().builder_id(prefix, item_id, text, (1,))
 
     async def price_range(self):
-        self.kb = BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons([
             self.kb.btn_text("price_min"),
             self.kb.btn_text("price_skip")
@@ -87,7 +80,7 @@ class KeyboardManager:
         return self.kb.create_kb()
 
     async def error(self):
-        self.kb = BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons([
             self.kb.btn_text("menu"),
         ]).add_markups([1, ])
@@ -112,7 +105,7 @@ async def builder_kb(data: list, size: tuple):
     :param size:
     :return:
     """
-    return KeyBoardBuilder().builder(data, size)
+    return factories.KeyBoardBuilder().builder(data, size)
 
 
 async def kb_builder(

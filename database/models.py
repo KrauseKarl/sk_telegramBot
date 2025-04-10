@@ -38,6 +38,7 @@ class User(Base):
 
 
 class CacheData(Base):
+    """Таблица запросов."""
     uid = peewee.PrimaryKeyField()
     key = peewee.CharField(unique=True)
     query = peewee.TextField()
@@ -50,6 +51,7 @@ class CacheData(Base):
 
 
 class History(Base):
+    """Таблица истории просмотренных товаров."""
     uid = peewee.PrimaryKeyField()
     product_id = peewee.CharField()
     title = peewee.CharField(null=True, max_length=200)
@@ -70,6 +72,7 @@ class History(Base):
 
 
 class Favorite(Base):
+    """Таблица избранных товаров."""
     uid = peewee.PrimaryKeyField()
     product_id = peewee.CharField(max_length=200, unique=True)
     title = peewee.CharField(null=True, max_length=200)
@@ -98,6 +101,7 @@ class Favorite(Base):
 
 
 class ItemSearch(Base):
+    """Таблица отслеживаемых товаров."""
     uid = peewee.PrimaryKeyField()
     product_id = peewee.CharField(max_length=200, unique=True)
     title = peewee.CharField(null=True, max_length=200)
@@ -116,6 +120,7 @@ class ItemSearch(Base):
 
 
 class DataEntry(Base):
+    """Таблица цен для мониторинга."""
     value = peewee.FloatField()
     item_search = peewee.ForeignKeyField(
         ItemSearch, backref="data_entries", on_delete='cascade'

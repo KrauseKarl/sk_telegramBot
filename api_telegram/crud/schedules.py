@@ -9,11 +9,13 @@ from apscheduler.triggers.interval import IntervalTrigger
 from api_aliexpress.deserializers import DeserializedHandler
 from api_aliexpress.request import get_data_by_request_to_api
 from api_redis import RedisHandler
-from api_telegram import JobCBD, CacheKey, kbm, BasePaginationBtn, MonitorCBD, MonitorAction, Navigation
+from api_telegram import JobCBD, CacheKey, kbm, MonitorCBD, MonitorAction, Navigation
+from api_telegram.keyboard.factories import BasePaginationBtn
 from core import config
 from database import ItemSearch, DataEntry
 from database.exceptions import CustomError
 from database import orm
+from logger import logger as log
 from utils.media import get_input_media_hero_image, get_fs_input_hero_image
 
 scheduler = AsyncIOScheduler()
@@ -138,14 +140,19 @@ class ScheduleManager:
                 )
             )
             kb = BasePaginationBtn()
-            kb.btn_data(
-                "list_searches",
-                MonitorCBD(
-                    action=MonitorAction.list,
-                    navigate=Navigation.first,
-                    page=1
-                ).pack()
-            ),
+            buttons = [
+                kb.btn_data("list_searches",
+                            MonitorCBD(
+                                action=MonitorAction.list,
+                                navigate=Navigation.first,
+                                page=1
+                            ).pack()
+                            ),
+                kb.btn_text('menu')
+            ]
+            kb.add_buttons(buttons)
+            keyboard = kb.create_kb()
+            log.info_log.info(kb.get_kb())
             try:
                 await self.bot.edit_message_media(
                     chat_id=item_search.user_id,
@@ -153,14 +160,14 @@ class ScheduleManager:
                         value='success',
                         msg=message
                     ),
-                    reply_markup=kb.create_kb()
+                    reply_markup=keyboard
                 )
             except TelegramBadRequest:
                 await self.bot.send_photo(
                     chat_id=item_search.user_id,
                     caption=message,
                     photo=await get_fs_input_hero_image('success'),
-                    reply_markup=kb.create_kb()
+                    reply_markup=keyboard
                 )
 
             # Удаляем целевую цену после уведомления (опционально)

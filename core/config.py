@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Dict
 
@@ -9,38 +10,55 @@ from pydantic import DirectoryPath, SecretStr, StrictStr
 from pydantic_settings import BaseSettings
 
 
+# DEFINING BASE DIR OA APP #############################################################################################
+BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
+
+# DEFINING PATH TO .ENV FILE (DEPEND ON OS) ############################################################################
+ENV_FILE = ".env" if sys.platform == "win32" else ".env.docker"
+ENV_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath(ENV_FILE))
+load_dotenv(dotenv_path=ENV_PATH)
+
+# MODE FOR REQUEST DATA BY API (save free API requests) ################################################################
+# False from API AliExpress
+# True from json files
+FAKE_MODE = 1 == os.getenv("DB_NAME")
+MODES = {
+    True:  f"🟨☢️ BOT START FAKE_MODE = {FAKE_MODE}",
+    False: f"🟩🌐 BOT START FAKE_MODE = {FAKE_MODE}"
+}
+MODE_MASSAGE = MODES[FAKE_MODE]
+
+
 def init_data_from_file(path: str, mode: str = 'r'):
     with open(path, mode) as json_file:
         data = json.load(json_file)
         return data
 
 
-FLAGS = init_data_from_file("core/flags.json")
-KEYS = init_data_from_file("core/buttons.json")
+# COUNTRIES' FLAGS (need for correct reviews) ##########################################################################
+FLAGS = init_data_from_file("static/flags.json")
 
-load_dotenv()
+# TEXT AND CALLBACK DATA OF THE COMMON BUTTONS #########################################################################
+KEYS = init_data_from_file("static/buttons.json")
 
-FAKE_MODE = 1 == 0
-
-# ALIEXPRESS API URLS ###################################################################
+# ALIEXPRESS API URLS ##################################################################################################
 URL_API_ITEM_LIST = "item_search_5"
 URL_API_ITEM_DETAIL = "item_detail_6"
 URL_API_CATEGORY = "category_list_1"
 URL_API_REVIEW = "item_review"
 
-# DIRECTORY SETTINGS ####################################################################
+# DIRECTORY SETTINGS ###################################################################################################
 STATIC_FOLDER = 'static'
 PRODUCT_IMAGE_FOLDER = 'products'
 DEFAULT_FOLDER = 'default'
 CACHE_FOLDER = "cache"
 
-# PATHS TO DIRECTORIES ###################################################################
-BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
+# PATHS TO DIRECTORIES #################################################################################################
 STATIC_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath(STATIC_FOLDER))
 IMAGE_PATH = str(Path(STATIC_PATH).resolve(strict=True).joinpath(PRODUCT_IMAGE_FOLDER))
 CACHE_PATH = str(Path(STATIC_PATH).resolve(strict=True).joinpath(CACHE_FOLDER))
 
-# LOCALES SETTINGS #######################################################################
+# LOCALES SETTINGS #####################################################################################################
 LOCALE = "ru_RU"
 CURRENCY = "RUB"
 REGION = "RU"
@@ -48,25 +66,33 @@ REGION = "RU"
 RESULT_LIMIT = 5
 MESSAGE_LIMIT = 1000
 
-# IMAGE SETTINGS ##########################################################################
+# IMAGE SETTINGS #######################################################################################################
 WIDTH = 1024
 HEIGHT = 576
 THUMBNAIL = 500
 IMG_FORMAT = "png"
 IMG_LIMIT = 8
 
-# SCHEDULER ################################################################################
-now = datetime.datetime.now()
-future = now + datetime.timedelta(minutes=1)
-
-
-SCHEDULE_HOUR = now.hour  # 9
-SCHEDULE_MIN = future.minute  # 0
+# SCHEDULER ############################################################################################################
 SCHEDULE_RANGE = 1
-# REDIS ####################################################################################
+
+# [PROD] CHECK MONITORING ITEMS EACH DAY IN DEFINED TIME (9:00 AM) #####################################################
+MINUTES_AHEAD = 1
+PRODUCTION_HOUR = 9
+PRODUCTION_MINUTES = 0
+# SCHEDULE_HOUR = PRODUCTION_HOUR  # 9
+# SCHEDULE_MIN = PRODUCTION_MINUTES  # 0
+
+# [DEV] CHECK MONITORING ITEMS SOME MINUTES AHEAD, AFTER START APP #####################################################
+now = datetime.datetime.now()
+future = now + datetime.timedelta(minutes=MINUTES_AHEAD)
+SCHEDULE_HOUR = now.hour
+SCHEDULE_MIN = future.minute
+
+# REDIS (CACHE TIME IN REDIS MEMORY) ###################################################################################
 CACHE_LIVE_TIME = 60 * 60 * 24  # 24 часа
 
-# SORT SETTINGS ############################################################################
+# SORT SETTINGS ########################################################################################################
 SORT_SET = {"default", "priceDesc", "priceAsc", "salesDesc"}
 SORT_DICT = {
     "default": "по умолчанию",
@@ -74,8 +100,6 @@ SORT_DICT = {
     "priceAsc": "сначала дешевле",
     "salesDesc": "по популярности",
 }
-QNT = {"2", "3", "5", "10"}
-
 SORT = {
     "default": "default",
     "desc": "priceDesc",
@@ -83,6 +107,10 @@ SORT = {
     "sales": "salesDesc",
     "latest": "latest",
 }
+# QUANTITY SETTINGS (!DEPRECATED) ######################################################################################
+QNT = {"2", "3", "5", "10"}
+
+# DICT OF MAIN IMAGES ##################################################################################################
 HERO = {
     "category": os.path.join(DEFAULT_FOLDER, "category_2.png"),
     "error": os.path.join(DEFAULT_FOLDER, "error_2.png"),
@@ -102,6 +130,7 @@ HERO = {
     "target": os.path.join(DEFAULT_FOLDER, "target.png"),
     "success": os.path.join(DEFAULT_FOLDER, "success_2.png"),
 }
+# HELPING TEXT IN `/help` ROUTE ########################################################################################
 HELP = """
 Бот умеет находить товары 
 на популярном маркетплейсе `AliExpress`.
@@ -128,9 +157,11 @@ class Settings(BaseSettings):
     base_url: StrictStr = os.getenv("URL", None)
     range: int = RESULT_LIMIT
 
+    redis_host: StrictStr = os.getenv("REDIS_HOST", "localhost")
+
     database: StrictStr = os.getenv("DB_NAME")
     db_user: StrictStr = os.getenv("DB_USER")
-    db_host: StrictStr = os.getenv("DB_HOST")
+    db_host: StrictStr = os.getenv("DB_HOST", "localhost")
     db_port: StrictStr = os.getenv("DB_PORT")
     db_password: StrictStr = os.getenv("DB_PASS")
 

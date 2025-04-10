@@ -3,14 +3,13 @@ import typing as t
 from peewee import Model
 
 from core import config
-from database.models import Favorite, History, User, CacheData, ItemSearch, DataEntry
-from database.pydantic import HistoryModel
+from database import pydantic, models as m
 
 
 class UserORM:
     """Класс для работы с пользователями в базе данных (ORM слой)."""
 
-    def __init__(self, model: t.Type[User]):
+    def __init__(self, model: t.Type[m.User]):
         self.model = model
 
     async def get_or_create(self, user) -> str:
@@ -57,11 +56,11 @@ class CacheORM:
         """
         (
             self.model.update(query=data).
-            where(CacheData.key == key).
+            where(m.CacheData.key == key).
             execute()
         )
 
-    async def get_from_db(self, key: str) -> t.Optional[CacheData]:
+    async def get_from_db(self, key: str) -> t.Optional[m.CacheData]:
         """
         Берет данные запроса в БД.
         :param key: ключ для поиска кэш-данных в БД.
@@ -69,13 +68,14 @@ class CacheORM:
         """
         return (
             self.model.select().
-            where(CacheData.key == key).
+            where(m.CacheData.key == key).
             get_or_none()
         )
 
 
 class FavoriteORM:
-    def __init__(self, model: t.Type[Favorite]):
+    """Класс для работы с избранными товарами в базе данных (ORM слой)."""
+    def __init__(self, model: t.Type[m.Favorite]):
         self.model = model
 
     async def create_item(self, data: t.Dict) -> None:
@@ -121,7 +121,8 @@ class FavoriteORM:
 
 
 class MonitoringORM:
-    def __init__(self, model: t.Type[ItemSearch], sub_model: t.Type[DataEntry]):
+    """Класс для работы с отслеживаемыми товарами в базе данных (ORM слой)."""
+    def __init__(self, model: t.Type[m.ItemSearch], sub_model: t.Type[m.DataEntry]):
         self.model = model
         self.sub_model = sub_model
 
@@ -188,14 +189,15 @@ class MonitoringORM:
 
 
 class HistoryORM:
-    def __init__(self, model: t.Type[History]):
+    """Класс для работы с историей просмотра в базе данных (ORM слой)."""
+    def __init__(self, model: t.Type[m.History]):
         self.model = model
 
     async def create(self, data: t.Dict[str, t.Any]) -> None:
-        """Insert or update a history record."""
+        """Создает или обновляет запись."""
         is_exist = await self.get_item(str(data.get('product_id')))
         if not is_exist:
-            HistoryModel(
+            pydantic.HistoryModel(
                 user=data.get('user'),
                 product_id=str(data.get('product_id')),
                 title=data.get('title'),
@@ -207,8 +209,8 @@ class HistoryORM:
             ).model_dump()
             self.model().create(**data).save()
 
-    async def get_item(self, product_id: str) -> t.Optional[History]:
-        """Get a history record by product_id."""
+    async def get_item(self, product_id: str) -> t.Optional[m.History]:
+        """Получает запись по product_id."""
         return (
             self.model.select().
             where(self.model.product_id == product_id).
@@ -218,12 +220,15 @@ class HistoryORM:
     async def get_item_by_id(self, item_id):
         return (
             self.model.select().
-            where(ItemSearch.uid == item_id).
+            where(self.model.uid == item_id).
             get_or_none()
         )
 
-    async def get_list(self, user_id: int) -> t.List[History]:
-        """Get all history records for a user, ordered by date (newest first)."""
+    async def get_list(self, user_id: int) -> t.List[m.History]:
+        """
+        Получите все записи для пользователя,
+        упорядоченные по дате (сначала самая новая).
+        """
         return (
             self.model.select().
             where(self.model.user == user_id).
@@ -231,8 +236,8 @@ class HistoryORM:
         )
 
 
-monitoring = MonitoringORM(ItemSearch, DataEntry)
-favorite = FavoriteORM(Favorite)
-history = HistoryORM(History)
-query = CacheORM(CacheData)
-users = UserORM(User)
+favorite = FavoriteORM(m.Favorite)
+history = HistoryORM(m.History)
+monitoring = MonitoringORM(m.ItemSearch, m.DataEntry)
+query = CacheORM(m.CacheData)
+users = UserORM(m.User)

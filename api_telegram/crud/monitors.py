@@ -4,17 +4,15 @@ from aiogram import types
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pydantic import ValidationError
 
-from api_aliexpress.deserializers import DeserializedHandler
-from api_aliexpress.request import get_data_by_request_to_api
+from api_aliexpress import request, deserializers
 from api_redis import RedisHandler
-from api_telegram import MonitorAction, MonitorCBD, CacheKey, kbm, MonitorPaginationBtn
+from api_telegram import MonitorAction, MonitorCBD, CacheKey, kbm
+from api_telegram.keyboard.paginators import MonitorPaginationBtn
 from core import config
-from database import orm, History, Favorite, Paginator
-from database.exceptions import CustomError
-from utils.media import get_input_media_hero_image
+from database import orm, History, Favorite, Paginator, exceptions
+from utils import media
 
 scheduler = AsyncIOScheduler()
-deserializer = DeserializedHandler()
 redis_handler = RedisHandler()
 
 
@@ -33,7 +31,7 @@ class MonitorListManager:
         self.action = MonitorAction
         self.call_data = MonitorCBD
         self.kb_factory = MonitorPaginationBtn
-        self.deserializer = DeserializedHandler()
+        self.deserializer = deserializers.DeserializedHandler()
 
     async def _get_list(self) -> t.List[History]:
         """Получает список истории и сохраняет его в self.array."""
@@ -64,7 +62,10 @@ class MonitorListManager:
         )
 
     async def get_media(self) -> types.InputMediaPhoto:
-        """Возвращает медиа (фото с подписью) для текущего элемента истории."""
+        """
+        Возвращает медиа (фото с подписью)
+        для текущего элемента истории.
+        """
         if self.photo is None:
             if await self._get_len() > 0:
                 try:
@@ -74,12 +75,12 @@ class MonitorListManager:
                         caption=await self.get_msg()
                     )
                 except (ValidationError, TypeError):
-                    self.photo = await get_input_media_hero_image(
+                    self.photo = await media.get_input_media_hero_image(
                         self.empty_image,
                         await self.get_msg()
                     )
             else:
-                self.photo = await get_input_media_hero_image(
+                self.photo = await media.get_input_media_hero_image(
                     self.empty_image,
                     self.empty_message
                 )
@@ -125,6 +126,7 @@ class MonitorAddManager:
         self.page = callback_data.page
         self.user_id = user_id
         self.item: t.Optional[dict] = None
+        self.deserializer = deserializers.DeserializedHandler()
 
     async def _get_cache_key(self):
         return CacheKey(
@@ -136,17 +138,17 @@ class MonitorAddManager:
     async def _get_item(self):
         item_search = await orm.monitoring.get_item(self.item_id)
         if item_search:
-            raise CustomError('Товар уже отслеживается')
+            raise exceptions.CustomError('Товар уже отслеживается')
         cache_key = await self._get_cache_key()
         response = await redis_handler.get_data(cache_key)
         if response is None:
-            response = await get_data_by_request_to_api(
+            response = await request.get_data_by_request_to_api(
                 params={
                     "itemId": self.item_id,
                     "url": config.URL_API_ITEM_DETAIL
                 }
             )
-        self.item = await deserializer.item_for_db(response, self.user_id)
+        self.item = await self.deserializer.item_for_db(response, self.user_id)
         return self.item
 
     async def start_monitoring_item(self):
@@ -165,12 +167,12 @@ class MonitorDeleteManager:
         self.len: t.Optional[int] = None
         self.item: t.Optional[dict] = None
         self.photo: t.Optional[types.InputMediaPhoto] = None
-        self.empty_message: str = "⭕️ у вас пока нет отслеживаемых товаров"
+        self.empty_message: str = "⭕️ у вас нет отслеживаемых товаров"
         self.empty_image: str = "favorite"
         self.action = MonitorAction
         self.call_data = MonitorCBD
         self.kb_factory = MonitorPaginationBtn
-        self.deserializer = DeserializedHandler()
+        self.deserializer = deserializers.DeserializedHandler()
 
     async def _get_list(self) -> t.List[History]:
         """Получает список истории и сохраняет его в self.array."""
@@ -182,7 +184,10 @@ class MonitorDeleteManager:
         await orm.monitoring.delete_item(self.item_id)
 
     async def _get_len(self) -> int:
-        """Возвращает длину списка избранных товаров и сохраняет её в self.len."""
+        """
+        Возвращает длину списка избранных товаров
+        и сохраняет её в self.len.
+        """
         if self.len is None:
             self.len = len(await self._get_list())
         return self.len
@@ -209,7 +214,10 @@ class MonitorDeleteManager:
         )
 
     async def get_media(self) -> types.InputMediaPhoto:
-        """Возвращает медиа (фото с подписью) для текущего элемента избранных товаров."""
+        """
+        Возвращает медиа (фото с подписью)
+        для текущего элемента избранных товаров.
+        """
         # if self.photo is None:
         if await self._get_len() > 0:
             try:
@@ -219,12 +227,12 @@ class MonitorDeleteManager:
                     caption=await self.get_msg()
                 )
             except (ValidationError, TypeError):
-                self.photo = await get_input_media_hero_image(
+                self.photo = await media.get_input_media_hero_image(
                     self.empty_image,
                     await self.get_msg()
                 )
         else:
-            self.photo = await get_input_media_hero_image(
+            self.photo = await media.get_input_media_hero_image(
                 self.empty_image,
                 self.empty_message
             )
