@@ -9,11 +9,10 @@ from dotenv import load_dotenv
 from pydantic import DirectoryPath, SecretStr, StrictStr
 from pydantic_settings import BaseSettings
 
-
-# DEFINING BASE DIR OA APP #############################################################################################
+# DEFINE BASE DIR OA APP ###############################################################################################
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent
 
-# DEFINING PATH TO .ENV FILE (DEPEND ON OS) ############################################################################
+# DEFINE PATH TO .ENV FILE (DEPEND ON OS) ##############################################################################
 ENV_FILE = ".env" if sys.platform == "win32" else ".env.docker"
 ENV_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath(ENV_FILE))
 load_dotenv(dotenv_path=ENV_PATH)
@@ -36,10 +35,10 @@ def init_data_from_file(path: str, mode: str = 'r'):
 
 
 # COUNTRIES' FLAGS (need for correct reviews) ##########################################################################
-FLAGS = init_data_from_file("static/flags.json")
+FLAGS = init_data_from_file("static/json/flags.json")
 
 # TEXT AND CALLBACK DATA OF THE COMMON BUTTONS #########################################################################
-KEYS = init_data_from_file("static/buttons.json")
+KEYS = init_data_from_file("static/json/buttons.json")
 
 # ALIEXPRESS API URLS ##################################################################################################
 URL_API_ITEM_LIST = "item_search_5"
@@ -157,7 +156,7 @@ class Settings(BaseSettings):
     base_url: StrictStr = os.getenv("URL", None)
     range: int = RESULT_LIMIT
 
-    redis_host: StrictStr = os.getenv("REDIS_HOST", "localhost")
+    redis_host: StrictStr = os.getenv("REDIS_HOST")
 
     database: StrictStr = os.getenv("DB_NAME")
     db_user: StrictStr = os.getenv("DB_USER")

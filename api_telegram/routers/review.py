@@ -10,7 +10,7 @@ redis_handler = RedisHandler()
 
 @review.callback_query(ReviewCBD.filter(F.action == ReviewAction.first))
 @review.callback_query(ReviewCBD.filter(F.action == ReviewAction.paginate))
-async def request_review(callback: t.CallbackQuery, callback_data: ReviewCBD):
+async def get_review_list(callback: t.CallbackQuery, callback_data: ReviewCBD):
     try:
         manager = ReviewManager(callback_data, callback.from_user.id)
         await callback.message.edit_media(

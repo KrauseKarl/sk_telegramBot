@@ -2,8 +2,8 @@ from aiogram import F, Router, types as t
 from aiogram.filters import Command
 
 from api_redis import RedisHandler
-from api_telegram.crud import ItemManager
 from api_telegram import kbm, ItemCBD, DetailCBD, DetailAction
+from api_telegram.crud import ItemManager
 from api_telegram.statments import *
 from database.exceptions import *
 from utils.cache_key import *
@@ -31,15 +31,6 @@ async def search_name_message(message: t.Message, state: FSMContext) -> None:
     :return: 
     """
     try:
-        #     await state.set_state(ItemFSM.product)
-        #
-        #     await message.edit_media(
-        #         media=await get_input_media_hero_image(
-        #             "search",
-        #             "🛍️ Введите название товара."),
-        #         reply_markup=await main_keyboard()
-        #     )
-        # except TelegramBadRequest:
         await state.clear()
         await state.set_state(ItemFSM.product)
         await message.answer_photo(

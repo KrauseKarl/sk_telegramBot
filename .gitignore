@@ -1,4 +1,5 @@
 /.env
+/.env.docker
 /venv/
 /json_example/item.detail.json
 /json_example/category.item.json

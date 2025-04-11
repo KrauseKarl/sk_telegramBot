@@ -2,7 +2,6 @@ from aiogram import Router, F, types as t
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from api_telegram import crud
 from api_telegram import (
     BasePaginationBtn,
     MonitorAction,
@@ -11,6 +10,7 @@ from api_telegram import (
     HistoryAction,
     Navigation
 )
+from api_telegram import crud
 from api_telegram.statments import TargetFSM
 from database import orm
 from database.exceptions import CustomError
@@ -23,7 +23,7 @@ monitor = Router()
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.paginate))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.list))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.back))
-async def list_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD = None):
+async def get_monitoring_list(callback: t.CallbackQuery, callback_data: MonitorCBD = None):
     """
 
     :param callback:

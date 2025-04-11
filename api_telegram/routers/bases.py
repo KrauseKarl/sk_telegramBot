@@ -39,7 +39,7 @@ async def start_command(message: t.Message) -> None:
 # HELP #################################################################################################################
 @base.message(filters.Command("help"))
 @base.callback_query(F.data.startswith("help"))
-async def info(callback: t.Message | t.CallbackQuery) -> None:
+async def help_info(callback: t.Message | t.CallbackQuery) -> None:
     """
 
     :param callback:
@@ -67,7 +67,7 @@ async def info(callback: t.Message | t.CallbackQuery) -> None:
 # MENU #################################################################################################################
 @base.message(filters.Command("menu"))
 @base.callback_query(F.data.startswith("menu"))
-async def menu(callback: t.Message | t.CallbackQuery, state: FSMContext) -> None:
+async def main_menu(callback: t.Message | t.CallbackQuery, state: FSMContext) -> None:
     """
 
     :param state:

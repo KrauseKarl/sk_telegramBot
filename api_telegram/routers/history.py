@@ -1,10 +1,9 @@
 from aiogram import F, Router
-from aiogram.filters import Command
 from aiogram import types as t
+from aiogram.filters import Command
 
 from api_telegram import HistoryCBD, HistoryAction, Navigation
 from api_telegram.crud import HistoryManager
-from api_telegram import kbm
 from database.exceptions import *
 from utils.media import *
 
@@ -15,7 +14,7 @@ history = Router()
 @history.message(Command("history"))
 @history.callback_query(HistoryCBD.filter(F.action == HistoryAction.first))
 @history.callback_query(HistoryCBD.filter(F.action == HistoryAction.paginate))
-async def history_page(
+async def history_list(
         callback: t.CallbackQuery | t.Message,
         callback_data: Optional[HistoryCBD] = None
 ) -> None:
