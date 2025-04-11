@@ -1,16 +1,13 @@
 import asyncio
-import logging
 import sys
-from pathlib import Path
 
 from aiogram import Bot, Dispatcher, enums, types as t
 from aiogram.client.default import DefaultBotProperties
-from aiogram.exceptions import TelegramBadRequest
 
-from api_telegram import commands, crud, routers as r
-from core import config, conf
-from database import db
-from logger import logger as log
+from src.api_telegram import commands, crud, routers as r
+from src.core import conf, config
+from src.database import db, exceptions
+from src.logger import logger as log
 
 
 async def main():
@@ -48,29 +45,30 @@ async def main():
     db.drop_table()
 
 
-# todo delete after dev. Make folder-tree
-def print_tree(directory, prefix=''):
-    paths = sorted(Path(directory).iterdir())
-    for i, path in enumerate(paths):
-        if path.name not in ['__pycache__', '__init__.py']:
-            if i == len(paths) - 1:
-                new_prefix = prefix + '    '
-                print(prefix + '└── ' + path.name)
-            else:
-                new_prefix = prefix + '│   '
-                print(prefix + '├── ' + path.name)
-            if path.is_dir():
-                print_tree(path, new_prefix)
-
-# todo delete after dev. Make folder-tree
+# # todo delete after dev. Make folder-tree
+# def print_tree(directory, prefix=''):
+#     paths = sorted(Path(directory).iterdir())
+#     for i, path in enumerate(paths):
+#         if path.name not in ['__pycache__', '__init__.py']:
+#             if i == len(paths) - 1:
+#                 new_prefix = prefix + '    '
+#                 print(prefix + '└── ' + path.name)
+#             else:
+#                 new_prefix = prefix + '│   '
+#                 print(prefix + '├── ' + path.name)
+#             if path.is_dir():
+#                 print_tree(path, new_prefix)
+#
+# # todo delete after dev. Make folder-tree
 
 
 if __name__ == "__main__":
     try:
+        log.set_logger_files()
         log.info_log.info(sys.platform)
         log.info_log.info(config.MODE_MASSAGE)
         asyncio.run(main())
-    except TelegramBadRequest as error:
+    except exceptions.TelegramBadRequest as error:
         log.error_log.error(str(error))
     except KeyboardInterrupt:
         log.error_log.info("❌ BOT STOP")

@@ -1,0 +1,101 @@
+from typing import Optional
+
+from aiogram import types as t
+
+from src.api_aliexpress import deserializers as srz
+from src.api_aliexpress import request_api
+from src.api_redis import RedisHandler
+from src.api_telegram import (
+    CacheKey,
+    DetailAction,
+    DetailCBD,
+    ItemPaginationBtn,
+    MonitorAction,
+    MonitorCBD,
+)
+from src.core import config
+from src.database import orm
+
+
+class DetailManager:
+    def __init__(self, callback_data, user_id):
+        self.user_id: int = user_id
+        self.key: str = callback_data.key
+        self.item_id = callback_data.item_id
+        self.api_page: str = callback_data.api_page
+        self.page: int = int(callback_data.page)
+        self.last: int = int(callback_data.last)
+        self.item: dict = dict()
+        self.response: Optional[dict] = None
+        self.cache_key = None
+        self.action = DetailAction
+        self.call_data = DetailCBD
+        self.kb_factory = ItemPaginationBtn
+        self.redis_handler = RedisHandler()
+        self.deserializer = srz.DeserializedHandler()
+
+    async def _get_cache_key(self):
+        """Получает ключ для поиска кэша."""
+        return CacheKey(key=self.key, api_page=self.page, extra="detail").pack()
+
+    async def _request_data(self):
+        params = dict(url=config.URL_API_ITEM_DETAIL, itemId=self.item_id)
+        return await request_api(params)
+
+    async def _get_item_info(self):
+        """Получает список истории и сохраняет его в self.array."""
+        if self.response is None:
+            if self.cache_key is None:
+                self.cache_key = await self._get_cache_key()
+            item_data = await self.redis_handler.get_data(self.cache_key)
+            if item_data is None:
+                item_data = await self._request_data()
+
+            if item_data is not None:
+                await self.redis_handler.set_data(key=self.cache_key, value=item_data)
+                self.response = item_data
+
+        return self.response
+
+    async def get_msg(self) -> str:
+        """Возвращает сообщение с подробной информацией о товаре."""
+        if self.response is None:
+            self.response = await self._get_item_info()
+        self.item = await self.deserializer.item_for_db(self.response, self.user_id)
+        await orm.history.create(self.item)
+        return await self.deserializer.item_detail(self.response)
+
+    async def get_media(self):
+        msg = await self.get_msg()
+        return t.InputMediaPhoto(media=self.item.get("image", None), caption=msg)
+
+    async def get_keyboard(self) -> t.InlineKeyboardMarkup:
+        """Возвращает клавиатуру."""
+        kb = ItemPaginationBtn(
+            key=self.key,
+            api_page=int(self.api_page),
+            item_id=self.item_id,
+            paginator_len=int(self.last),
+        )
+        kb.add_buttons(
+            [
+                kb.comment(self.page),
+                kb.images(self.page),
+                kb.detail("back", self.page, DetailAction.back_list),
+            ]
+        )
+        is_monitoring = await orm.monitoring.get_item(self.item_id)
+        if is_monitoring is None:
+            data = MonitorCBD(
+                action=MonitorAction.add,
+                item_id=self.item_id,
+                key=self.key,
+                page=self.page,
+            ).pack()
+            kb.add_button(kb.btn_data("price", data))
+        is_favorite = await orm.favorite.get_item(self.item_id)
+        if is_favorite is None:
+            kb.add_button(kb.favorite(self.page))
+        kb.add_markups([2, 2, 1])
+
+        return kb.create_kb()

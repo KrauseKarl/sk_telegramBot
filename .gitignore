@@ -3,7 +3,8 @@
 /venv/
 /json_example/item.detail.json
 /json_example/category.item.json
-/static/products/
+/src/static/products/
 /_json_example/
-/graph.png
+/src/static/graphs/graph.png
 *.log
+/src/static/graph/graph_*.png

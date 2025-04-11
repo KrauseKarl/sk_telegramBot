@@ -1,0 +1,50 @@
+#[tool.pytest.ini_options]
+#pythonpath = ["."]
+#asyncio_mode = "auto"
+#cache_dir = ".cache/pytest_cache"
+
+[tool.black]
+line_length = 88
+target-version = ['py312']
+
+
+[tool.isort]
+py_version = 312
+profile = "black"
+line_length = 88
+multi_line_output = 3
+skip = [".vevns/", ".pytest_cache", ".static/", "._json_example/"]
+force_grid_wrap = 0
+skip_gitignore = true
+
+
+
+#[tool.flake8]
+#exclude = [".venvs", "/venvs", "venvs/", "src/core/config.py"]
+#ignore = ["E501", "E231", "E241", "B008", "Q000", "WPS305", "WPS336", "WPS421", "C812", "WPS404"]
+#per-file-ignores = "__init__.py: F401"
+#max-line-length = 79
+#inline-quotes = ""
+#
+#extend-ignore = ["WPS404", "B008", "I101", "D100", "D101", "D102", "D103", "D104", "D105", "D107", "D401", "C812", "E203", "I900", "N802", "N806", "N812", "W503", "S311", "S605", "S607", "ISC003", "ISC001", "Q000", "T101", "T000", "F541", "PL123", "WPS305", "WPS404"]
+#append-config = "pyproject.toml"
+#
+#[tool.ruff.flake8-bugbear]
+#extend-immutable-calls = ["fastapi.Header", "fastapi.Depends", ]
+#
+#[tool.mypy]
+#python_version = 3.11
+#follow_imports = "silent"
+#disallow_untyped_defs = true
+#ignore_missing_imports = true
+#cache_dir = ".cache/mypy_cache"
+#exclude = [
+#    "src/core/config.py",
+#    "src/tests",
+#    "venvs/",
+#    "alembic/"
+#]
+#
+#[tool.coverage.run]
+#disable_warnings = ["no-data-collected"]
+#include = ["src/api/api_v1/endpoints*"]
