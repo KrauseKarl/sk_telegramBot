@@ -2,7 +2,8 @@ import typing as t
 
 from peewee import Model
 
-from src.database import pydantic, models as m
+from src.database import models as m
+from src.database import pydantic
 
 
 class UserORM:
@@ -11,7 +12,7 @@ class UserORM:
     def __init__(self, model: t.Type[m.User]):
         self.model = model
 
-    async def get_or_create(self, user) -> str:
+    async def get_or_create(self, user: m.User) -> str:
         """
         Создает нового пользователя или возвращает существующего.
 
@@ -46,14 +47,14 @@ class CacheORM:
         """
         self.model().create(**data).save()
 
-    async def update_in_db(self, data: dict, key: str):
+    async def update_in_db(self, data: t.Dict[str, t.Any], key: str) -> None:
         """
         Обновляет данные запроса в БД.
         :param data: Словарь с данными запроса.
         :param key: ключ для поиска кэш-данных в БД.
         :return: None
         """
-        (self.model.update(query=data).where(m.CacheData.key == key).execute())
+        self.model.update(query=data).where(m.CacheData.key == key).execute()
 
     async def get_from_db(self, key: str) -> t.Optional[m.CacheData]:
         """
@@ -70,7 +71,7 @@ class FavoriteORM:
     def __init__(self, model: t.Type[m.Favorite]):
         self.model = model
 
-    async def create_item(self, data: t.Dict) -> None:
+    async def create_item(self, data: t.Dict[str, t.Any]) -> None:
         """Создайте новый избранный товар"""
         self.model.create(**data).save()
 
@@ -82,7 +83,7 @@ class FavoriteORM:
             .order_by(self.model.date.desc())
         )
 
-    async def get_or_create(self, data: t.Dict) -> t.Tuple[Model, bool]:
+    async def get_or_create(self, data: t.Dict[str, t.Any]) -> t.Tuple[Model, bool]:
         """Получите или создайте избранный товар"""
         return self.model.get_or_create(
             product_id=data.get("product_id"),
@@ -215,8 +216,8 @@ class HistoryORM:
         )
 
 
-favorite = FavoriteORM(m.Favorite)
-history = HistoryORM(m.History)
-monitoring = MonitoringORM(m.ItemSearch, m.DataEntry)
-query = CacheORM(m.CacheData)
 users = UserORM(m.User)
+query = CacheORM(m.CacheData)
+history = HistoryORM(m.History)
+favorite = FavoriteORM(m.Favorite)
+monitoring = MonitoringORM(m.ItemSearch, m.DataEntry)

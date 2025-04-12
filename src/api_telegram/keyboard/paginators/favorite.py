@@ -1,5 +1,5 @@
 from src.api_telegram import FavoriteDeleteCBD
-from src.api_telegram.keyboard.paginators import PaginationBtn
+from src.api_telegram.keyboard.paginators.base import PaginationBtn
 
 
 class FavoritePaginationBtn(PaginationBtn):
@@ -10,7 +10,7 @@ class FavoritePaginationBtn(PaginationBtn):
         self.action = action
         self.call_data = call_data
 
-    def _btn(self, num: int, navigate: str, *args, **kwargs):
+    def _btn(self, num: int, navigate: str, *args, **kwargs) -> str:
         return self.call_data(
             action=self.action.paginate,
             navigate=navigate,
@@ -18,19 +18,19 @@ class FavoritePaginationBtn(PaginationBtn):
             item_id=self.item_id,
         ).pack()
 
-    def next_btn(self, num: int = 1, *args, **kwargs):  # page + 1
+    def next_btn(self, *args, **kwargs):  # page + 1
         return self.btn_data(
             name="next",
-            data=self._btn(num, self.navigate.next, *args, **kwargs),
+            data=self._btn(num=1,navigate=self.navigate.next, *args, **kwargs),
         )
 
-    def prev_btn(self, num: int = -1, *args, **kwargs):  # page - 1
+    def prev_btn(self, *args, **kwargs):  # page - 1
         return self.btn_data(
             name="prev",
-            data=self._btn(num, self.navigate.prev, *args, **kwargs),
+            data=self._btn(num=-1, navigate=self.navigate.prev, *args, **kwargs),
         )
 
-    def delete_btn(self, navigate, item_id=None):
+    def delete_btn(self, navigate):
         return self.btn_data(
             name="delete",
             data=FavoriteDeleteCBD(

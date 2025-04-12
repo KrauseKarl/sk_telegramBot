@@ -16,6 +16,7 @@ scheduler = AsyncIOScheduler()
 
 
 class MonitorListManager:
+    """Класс для работы со списком отслеживаемых товара."""
     def __init__(self, callback_data, user_id):
         self.user_id = user_id
         self.page = int(callback_data.page)
@@ -114,6 +115,8 @@ class MonitorListManager:
 
 
 class MonitorAddManager:
+    """Класс для добавления товара в список отслеживаемых."""
+
     def __init__(self, callback_data, user_id):
         self.key = callback_data.key
         self.item_id = int(callback_data.item_id)
@@ -124,12 +127,14 @@ class MonitorAddManager:
         self.redis_handler = RedisHandler()
 
     async def _get_cache_key(self):
+        """Возвращает ключ для поиска кэш-данных"""
         return CacheKey(key=self.key, api_page=self.page, extra="detail").pack()
 
     async def _get_item(self):
+        """Возвращает данные об отслеживаемом товаре."""
         item_search = await orm.monitoring.get_item(self.item_id)
         if item_search:
-            raise exceptions.CustomError("Товар уже отслеживается")
+            raise exceptions.CustomError(message="Товар уже отслеживается")
         cache_key = await self._get_cache_key()
         response = await self.redis_handler.get_data(cache_key)
         if response is None:
@@ -142,13 +147,16 @@ class MonitorAddManager:
         self.item = await self.deserializer.item_for_db(response, self.user_id)
         return self.item
 
-    async def start_monitoring_item(self):
+    async def start_monitoring_item(self) -> None:
+        """Создает экземпляр класса`ItemSearch`."""
         if self.item is None:
             self.item = await self._get_item()
         await orm.monitoring.create_item(self.item)
 
 
 class MonitorDeleteManager:
+    """Класс для удаления товара из списка отслеживаемых."""
+
     def __init__(self, callback_data, user_id):
         self.user_id = user_id
         self.page = int(callback_data.page)
@@ -156,7 +164,7 @@ class MonitorDeleteManager:
         self.navigate = callback_data.navigate
         self.array: t.Optional[list] = None
         self.len: t.Optional[int] = None
-        self.item: t.Optional[dict] = None
+        self.item: t.Optional[t.Dict[str, t.Any]] = None
         self.photo: t.Optional[types.InputMediaPhoto] = None
         self.empty_message: str = "⭕️ у вас нет отслеживаемых товаров"
         self.empty_image: str = "favorite"
@@ -171,7 +179,8 @@ class MonitorDeleteManager:
             self.array = await orm.monitoring.get_list(self.user_id)
         return self.array
 
-    async def stop_monitoring_item(self):
+    async def stop_monitoring_item(self) -> None:
+        """Удаляет экземпляр класса`ItemSearch` из БД."""
         await orm.monitoring.delete_item(self.item_id)
 
     async def _get_len(self) -> int:

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from aiogram import Bot
 from aiogram import types as t
 from aiogram.exceptions import TelegramBadRequest
@@ -7,13 +9,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from src.api_aliexpress import deserializers, request
 from src.api_redis import RedisHandler
-from src.api_telegram import (
-    CacheKey,
-    JobCBD,
-    MonitorAction,
-    MonitorCBD,
-    Navigation,
-)
+from src.api_telegram import CacheKey, JobCBD, MonitorAction, MonitorCBD, Navigation
 from src.api_telegram.keyboard.factories import BasePaginationBtn
 from src.core import config
 from src.database import DataEntry, ItemSearch, exceptions, orm
@@ -73,7 +69,7 @@ class ScheduleManager:
         user_id: int,
         key: str,
         page: int,
-        target_price: float = None,
+        target_price: Optional[float] = None,
     ):
         """ "
         Создает

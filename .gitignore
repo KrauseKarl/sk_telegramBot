@@ -1,6 +1,6 @@
 /.idea/
 /venv/
-
+/cache/*
 /.env
 /.env.docker
 
@@ -10,4 +10,5 @@
 /src/static/graph/graph_*.png
 
 *.log
+
 /_utils.py

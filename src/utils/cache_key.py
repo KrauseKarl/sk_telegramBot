@@ -77,7 +77,12 @@ def counter_key(name, data):
     for i in str(data).split(":"):
         count += len(i)
         # print(f"[{max_len - count}] [{count}] {len(i)} - {i}")
-    # print(f"{name.upper().rjust(10, '_')} TOTAL LEN = [{count}] SAVE RANGE = {max_len - count}")
+    # print(
+    #     "{0} TOTAL LEN = [{1}] SAVE RANGE = {1}".format(
+    #         name.upper().rjust(10, '_'),
+    #         count,
+    #         max_len - count
+    #     ))
 
 
 async def get_query_from_db(key: str):

@@ -6,7 +6,7 @@ import httpx
 
 from src.core import config
 from src.core.config import conf
-from src.database.exceptions import *
+from src.database import exceptions
 
 FAKE_MAIN_FOLDER = "_json_example"
 DETAIL_FAKE_FOLDER = "_detail_view"
@@ -152,11 +152,11 @@ async def request_api(params) -> dict:
                     timeout=timeout,
                 )
         except httpx.HTTPError as error:
-            raise FreeAPIExceededError(message="⚠️ HTTP ERROR\n{0}".format(error))
+            raise exceptions.FreeAPIExceededError("⚠️ HTTP ERROR\n{0}".format(error))
         result = response.json()
         if "message" in result:
-            print(f"❌ лимит API превышен")
-            raise FreeAPIExceededError(
+            print("❌ лимит API превышен")
+            raise exceptions.FreeAPIExceededError(
                 message="⚠️ лимит API превышен\n{0}".format(result.get("message"))
             )
         # todo delete after develop #########################################
@@ -185,12 +185,12 @@ async def request_api_review(data) -> dict:
     json_file = await get_path_to_json("review", data.get("url"))
     if config.FAKE_MODE and json_file.is_file():
 
-        print(f"🟩  DATA FROM 💾CACHE [REVIEW]".rjust(20, "🟩"))
+        print("🟩  DATA FROM 💾CACHE [REVIEW]".rjust(20, "🟩"))
 
         with open(json_file, "r") as file:
             response = json.load(file)
     else:
-        print(f"🟥 DATA FROM 🌐INTERNET [REVIEW]".rjust(20, "🟥"))
+        print("🟥 DATA FROM 🌐INTERNET [REVIEW]".rjust(20, "🟥"))
 
         for key, value in data.items():
             if value:
@@ -216,6 +216,6 @@ async def get_data_by_request_to_api(params: dict):
     except KeyError:
         if "message" in response:
             print(response)
-            raise FreeAPIExceededError(
+            raise exceptions.FreeAPIExceededError(
                 message="⚠️HTTP error\n{0}".format(response.get("message"))
             )

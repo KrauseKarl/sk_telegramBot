@@ -1,6 +1,8 @@
 from typing import Optional
 
-from aiogram import F, filters, Router, types as t
+from aiogram import F, Router, filters
+from aiogram import types as t
+from aiogram.utils.chat_action import ChatActionSender
 from peewee import IntegrityError
 
 from src.api_telegram import (
@@ -8,13 +10,14 @@ from src.api_telegram import (
     FavoriteAddCBD,
     FavoriteCBD,
     FavoriteDeleteCBD,
-    Navigation
+    Navigation,
 )
 from src.api_telegram.crud import (
     FavoriteAddManager,
     FavoriteDeleteManager,
     FavoriteListManager,
 )
+from src.core.bot import bot
 from src.database import exceptions
 
 favorite = Router()
@@ -23,8 +26,8 @@ favorite = Router()
 @favorite.message(filters.Command("favorite"))
 @favorite.callback_query(FavoriteCBD.filter(F.action == FavoriteAction.paginate))
 async def get_favorite_list(
-        callback: t.CallbackQuery | t.Message,
-        callback_data: Optional[FavoriteCBD] = None,
+    callback: t.CallbackQuery | t.Message,
+    callback_data: Optional[FavoriteCBD] = None,
 ) -> None:
     """
 
@@ -58,7 +61,7 @@ async def get_favorite_list(
 @favorite.callback_query(FavoriteAddCBD.filter(F.action == FavoriteAction.list))
 @favorite.callback_query(FavoriteAddCBD.filter(F.action == FavoriteAction.detail))
 async def add_favorite(
-        callback: t.CallbackQuery, callback_data: FavoriteAddCBD
+    callback: t.CallbackQuery, callback_data: FavoriteAddCBD
 ) -> None:
     """
 
@@ -67,19 +70,21 @@ async def add_favorite(
     :return:
     """
     try:
-        manager = FavoriteAddManager(callback_data, callback.from_user.id)
-        await manager.add_to_favorites()
-        added_item = await manager.get_item()
-        await callback.answer(
-            text="{0:.100}\n\n✅⭐️\tдобавлено в избранное".format(
-                added_item.get("title")
-            ),
-            show_alert=True,
-        )
-        await callback.message.edit_media(
-            media=await manager.message(),
-            reply_markup=await manager.keyboard(),
-        )
+        chat_id = callback.message.chat.id
+        async with ChatActionSender.upload_photo(bot=bot, chat_id=chat_id, interval=1.0):
+            manager = FavoriteAddManager(callback_data, callback.from_user.id)
+            await manager.add_to_favorites()
+            added_item = await manager.get_item()
+            await callback.answer(
+                text="{0:.100}\n\n✅⭐️\tдобавлено в избранное".format(
+                    added_item.get("title")
+                ),
+                show_alert=True,
+            )
+            await callback.message.edit_media(
+                media=await manager.message(),
+                reply_markup=await manager.keyboard(),
+            )
 
     except (IntegrityError, exceptions.FreeAPIExceededError) as error:
         # todo add logger and record `error`
@@ -90,7 +95,7 @@ async def add_favorite(
 
 @favorite.callback_query(FavoriteDeleteCBD.filter(F.action == FavoriteAction.delete))
 async def delete_favorite(
-        callback: t.CallbackQuery, callback_data: FavoriteDeleteCBD
+    callback: t.CallbackQuery, callback_data: FavoriteDeleteCBD
 ) -> None:
     """
 

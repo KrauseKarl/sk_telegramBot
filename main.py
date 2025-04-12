@@ -1,23 +1,23 @@
 import asyncio
 import sys
 
-from aiogram import Bot, Dispatcher, enums, types as t
-from aiogram.client.default import DefaultBotProperties
+from aiogram import Dispatcher, types as t
 
 from src.api_telegram import commands, crud, routers as r
-from src.core import conf, config
+from src.core import config
+from src.core.bot import bot
 from src.database import db, exceptions
 from src.logger import logger as log
 
 
 async def main():
-    bot = Bot(
-        token=conf.bot_token.get_secret_value(),
-        default=DefaultBotProperties(
-            parse_mode=enums.ParseMode.HTML,
-            show_caption_above_media=False
-        )
-    )
+    # bot = Bot(
+    #     token=conf.bot_token.get_secret_value(),
+    #     default=DefaultBotProperties(
+    #         parse_mode=enums.ParseMode.HTML,
+    #         show_caption_above_media=False
+    #     )
+    # )
     dp = Dispatcher()
     dp.include_routers(
         r.monitor,
@@ -56,4 +56,9 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         log.error_log.info("❌ BOT STOP")
 
-    # print_tree(r'C:\Users\Kucheriavenko Dmitri\github\telegramBot\src')
+    # print_tree()
+    # mypy src/
+    # flake8 --max-line-length 88 src/
+    # isort --line-length 88 --profile black src/
+    # black   --line-length 88 src/
+

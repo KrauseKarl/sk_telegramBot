@@ -1,7 +1,7 @@
 from typing import Optional
 
 from src.api_telegram import DetailCBD, Navigation
-from src.api_telegram.keyboard.paginators import PaginationBtn
+from src.api_telegram.keyboard.paginators.base import PaginationBtn
 
 
 class ImagePaginationBtn(PaginationBtn):
@@ -13,16 +13,16 @@ class ImagePaginationBtn(PaginationBtn):
         self.api_page = api_page
         self.len = paginator_len
 
-    def next_btn(self, num, sub_page=None, *args, **kwargs):
+    def next_btn(self, sub_page=None, *args, **kwargs):
         return self.btn_data(
             "next",
-            self._btn(num, self.navigate.next, sub_page, *args, **kwargs),
+            self._btn(1, self.navigate.next, sub_page, *args, **kwargs),
         )
 
-    def prev_btn(self, num, sub_page=None, *args, **kwargs):
+    def prev_btn(self, sub_page=None, *args, **kwargs):
         return self.btn_data(
             "prev",
-            self._btn(num, self.navigate.prev, sub_page, *args, **kwargs),
+            self._btn(-1, self.navigate.prev, sub_page, *args, **kwargs),
         )
 
     def _btn(
@@ -47,7 +47,7 @@ class ImagePaginationBtn(PaginationBtn):
             sub_page=sub_page,
         ).pack()
 
-    def _detail(self, page: int, action: str):
+    def _detail(self, page: int, action: str) -> str:
         return DetailCBD(
             action=action,
             item_id=str(self.item_id),
@@ -71,25 +71,36 @@ class ImagePaginationBtn(PaginationBtn):
         *args,
         **kwargs,
     ):
-        if navigate == Navigation.first:
-            self.add_button(
-                self.pg(page).next_btn(1, self.increase(sub_page), *args, **kwargs)
-            )
-        elif navigate == Navigation.next:
-            self.add_button(
-                self.pg(page).prev_btn(-1, self.decrease(sub_page), *args, **kwargs)
-            )
-            if sub_page < len_data:
+        if sub_page is not None:
+            if navigate == Navigation.first:
                 self.add_button(
-                    self.pg(page).next_btn(1, self.increase(sub_page), *args, **kwargs)
+                    self.pg(page).next_btn(
+                        sub_page=self.increase(sub_page), *args, **kwargs
+                    )
                 )
-        elif navigate == Navigation.prev:
-            if sub_page > 1:
+            elif navigate == Navigation.next:
                 self.add_button(
-                    self.pg(page).prev_btn(-1, self.decrease(sub_page), *args, **kwargs)
+                    self.pg(page).prev_btn(
+                        sub_page=self.decrease(sub_page), *args, **kwargs
+                    )
                 )
-            self.add_button(
-                self.pg(page).next_btn(1, self.increase(sub_page), *args, **kwargs)
-            )
-        self.add_markup(2 if len(self.get_kb()) == 2 else 1)
+                if sub_page < len_data:
+                    self.add_button(
+                        self.pg(page).next_btn(
+                            sub_page=self.increase(sub_page), *args, **kwargs
+                        )
+                    )
+            elif navigate == Navigation.prev:
+                if sub_page > 1:
+                    self.add_button(
+                        self.pg(page).prev_btn(
+                            sub_page=self.decrease(sub_page), *args, **kwargs
+                        )
+                    )
+                self.add_button(
+                    self.pg(page).next_btn(
+                        sub_page=self.increase(sub_page), *args, **kwargs
+                    )
+                )
+            self.add_markup(2 if len(self.get_kb()) == 2 else 1)
         return self

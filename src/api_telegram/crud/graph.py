@@ -1,10 +1,12 @@
 import locale
 import os.path
+from typing import Union, Any
 
 from aiogram import types as t
 from matplotlib import pyplot as plt
 
 from src.api_telegram import BasePaginationBtn, MonitorAction, MonitorCBD
+from src.core import config
 from src.database import ItemSearch, orm
 
 
@@ -28,7 +30,7 @@ class GraphManager:
         self.kb_factory = BasePaginationBtn
         self.call_data = MonitorCBD
 
-    async def _get_item_search(self) -> ItemSearch:
+    async def _get_item_search(self) -> Union[Any, ItemSearch]:
         """Получает поисковый запрос по ID."""
         if self.item_search is None:
             self.item_search = await orm.monitoring.get_item_by_id(self.item_id)
@@ -92,7 +94,7 @@ class GraphManager:
         if self.item_search is None:
             self.item_search = self._get_item_search()
         file = "graph_{0}.png".format(self.item_search.product_id)
-        return os.path.join("static", "graph", file)
+        return os.path.join(config.GRAPH_PATH, file)
 
     def _create_graph(self):
         """Создает график и сохраняет его в файл."""

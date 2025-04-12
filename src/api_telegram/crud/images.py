@@ -90,7 +90,10 @@ class ImageManager:
         return "{0} из {1}".format(self.sub_page, self.len)
 
     async def get_media(self) -> InputMediaPhoto:
-        """Возвращает медиа (фото с подписью) для текущего элемента избранных товаров."""
+        """
+        Возвращает медиа (фото с подписью)
+        для текущего элемента избранных товаров.
+        """
         if self.photo is None:
             if await self._get_len() > 0:
                 try:

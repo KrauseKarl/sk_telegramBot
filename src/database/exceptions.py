@@ -1,4 +1,4 @@
-from aiogram.exceptions import AiogramError, TelegramBadRequest
+from aiogram.exceptions import AiogramError
 from httpx import HTTPError
 from peewee import IntegrityError
 
@@ -7,7 +7,7 @@ class PeeweeError(IntegrityError):
     pass
 
 
-class TelegramAPIError(TelegramBadRequest, AiogramError):
+class TelegramAPIError(AiogramError):
     pass
 
 
@@ -16,4 +16,5 @@ class FreeAPIExceededError(HTTPError):
 
 
 class CustomError(TelegramAPIError, PeeweeError):
-    pass
+    def __init__(self, message: str) -> None:
+        self.message = message

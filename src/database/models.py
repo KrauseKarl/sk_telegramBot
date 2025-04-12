@@ -1,9 +1,11 @@
+import datetime
+
 import peewee
 import peewee_async
 from peewee import Model
 from playhouse.migrate import PostgresqlMigrator
 
-from src.core.config import *
+from src.core.config import conf
 
 db = peewee_async.PooledPostgresqlDatabase(
     database=conf.database,

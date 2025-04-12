@@ -1,4 +1,6 @@
-from aiogram import types
+from typing import Dict, Union
+
+from aiogram import types as t
 from aiogram.utils import keyboard
 
 from src.core import config
@@ -29,7 +31,7 @@ class KeyBoardBuilder:
         self.keys = KeyFactory(config.KEYS).to_dict()
         self.factory = KeyFactory(config.KEYS)
 
-    def builder(self, data: list, size: tuple) -> types.InlineKeyboardMarkup:
+    def builder(self, data: list, size: tuple) -> t.InlineKeyboardMarkup:
         """
 
         :param data:
@@ -39,13 +41,17 @@ class KeyBoardBuilder:
         for data in data:
             for text, data in data.items():
                 if isinstance(data, tuple):
-                    button = types.InlineKeyboardButton(text=text, url=data[1])
+                    button = t.InlineKeyboardButton(text=text, url=data[1])
                 else:
-                    button = types.InlineKeyboardButton(text=text, callback_data=data)
+                    button = t.InlineKeyboardButton(text=text, callback_data=data)
                 self.kb.add(button)
         return self.kb.adjust(*size).as_markup()
 
-    def builder_url(self, data: list, size: tuple) -> types.InlineKeyboardMarkup:
+    def builder_url(
+            self,
+            data: list,
+            size: tuple
+    ) -> Union[t.InlineKeyboardMarkup, t.ReplyKeyboardMarkup]:
         """
 
         :param data:
@@ -54,13 +60,13 @@ class KeyBoardBuilder:
         """
         for data in data:
             for text, callback in data.items():
-                button = types.InlineKeyboardButton(text=text, url=callback)
+                button = t.InlineKeyboardButton(text=text, url=callback)
                 self.kb.add(button)
         return self.kb.adjust(*size).as_markup()
 
     def builder_id(
         self, prefix: str, uid: str, text: str, size: tuple
-    ) -> types.InlineKeyboardMarkup:
+    ) -> t.InlineKeyboardMarkup:
         """
 
         :param prefix:
@@ -70,7 +76,7 @@ class KeyBoardBuilder:
         :return:
         """
         callback = "{0}_{1}".format(prefix, uid)
-        button = types.InlineKeyboardButton(text=text, callback_data=callback)
+        button = t.InlineKeyboardButton(text=text, callback_data=callback)
         self.kb.add(button)
         return self.kb.adjust(*size).as_markup()
 
@@ -117,16 +123,16 @@ class KeyBoardFactory(KeyBoardBuilder):
         self.markup.insert(0, obj)
         return self
 
-    def create_kb(self):
+    def create_kb(self) -> t.InlineKeyboardMarkup:
         return self.builder(self.get_kb(), self.get_markup())
 
 
 class BasePaginationBtn(KeyBoardFactory):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-    def btn_text(self, name):
+    def btn_text(self, name:str) -> Dict[str, str]:
         return self.factory.create_btn_text(name)
 
-    def btn_data(self, name, data):
+    def btn_data(self, name: str, data: str) -> Dict[str, t.InlineKeyboardButton]:
         return self.factory.create_btn_callback_data(name, data)

@@ -2,7 +2,6 @@ from pydantic import BaseModel
 
 
 class HistoryModel(BaseModel):
-
     user: int
     product_id: str
     title: str
@@ -14,13 +13,13 @@ class HistoryModel(BaseModel):
 
 
 class FavoriteModel(BaseModel):
-    title: str = None
-    price: float = None
-    reviews: int = None
-    stars: float = None
-    url: str = None
-    image: str = None
-    user: int = None
+    title: str | None = None
+    price: float | None = None
+    reviews: int | None = None
+    stars: float | None = None
+    url: str | None = None
+    image: str | None = None
+    user: int | None = None
 
 
 class CacheDataModel(BaseModel):

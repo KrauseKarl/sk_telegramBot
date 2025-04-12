@@ -47,7 +47,7 @@ class ItemManager:
         if self.paginator_params is None:
             self.paginator_params = await self.get_paginate_params()
         key = self.paginator_params.get("key")
-        api_page = self.paginator_params.get("api_page")
+        api_page = self.paginator_params.get("api_page", 1)
         page = self.paginator_params.get("page")
         item_id = self.paginator_params.get("item").get("itemId")
         len_data = self.paginator_params.get("total_pages")
@@ -73,13 +73,12 @@ class ItemManager:
             kb.add_button(kb.favorite(page)).update_markup(4)
         return kb.create_kb()
 
-    async def _generate_key(self, api_page):
-        # print('generate_key ⚠️ api_page = ', self.callback_data.api_page, '|', api_page)
+    async def _generate_key(self, api_page)-> str:
         return await cache_key.CacheKeyManager.generate_key(
             key=self.callback_data.key, api_page=api_page, extra=self.extra
         )
 
-    async def items_array(self):
+    async def items_array(self)-> Optional[list]:
         """ """
         if self.params is None:
             self.params = await self.get_params_from_state()

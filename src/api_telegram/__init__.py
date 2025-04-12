@@ -1,20 +1,20 @@
-from .callback_data.base import Navigation
-from .callback_data.cache_key import CacheKey, CacheKeyExtended, CacheKeyReview
-from .callback_data.favorite import (
+from src.api_telegram.callback_data.base import Navigation
+from src.api_telegram.callback_data.cache_key import CacheKey, CacheKeyExtended, CacheKeyReview
+from src.api_telegram.callback_data.favorite import (
     FavoriteAction,
     FavoriteAddCBD,
     FavoriteAddDetailCBD,
     FavoriteCBD,
     FavoriteDeleteCBD,
 )
-from .callback_data.history import HistoryAction, HistoryCBD
-from .callback_data.image import ImageCBD, ImagePageCBD, ImagesAction
-from .callback_data.item import DetailAction, DetailCBD, ItemCBD
-from .callback_data.monitor import JobCBD, MonitorAction, MonitorCBD
-from .callback_data.review import ReviewAction, ReviewCBD, ReviewPageCBD
-from .keyboard.builders import kbm
-from .keyboard.factories import BasePaginationBtn
-from .keyboard.paginators import (
+from src.api_telegram.callback_data.history import HistoryAction, HistoryCBD
+from src.api_telegram.callback_data.image import ImageCBD, ImagePageCBD, ImagesAction
+from src.api_telegram.callback_data.item import DetailAction, DetailCBD, ItemCBD
+from src.api_telegram.callback_data.monitor import JobCBD, MonitorAction, MonitorCBD
+from src.api_telegram.callback_data.review import ReviewAction, ReviewCBD, ReviewPageCBD
+from src.api_telegram.keyboard.builders import kbm
+from src.api_telegram.keyboard.factories import BasePaginationBtn
+from src.api_telegram.keyboard.paginators import (
     FavoritePaginationBtn,
     HistoryPaginationBtn,
     ImagePaginationBtn,
@@ -23,7 +23,3 @@ from .keyboard.paginators import (
     PaginationBtn,
     ReviewPaginationBtn,
 )
-
-# from .keyboard.factories import KeyBoardFactory
-# from .keyboard.factories import KeyFactory
-# from .keyboard.factories import KeyBoardBuilder

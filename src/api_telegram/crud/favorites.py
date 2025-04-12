@@ -7,7 +7,16 @@ from pydantic import ValidationError
 from src.api_aliexpress import deserializers as srz
 from src.api_aliexpress import request
 from src.api_redis.handlers import RedisHandler
-from src.api_telegram import *
+from src.api_telegram import (
+    CacheKey,
+    DetailAction,
+    FavoriteAction,
+    FavoriteCBD,
+    FavoriteDeleteCBD,
+    FavoritePaginationBtn,
+    ItemPaginationBtn,
+    kbm,
+)
 from src.api_telegram.crud.items import get_web_link
 from src.core import config
 from src.database import History, Paginator, models, orm
@@ -61,7 +70,10 @@ class FavoriteListManager:
         )
 
     async def get_media(self) -> t.InputMediaPhoto:
-        """Возвращает медиа (фото с подписью) для текущего элемента избранных товаров."""
+        """
+        Возвращает медиа (фото с подписью)
+        для текущего элемента избранных товаров.
+        """
         if self.photo is None:
             if await self._get_len() > 0:
                 try:
@@ -225,7 +237,7 @@ class FavoriteDeleteManager:
             self.array = await orm.favorite.get_list(self.user_id)
         return self.array
 
-    async def delete_from_favorites(self):
+    async def delete_from_favorites(self) -> None:
         await orm.favorite.delete(self.item_id)
 
     async def _get_len(self) -> int:
@@ -254,7 +266,10 @@ class FavoriteDeleteManager:
         )
 
     async def get_media(self) -> t.InputMediaPhoto:
-        """Возвращает медиа (фото с подписью) для текущего элемента избранных товаров."""
+        """
+        Возвращает медиа (фото с подписью)
+        для текущего элемента избранных товаров.
+        """
         # if self.photo is None:
         if await self._get_len() > 0:
             try:

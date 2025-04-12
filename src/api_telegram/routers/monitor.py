@@ -1,6 +1,8 @@
-from aiogram import F, filters, Router, types as t
+from aiogram import F, Router, filters
+from aiogram import types as t
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
+from aiogram.utils.chat_action import ChatActionSender
 
 from src.api_telegram import (
     BasePaginationBtn,
@@ -12,7 +14,8 @@ from src.api_telegram import (
     crud,
 )
 from src.api_telegram.statments import TargetFSM
-from src.database import orm, exceptions
+from src.core.bot import bot
+from src.database import exceptions, orm
 from src.logger import logger as log
 from src.utils import media, target_price_validator
 
@@ -24,7 +27,7 @@ monitor = Router()
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.list))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.back))
 async def get_monitoring_list(
-    callback: t.CallbackQuery, callback_data: MonitorCBD = None
+        callback: t.CallbackQuery, callback_data: MonitorCBD = None
 ):
     """
 
@@ -73,7 +76,7 @@ async def add_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD):
         manager = crud.MonitorAddManager(callback_data, callback.from_user.id)
         await manager.start_monitoring_item()
         await callback.answer(
-            text=f"✅ Товар добавлен в список мониторинга цен.",
+            text="✅ Товар добавлен в список мониторинга цен.",
             show_alert=True,
         )
     except exceptions.CustomError as error:
@@ -85,7 +88,7 @@ async def add_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD):
 
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.target))
 async def add_target(
-    callback: t.CallbackQuery, callback_data: MonitorCBD, state: FSMContext
+        callback: t.CallbackQuery, callback_data: MonitorCBD, state: FSMContext
 ):
     """
 
@@ -204,10 +207,12 @@ async def send_chart_image(callback: t.CallbackQuery, callback_data: MonitorCBD)
     :return:
     """
     try:
-        graph_manager = crud.GraphManager(callback_data, callback.from_user.id)
-        photo = await graph_manager.get_media()
-        keyboard = await graph_manager.get_keyboard()
-        await callback.message.edit_media(media=photo, reply_markup=keyboard)
+        chat_id = callback.message.chat.id
+        async with ChatActionSender.upload_photo(bot=bot, chat_id=chat_id, interval=1.0):
+            graph_manager = crud.GraphManager(callback_data, callback.from_user.id)
+            photo = await graph_manager.get_media()
+            keyboard = await graph_manager.get_keyboard()
+            await callback.message.edit_media(media=photo, reply_markup=keyboard)
 
     except (ValueError, exceptions.CustomError) as error:
         log.error_log.error(str(error))

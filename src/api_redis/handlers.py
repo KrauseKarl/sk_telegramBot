@@ -66,10 +66,12 @@ class RedisHandler:
             await self.connect()
         keys = await self.client.keys()
         if keys:
-            log.info_log.info("REDIS keys count = {0} {1}".format(
+            log.info_log.info(
+                "REDIS keys count = {0} {1}".format(
                     len(keys),
                     "\n".join([f"REDIS 🔑 {k}" for k in sorted(keys)]),
-                ))
+                )
+            )
         return keys
 
     async def get_from_cache(self, cache_key: str):

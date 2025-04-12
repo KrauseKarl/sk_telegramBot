@@ -63,12 +63,11 @@ class ReviewManager:
             review_list = await self.redis_handler.get_data(current_cache_key)
             if review_list is None:
                 review_list = await self._request_data()
-            if review_list is not None:
-                await self.redis_handler.set_data(
-                    key=current_cache_key,
-                    value=review_list
-                )
-                self.array = review_list
+                if review_list is not None:
+                    await self.redis_handler.set_data(
+                        key=current_cache_key, value=review_list
+                    )
+            self.array = review_list
         return self.array
 
     async def _get_len(self) -> int:
@@ -92,7 +91,10 @@ class ReviewManager:
         )
 
     async def get_media(self) -> t.InputMediaPhoto:
-        """Возвращает медиа (фото с подписью) для текущего элемента избранных товаров."""
+        """
+        Возвращает медиа (фото с подписью)
+        для текущего элемента избранных товаров.
+        """
         if self.photo is None:
             if await self._get_len() > 0:
                 try:
@@ -100,8 +102,7 @@ class ReviewManager:
                     images = current_item.get("review").get("reviewImages", None)
                     img = ":".join(["https", images[0]])
                     self.photo = t.InputMediaPhoto(
-                        media=img,
-                        caption=await self.get_msg()
+                        media=img, caption=await self.get_msg()
                     )
                 except (ValidationError, TypeError, KeyError):
                     self.photo = await media.get_input_media_hero_image(

@@ -22,8 +22,8 @@ class ItemPaginationBtn(factories.BasePaginationBtn):
         self,
         key: str,
         api_page: int,
-        item_id: str = None,
-        paginator_len: str | int = None,
+        item_id: Optional[str] = None,
+        paginator_len: Optional[int] = None,
     ):
         super().__init__()
         self.key = key
@@ -83,7 +83,7 @@ class ItemPaginationBtn(factories.BasePaginationBtn):
             page=page,
         ).pack()
 
-    def _comment(self, page: str | int):
+    def _comment(self, page: int):
         return ReviewCBD(
             action=ReviewAction.first,
             item_id=str(self.item_id),
@@ -111,19 +111,19 @@ class ItemPaginationBtn(factories.BasePaginationBtn):
             sub_page=1,
         ).pack()
 
-    def comment(self, page: str | int):
+    def comment(self, page: int):
         cache_key.counter_key("review", self._comment(page))
         return self.btn_data("review", self._comment(page))
 
-    def detail(self, name, page: str | int, action):
+    def detail(self, name, page: int, action):
         cache_key.counter_key("detail", self._detail(page, action))
         return self.btn_data(name, self._detail(page, action))
 
-    def favorite(self, page: str | int):
+    def favorite(self, page: int):
         cache_key.counter_key("favorite", self._favorite(page))
         return self.btn_data("favorite", self._favorite(page))
 
-    def images(self, page: str | int):
+    def images(self, page: int):
         cache_key.counter_key("images", self._images(page))
         return self.btn_data("images", self._images(page))
 

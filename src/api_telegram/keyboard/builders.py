@@ -1,21 +1,24 @@
-from aiogram import types
+from typing import Optional
+
+from aiogram import types as t
 from aiogram.utils import keyboard
 
-from src.api_telegram import callback_data as cbd, keyboard
+from src.api_telegram import callback_data as cbd
+from src.api_telegram.keyboard import factories
 
 
 class KeyboardManager:
     def __init__(self):
-        self.kb = None
+        self.kb: Optional[t.InlineKeyboardMarkup] = None
 
-    async def back(self):
-        self.kb = keyboard.factories.BasePaginationBtn()
+    async def back(self) -> t.InlineKeyboardMarkup:
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_button(self.kb.btn_text("menu")).add_markups([1])
 
         return self.kb.create_kb()
 
     async def menu(self):
-        self.kb = keyboard.factories.BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons(
             [
                 self.kb.btn_data(
@@ -48,7 +51,7 @@ class KeyboardManager:
         return self.kb.create_kb()
 
     async def quantity(self):
-        self.kb = keyboard.factories.BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons(
             [
                 self.kb.btn_text("2"),
@@ -64,7 +67,7 @@ class KeyboardManager:
         return self.kb.create_kb()
 
     async def sort(self):
-        self.kb = keyboard.factories.BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons(
             [
                 self.kb.btn_text("default"),
@@ -83,7 +86,7 @@ class KeyboardManager:
     #     return KeyBoardBuilder().builder_id(prefix, item_id, text, (1,))
 
     async def price_range(self):
-        self.kb = keyboard.factories.BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons(
             [self.kb.btn_text("price_min"), self.kb.btn_text("price_skip")]
         ).add_markups(
@@ -94,7 +97,7 @@ class KeyboardManager:
         return self.kb.create_kb()
 
     async def error(self):
-        self.kb = keyboard.factories.BasePaginationBtn()
+        self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons(
             [
                 self.kb.btn_text("menu"),
@@ -125,12 +128,12 @@ async def builder_kb(data: list, size: tuple):
     :param size:
     :return:
     """
-    return keyboard.factories.KeyBoardBuilder().builder(data, size)
+    return factories.KeyBoardBuilder().builder(data, size)
 
 
 async def kb_builder(
-    size: tuple = None, data_list: list = None
-) -> types.InlineKeyboardMarkup:
+    size: Optional[tuple] = None, data_list: Optional[list] = None
+) -> t.InlineKeyboardMarkup:
     """
 
     :param size:
@@ -140,6 +143,6 @@ async def kb_builder(
     kb = keyboard.InlineKeyboardBuilder()
     for data in data_list:
         for text, callback in data.items():
-            button = types.InlineKeyboardButton(text=text, callback_data=callback)
+            button = t.InlineKeyboardButton(text=text, callback_data=callback)
             kb.add(button)
     return kb.adjust(*size).as_markup()

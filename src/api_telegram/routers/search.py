@@ -1,10 +1,13 @@
-from aiogram import F, filters, Router, types as t
+from aiogram import F, Router, filters
+from aiogram import types as t
 from aiogram.fsm.context import FSMContext
+from aiogram.utils.chat_action import ChatActionSender
 
 from src.api_redis import RedisHandler
-from src.api_telegram import DetailAction, DetailCBD, ItemCBD, kbm, crud, statments
+from src.api_telegram import DetailAction, DetailCBD, ItemCBD, crud, kbm, statments
+from src.core.bot import bot
 from src.database import exceptions
-from src.utils import validators, media
+from src.utils import media, validators
 
 search = Router()
 
@@ -16,7 +19,7 @@ async def delete_prev_message(message: t.Message):
     return int(message.message_id) - 1
 
 
-# ITEM LIST ############################################################################################################
+# ITEM LIST ###################################################################
 @search.message(filters.Command("search"))
 async def search_name_message(message: t.Message, state: FSMContext) -> None:
     """
@@ -89,7 +92,9 @@ async def search_price_range(message: t.Message, state: FSMContext) -> None:
         await message.bot.edit_message_media(
             chat_id=message.chat.id,
             message_id=int(message.message_id) - 1,
-            media=await media.get_input_media_hero_image("range", "Задать ценовой диапазон?"),
+            media=await media.get_input_media_hero_image(
+                "range", "Задать ценовой диапазон?"
+            ),
             reply_markup=await kbm.price_range(),
         )
         await message.bot.delete_message(
@@ -353,14 +358,16 @@ async def search_result(
     :return:
     """
     try:
-        await callback.answer()
-        manager = crud.ItemManager(
-            state=state, callback=callback, callback_data=callback_data
-        )
-        await callback.message.edit_media(
-            media=await manager.message(),
-            reply_markup=await manager.keyboard(),
-        )
+        chat_id = callback.message.chat.id
+        async with ChatActionSender.upload_photo(bot=bot, chat_id=chat_id, interval=1.0):
+            await callback.answer()
+            manager = crud.ItemManager(
+                state=state, callback=callback, callback_data=callback_data
+            )
+            await callback.message.edit_media(
+                media=await manager.message(),
+                reply_markup=await manager.keyboard(),
+            )
     except exceptions.CustomError as error:
         await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
 

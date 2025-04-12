@@ -1,16 +1,18 @@
-from aiogram import F, Router, exceptions, filters, types as t
+from aiogram import F, Router, exceptions, filters
+from aiogram import types as t
 from aiogram.fsm.context import FSMContext
 
 from src.api_redis import RedisHandler
 from src.api_telegram import kbm
 from src.core import config
-from src.database import exceptions as exp, orm
+from src.database import exceptions as exp
+from src.database import orm
 from src.utils import media
 
 base = Router()
 
 
-# START ################################################################################################################
+# START #######################################################################
 @base.message(filters.CommandStart())
 async def start_command(message: t.Message) -> None:
     """
@@ -32,7 +34,7 @@ async def start_command(message: t.Message) -> None:
         )
 
 
-# HELP #################################################################################################################
+# HELP ########################################################################
 @base.message(filters.Command("help"))
 @base.callback_query(F.data.startswith("help"))
 async def help_info(callback: t.Message | t.CallbackQuery) -> None:
@@ -57,7 +59,7 @@ async def help_info(callback: t.Message | t.CallbackQuery) -> None:
         await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
 
 
-# MENU #################################################################################################################
+# MENU ########################################################################
 @base.message(filters.Command("menu"))
 @base.callback_query(F.data.startswith("menu"))
 async def main_menu(callback: t.Message | t.CallbackQuery, state: FSMContext) -> None:
@@ -88,7 +90,7 @@ async def main_menu(callback: t.Message | t.CallbackQuery, state: FSMContext) ->
         await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
 
 
-# ONLY FOR DEVELOP #####################################################################################################
+# ONLY FOR DEVELOP ############################################################
 # TODO delete this routes on production
 @base.message(filters.Command("redis"))
 async def get_key_cache(message):
@@ -107,9 +109,7 @@ async def del_key_cache(message):
     print("redis delete all keys")
 
 
-########################################################################################################################
-
-
+###############################################################################
 @base.message()
 async def unidentified_massage(message: t.Message):
     msg = (

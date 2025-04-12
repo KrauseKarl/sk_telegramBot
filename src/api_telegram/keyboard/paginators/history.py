@@ -1,4 +1,4 @@
-from src.api_telegram.keyboard.paginators import PaginationBtn
+from src.api_telegram.keyboard.paginators.base import PaginationBtn
 
 
 class HistoryPaginationBtn(PaginationBtn):

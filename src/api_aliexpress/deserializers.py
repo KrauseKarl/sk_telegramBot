@@ -1,6 +1,6 @@
 import emoji
 
-from src.api_redis.handlers import *
+from src.api_redis.handlers import RedisHandler
 from src.core.config import FLAGS, MESSAGE_LIMIT
 
 redis_handler = RedisHandler()
