@@ -10,3 +10,4 @@
 /src/static/graph/graph_*.png
 
 *.log
+/_utils.py

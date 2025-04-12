@@ -1,11 +1,13 @@
-from pathlib import Path
+import asyncio
+import sys
 
 from aiogram import Bot, Dispatcher, enums, types as t
 from aiogram.client.default import DefaultBotProperties
 
 from src.api_telegram import commands, crud, routers as r
-from src.core import conf
-from src.database import db
+from src.core import conf, config
+from src.database import db, exceptions
+from src.logger import logger as log
 
 
 async def main():
@@ -43,32 +45,15 @@ async def main():
     db.drop_table()
 
 
-# # todo delete after dev. Make folder-tree
-def print_tree(directory, prefix=''):
-    paths = sorted(Path(directory).iterdir())
-    for i, path in enumerate(paths):
-        if path.name not in ['__pycache__', '__init__.py']:
-            if i == len(paths) - 1:
-                new_prefix = prefix + '    '
-                print(prefix + '└── ' + path.name)
-            else:
-                new_prefix = prefix + '│   '
-                print(prefix + '├── ' + path.name)
-            if path.is_dir():
-                print_tree(path, new_prefix)
-#
-# # todo delete after dev. Make folder-tree
-
-
 if __name__ == "__main__":
-    # try:
-    #     log.set_logger_files()
-    #     log.info_log.info(sys.platform)
-    #     log.info_log.info(config.MODE_MASSAGE)
-    #     asyncio.run(main())
-    # except exceptions.TelegramBadRequest as error:
-    #     log.error_log.error(str(error))
-    # except KeyboardInterrupt:
-    #     log.error_log.info("❌ BOT STOP")
+    try:
+        log.set_logger_files()
+        log.info_log.info(sys.platform)
+        log.info_log.info(config.MODE_MASSAGE)
+        asyncio.run(main())
+    except exceptions.TelegramBadRequest as error:
+        log.error_log.error(str(error))
+    except KeyboardInterrupt:
+        log.error_log.info("❌ BOT STOP")
 
-    print_tree(r'C:\Users\Kucheriavenko Dmitri\github\telegramBot\src')
+    # print_tree(r'C:\Users\Kucheriavenko Dmitri\github\telegramBot\src')
