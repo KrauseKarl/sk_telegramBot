@@ -21,29 +21,67 @@
 
 ## 3. Структура проекта
 
-Основные файлы проекта:
-- logger
-- linters
-- schema for teacher with levels, callbacks & structure of app
+Структура проекта:
 
-- `bot.py` - основной файл бота
-- `config.py` - файл конфигурации
-- `handlers/` - папка с обработчиками команд
-- `utils/` - вспомогательные утилиты
+```
+src
+│
+├── api_aliexpress      # файлы для работы с запромами на стороний API  
+│   ├── ...
+├── api_redis           # файлы для работы с Redis
+│   ├── ...
+├── api_telegram
+│   ├── callback_data   # коллбэк-дата классы
+│   │   ├── ...
+│   ├── commands.py     # комманды бота
+│   ├── crud            # файлы с классами для CRUD операций
+│   │   ├── ...
+│   ├── keyboard        
+│   │   ├── ...
+│   │   └── paginators  # файлы с для создания клавиатуры с пагинацией
+│   ├── routers         # файлы с endpoints
+│   │   ├── ...
+│   └── statments.py    # файл с конечными автоматами бота (FSM)
+├── core
+│   └── config.py       #  конфигурационный файл с основными настроками и переменными 
+├── database
+│   ├── ...            
+│   ├── exceptions.py   # астомные исключения
+│   ├── models.py       # модели БД
+│   ├── orm.py          # файлы с классы для работы с БД
+│   └──paginator.py     # класс для создания пагинации
+│   
+├── logger              # функции для логирования и лог-файлы    
+├── static              # статитически файлы (изображения и файлы-json)
+└── utils
+   ├── cache_key.py     # функции для работы c кэш-ключами
+   ├── media.py         # функции для работы с медиа файлами
+   └── validators.py    # валидаторы данных
+```
+
+Прочие файлы проекта:
+- `main.py` - основной файл бота
+- `Dockerfile` - файл Docker
 - `docker-compose.yml` - конфигурация Docker
+- `.env.example` - приме файла с переменными окружения
+
 
 ## 4. Пример интерфейса приложения
 
 ### Поиск товара
-<img src="./static/app_img/menu.jpg" alt="screen manu" width="180"/><img src="./static/app_img/search.jpg" alt="drawing" width="180"/><img src="./static/app_img/price.jpg" alt="drawing" width="180"/><img src="./static/app_img/sort.jpg" alt="drawing" width="180"/>
+<img src="src/static/app_img/menu.jpg" alt="screen manu" width="180"/> <img src="src/static/app_img/price.jpg" alt="drawing" width="180"/> <img src="src/static/app_img/sort.jpg" alt="drawing" width="180"/> <img src="src/static/app_img/search.jpg" alt="drawing" width="180"/>
+
 ### История просмотров, график цены, справка
-<img src="./static/app_img/history.jpg" alt="drawing" width="180"/><img src="./static/app_img/graph.jpg" alt="drawing" width="180"/><img src="./static/app_img/help.jpg" alt="drawing" width="180"/>
+
+<img src="src/static/app_img/history.jpg" alt="drawing" width="180"/> <img src="src/static/app_img/graph.jpg" alt="drawing" width="180"/> <img src="src/static/app_img/help.jpg" alt="drawing" width="180"/>
+
 ### Пример графика цены отслеживаемого товара
-<img src="./static/app_img/chat.jpg" alt="drawing" width="640"/>
+
+<img src="src/static/app_img/chat.jpg" alt="drawing" width="640"/>
 
 ## 5. Зависимости
 
-Чтобы установить зависимости виртуального окружения (*production*) используйте:
+Чтобы установить зависимости виртуального окружения, используйте:
 
 ```
 pip install -r requirements.txt
@@ -52,20 +90,21 @@ pip install -r requirements.txt
 ## 6. Конфигурация
 
 Перед запуском необходимо настроить:
-1. Создать файл `.env` на основе `.env.example`
-2. Указать ваш TELEGRAM_BOT_TOKEN
-3. Указать ваш RAPID_API_TOKEN
-4. При необходимости настроить другие параметры
+1. Создать 2 файла `.env` и `.env.docker` на основе `.env.example`
+2. Указать переменную окружения `DB_HOST` значение `localhost` для `.env` и `postgres` для `.env.docker`.
+3. Указать ваш `TELEGRAM_BOT_TOKEN`
+4. Указать ваш `RAPID_API_TOKEN`
+5. При необходимости настроить другие параметры
 
 ## 7. Запуск
 
-Для запуска приложения в docker используйте:
+Для запуска приложения в `docker` используйте:
 
 ```
 docker compose  up --build
 ```
 
-Для запуска приложения на локальному хосту используйте:
+Для запуска приложения на `localhost` используйте:
 
 ```
 python main.py
@@ -93,7 +132,7 @@ python main.py
 
 Общая структура таблиц
 
-<img src="./static/schema/schema.db.png" alt="drawing" width="640"/>
+<img src="src/static/schema/schema.db.png" alt="drawing" width="640"/>
 
 ## 10. Endpoints
 
@@ -130,3 +169,8 @@ python main.py
 |                | search_sort          |             | запрос на сортировку поисковой выдачи (с диапазоном цен) |
 |                | search_sort_call     |             | запрос на сортировку поисковой выдачи (без диапазона цен)|
 |                | search_result        |             | возвращает список товаров                                |
+
+## 11. Логирование
+
+- `stdout` записывается в info.log
+- `stderr` записывается в error.log
