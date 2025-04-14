@@ -120,15 +120,18 @@ python main.py
 - `/monitor` - отслеживаемые товары
 - `/history` - история просмотра
 
+### Схема уровней бота
+<img src="src/static/schema/schema.levels.png" alt="drawing" width="640"/>
+
 ## 9. База данных
 
 ### База данных состоит из следующих таблиц: 
-* `users` 
-* `favorites` 
-* `history`
-* `cachedata`
-* `itemsearch`
-* `dataentry`
+* `users` - таблица пользователей
+* `favorites` - таблица избранных товаров
+* `history` - таблица просмотренных товаров
+* `cachedata` - таблица с поисковыми запросами
+* `itemsearch` - таблица с отслеживаемыми товарами
+* `dataentry` - таблица с ценами отслеживаемых товаров
 
 Общая структура таблиц
 
