@@ -48,9 +48,7 @@ class KeyBoardBuilder:
         return self.kb.adjust(*size).as_markup()
 
     def builder_url(
-            self,
-            data: list,
-            size: tuple
+        self, data: list, size: tuple
     ) -> Union[t.InlineKeyboardMarkup, t.ReplyKeyboardMarkup]:
         """
 
@@ -131,7 +129,7 @@ class BasePaginationBtn(KeyBoardFactory):
     def __init__(self) -> None:
         super().__init__()
 
-    def btn_text(self, name:str) -> Dict[str, str]:
+    def btn_text(self, name: str) -> Dict[str, str]:
         return self.factory.create_btn_text(name)
 
     def btn_data(self, name: str, data: str) -> Dict[str, t.InlineKeyboardButton]:

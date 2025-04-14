@@ -1,6 +1,6 @@
 from typing import Optional
 
-from aiogram import F, Router, filters
+from aiogram import F, Router, exceptions, filters
 from aiogram import types as t
 from aiogram.utils.chat_action import ChatActionSender
 from peewee import IntegrityError
@@ -18,7 +18,8 @@ from src.api_telegram.crud import (
     FavoriteListManager,
 )
 from src.core.bot import bot
-from src.database import exceptions
+from src.database import exceptions as expt
+from src.logger import logger as log
 
 favorite = Router()
 
@@ -30,10 +31,11 @@ async def get_favorite_list(
     callback_data: Optional[FavoriteCBD] = None,
 ) -> None:
     """
+    Возвращает список избранных товаров.
 
-    :param callback:
-    :param callback_data:
-    :return:
+    :param callback: CallbackQuery | Message,
+    :param callback_data: FavoriteCBD
+    :return: None
     """
 
     try:
@@ -53,9 +55,10 @@ async def get_favorite_list(
                 media=await manager.get_media(),
                 reply_markup=await manager.get_keyboard(),
             )
-    except (exceptions.TelegramBadRequest, exceptions.CustomError) as error:
-        # todo add logger and record `error`
-        await callback.answer(f"⚠️ Ошибка{str(error)}", show_alert=True)
+    except (exceptions.TelegramBadRequest, expt.CustomError) as error:
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
 @favorite.callback_query(FavoriteAddCBD.filter(F.action == FavoriteAction.list))
@@ -64,33 +67,34 @@ async def add_favorite(
     callback: t.CallbackQuery, callback_data: FavoriteAddCBD
 ) -> None:
     """
+    Добавляет товар в `избранное`.
 
-    :param callback_data:
-    :param callback:
-    :return:
+    :param callback_data: FavoriteAddCBD
+    :param callback: CallbackQuery
+    :return: None
     """
     try:
         chat_id = callback.message.chat.id
-        async with ChatActionSender.upload_photo(bot=bot, chat_id=chat_id, interval=1.0):
+        async with ChatActionSender.upload_photo(
+            bot=bot, chat_id=chat_id, interval=1.0
+        ):
             manager = FavoriteAddManager(callback_data, callback.from_user.id)
             await manager.add_to_favorites()
             added_item = await manager.get_item()
-            await callback.answer(
-                text="{0:.100}\n\n✅⭐️\tдобавлено в избранное".format(
-                    added_item.get("title")
-                ),
-                show_alert=True,
+            msg = "{0:.100}\n\n✅⭐️\tдобавлено в избранное".format(
+                added_item.get("title")
             )
+            log.info_log.info(msg)
+            await callback.answer(text=msg, show_alert=True)
             await callback.message.edit_media(
                 media=await manager.message(),
                 reply_markup=await manager.keyboard(),
             )
 
-    except (IntegrityError, exceptions.FreeAPIExceededError) as error:
-        # todo add logger and record `error`
-        await callback.answer(
-            show_alert=True, text="⚠️ Ошибка!\n\n{0}".format(str(error))
-        )
+    except (IntegrityError, expt.CustomError) as error:
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
 @favorite.callback_query(FavoriteDeleteCBD.filter(F.action == FavoriteAction.delete))
@@ -106,11 +110,14 @@ async def delete_favorite(
     try:
         manager = FavoriteDeleteManager(callback_data, callback.from_user.id)
         await manager.delete_from_favorites()
-        await callback.answer(text="✅️ товар удален из избранного", show_alert=True)
+        msg = "🗑 товар удален из избранного"
+        log.info_log.info(msg)
+        await callback.answer(text=msg, show_alert=True)
         await callback.message.edit_media(
             media=await manager.get_media(),
             reply_markup=await manager.get_keyboard(),
         )
-    except (IntegrityError, exceptions.FreeAPIExceededError) as error:
-        # todo add logger and record `error`
-        await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
+    except (IntegrityError, expt.CustomError) as error:
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)

@@ -7,6 +7,7 @@ from src.api_telegram.crud.details import DetailManager
 from src.api_telegram.crud.images import ImageManager
 from src.core.bot import bot
 from src.database import exceptions
+from src.logger import logger as log
 
 detail = Router()
 
@@ -17,17 +18,18 @@ async def get_item_detail(callback: CallbackQuery, callback_data: DetailCBD) -> 
     try:
         chat_id = callback.message.chat.id
         async with ChatActionSender.upload_photo(
-                bot=bot, chat_id=chat_id, interval=1.0):
+            bot=bot, chat_id=chat_id, interval=1.0
+        ):
             await callback.answer()
             manage = DetailManager(callback_data, callback.from_user.id)
             await callback.message.edit_media(
                 media=await manage.get_media(),
                 reply_markup=await manage.get_keyboard(),
             )
-    except exceptions.FreeAPIExceededError as error:
-        await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
-    except exceptions.CustomError as error:
-        await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
+    except (exceptions.CustomError, exceptions.FreeAPIExceededError) as error:
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
 @detail.callback_query(ImageCBD.filter(F.action == ImagesAction.images))
@@ -35,13 +37,15 @@ async def get_item_detail(callback: CallbackQuery, callback_data: DetailCBD) -> 
 async def get_images(callback: CallbackQuery, callback_data: ImageCBD):
     try:
         chat_id = callback.message.chat.id
-        async with ChatActionSender.upload_photo(bot=bot, chat_id=chat_id, interval=1.0):
+        async with ChatActionSender.upload_photo(
+            bot=bot, chat_id=chat_id, interval=1.0
+        ):
             manager = ImageManager(callback_data, callback.from_user.id)
             await callback.message.edit_media(
                 media=await manager.get_media(),
                 reply_markup=await manager.get_keyboard(),
             )
-    except exceptions.FreeAPIExceededError as error:
-        await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
-    except exceptions.CustomError as error:
-        await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
+    except (exceptions.CustomError, exceptions.FreeAPIExceededError) as error:
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)

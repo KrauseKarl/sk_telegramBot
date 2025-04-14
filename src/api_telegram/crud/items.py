@@ -34,14 +34,26 @@ class ItemManager:
         self.redis_handler = RedisHandler()
         self.deserializer = srz.DeserializedHandler()
 
-    async def message(self):
+    async def _get_media(self):
         if self.paginator_params is None:
             self.paginator_params = await self.get_paginate_params()
         msg, img, item_id = await self.deserializer.item_list(self.paginator_params)
+        return msg, img, item_id
+
+    async def get_media(self):
+        msg, img, item_id = await self._get_media()
         is_favorite = await orm.favorite.get_item(item_id)
         if is_favorite:
             msg += "👍\tв избранном"
         return t.InputMediaPhoto(media=img, caption=msg)
+
+    async def get_photo(self):
+        msg, img, item_id = await self._get_media()
+        return img
+
+    async def get_message(self):
+        msg, img, item_id = await self.deserializer.item_list(self.paginator_params)
+        return msg
 
     async def keyboard(self):
         if self.paginator_params is None:
@@ -59,12 +71,11 @@ class ItemManager:
             item_id=item_id,
         )
         await kb.create_paginate_buttons(page)
-        data_web = ("url", await get_web_link(item_id))
         kb.add_buttons(
             [
                 kb.detail("detail", page, DetailAction.go_view),
                 kb.btn_text("menu"),
-                kb.btn_data("web", data_web),
+                kb.btn_data("web", await get_web_link(item_id)),
             ]
         ).add_markup(3)
 
@@ -73,12 +84,12 @@ class ItemManager:
             kb.add_button(kb.favorite(page)).update_markup(4)
         return kb.create_kb()
 
-    async def _generate_key(self, api_page)-> str:
+    async def _generate_key(self, api_page) -> str:
         return await cache_key.CacheKeyManager.generate_key(
             key=self.callback_data.key, api_page=api_page, extra=self.extra
         )
 
-    async def items_array(self)-> Optional[list]:
+    async def items_array(self) -> Optional[list]:
         """ """
         if self.params is None:
             self.params = await self.get_params_from_state()

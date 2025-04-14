@@ -125,15 +125,15 @@ class MonitoringORM:
             .order_by(self.model.date.desc())
         )
 
-    async def get_item(self, product_id: int | str):
+    async def get_item(self, product_id: str):
         """Получить единый элемент мониторинга по product_id"""
         return (
             self.model.select().where(self.model.product_id == product_id).get_or_none()
         )
 
-    async def get_item_by_id(self, product_id: int | str):
+    async def get_item_by_id(self, uid: str):
         """Получить единый элемент мониторинга по ID"""
-        return self.model.select().where(self.model.uid == product_id).get_or_none()
+        return self.model.select().where(self.model.uid == uid).get_or_none()
 
     async def get_all_items(
         self,

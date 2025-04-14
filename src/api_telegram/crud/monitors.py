@@ -17,6 +17,7 @@ scheduler = AsyncIOScheduler()
 
 class MonitorListManager:
     """Класс для работы со списком отслеживаемых товара."""
+
     def __init__(self, callback_data, user_id):
         self.user_id = user_id
         self.page = int(callback_data.page)
@@ -135,8 +136,10 @@ class MonitorAddManager:
         item_search = await orm.monitoring.get_item(self.item_id)
         if item_search:
             raise exceptions.CustomError(message="Товар уже отслеживается")
-        cache_key = await self._get_cache_key()
-        response = await self.redis_handler.get_data(cache_key)
+        response = None
+        if self.key is not None:
+            cache_key = await self._get_cache_key()
+            response = await self.redis_handler.get_data(cache_key)
         if response is None:
             response = await request.get_data_by_request_to_api(
                 params={

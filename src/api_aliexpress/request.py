@@ -7,6 +7,7 @@ import httpx
 from src.core import config
 from src.core.config import conf
 from src.database import exceptions
+from src.logger import logger as log
 
 FAKE_MAIN_FOLDER = "_json_example"
 DETAIL_FAKE_FOLDER = "_detail_view"
@@ -138,7 +139,8 @@ async def request_api(params) -> dict:
     for key, value in params.items():
         if value:
             conf.querystring[key] = value
-    print("\n▶️▶️▶️ REQUEST API {0}\n".format(params))
+    msg = "▶️▶️▶️ REQUEST API {0}".format(params)
+    log.info_log.info(msg)
     if config.FAKE_MODE:
         result = await request_api_fake(params)
     else:
@@ -152,13 +154,14 @@ async def request_api(params) -> dict:
                     timeout=timeout,
                 )
         except httpx.HTTPError as error:
-            raise exceptions.FreeAPIExceededError("⚠️ HTTP ERROR\n{0}".format(error))
+            msg = "⚠️ HTTP ERROR\n{0}".format(error)
+            log.error_log.error(msg)
+            raise exceptions.FreeAPIExceededError(msg)
         result = response.json()
         if "message" in result:
-            print("❌ лимит API превышен")
-            raise exceptions.FreeAPIExceededError(
-                message="⚠️ лимит API превышен\n{0}".format(result.get("message"))
-            )
+            msg = "⚠️ request error\n{0}".format(result.get("message"))
+            log.error_log.error(msg)
+            raise exceptions.FreeAPIExceededError(message=msg)
         # todo delete after develop #########################################
         await save_fake_data(result, params)
         # todo delete after develop #########################################
@@ -166,32 +169,12 @@ async def request_api(params) -> dict:
     return result
 
 
-async def request_api_fake_favorite(itemid, query: str = "футболка_мужская", page=1):
-    file_name = "{0}_{1}.json".format(query.replace(" ", "_").lower(), page)
-    path = os.path.join(
-        config.BASE_DIR, FAKE_MAIN_FOLDER, ITEM_LIST_FAKE_FOLDER, file_name
-    )
-    response = dict()
-    response["result"] = dict()
-    with open(path, "r") as file:
-        data = json.load(file)
-    for i in data["result"]["resultList"]:
-        if str(i["item"]["itemId"]) == str(itemid):
-            response["result"] = i
-            return response
-
-
 async def request_api_review(data) -> dict:
     json_file = await get_path_to_json("review", data.get("url"))
     if config.FAKE_MODE and json_file.is_file():
-
-        print("🟩  DATA FROM 💾CACHE [REVIEW]".rjust(20, "🟩"))
-
         with open(json_file, "r") as file:
             response = json.load(file)
     else:
-        print("🟥 DATA FROM 🌐INTERNET [REVIEW]".rjust(20, "🟥"))
-
         for key, value in data.items():
             if value:
                 conf.querystring[key] = value

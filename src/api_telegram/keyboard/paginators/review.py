@@ -19,23 +19,27 @@ class ReviewPaginationBtn(PaginationBtn):
         """Возвращает кнопку следующего комментария."""
         return self.btn_data(
             "next",
-            self._btn(num=1, navigate=self.navigate.next, sub_page=sub_page, *args, **kwargs),
+            self._btn(
+                num=1, navigate=self.navigate.next, sub_page=sub_page, *args, **kwargs
+            ),
         )
 
     def prev_btn(self, sub_page=None, *args, **kwargs):
         """Возвращает кнопку предыдущего комментария."""
         return self.btn_data(
             "prev",
-            self._btn(num=-1, navigate=self.navigate.prev, sub_page=sub_page, *args, **kwargs),
+            self._btn(
+                num=-1, navigate=self.navigate.prev, sub_page=sub_page, *args, **kwargs
+            ),
         )
 
     def _btn(
-            self,
-            num: int,
-            navigate: str,
-            sub_page: Optional[int] = None,
-            *args,
-            **kwargs,
+        self,
+        num: int,
+        navigate: str,
+        sub_page: Optional[int] = None,
+        *args,
+        **kwargs,
     ):
         """Возвращает callback данные для кнопок пагинации."""
         return self.call_data(
@@ -70,13 +74,13 @@ class ReviewPaginationBtn(PaginationBtn):
         return self.btn_data(name, self._detail(page, action))
 
     def create_pagination_buttons(
-            self,
-            page: int,
-            navigate: str,
-            len_data: int,
-            sub_page: Optional[int] = None,
-            *args,
-            **kwargs,
+        self,
+        page: int,
+        navigate: str,
+        len_data: int,
+        sub_page: Optional[int] = None,
+        *args,
+        **kwargs,
     ):
         """Создает клавиатуру для пагинации комментариев."""
         if sub_page:

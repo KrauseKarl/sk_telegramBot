@@ -15,6 +15,8 @@ from src.api_telegram import (
     FavoriteDeleteCBD,
     FavoritePaginationBtn,
     ItemPaginationBtn,
+    MonitorAction,
+    MonitorCBD,
     kbm,
 )
 from src.api_telegram.crud.items import get_web_link
@@ -28,6 +30,7 @@ class FavoriteListManager:
         self.user_id = user_id
         self.page = int(callback_data.page)
         self.navigate = callback_data.navigate
+        self.item_id = callback_data.item_id
         self.array: Optional[list] = None
         self.len: Optional[int] = None
         self.item: Optional[dict] = None
@@ -111,9 +114,16 @@ class FavoriteListManager:
                     navigate=self.navigate,
                     len_data=await self._get_len(),
                 )
-            kb.add_buttons(
-                [kb.delete_btn(self.navigate), kb.btn_text("menu")]
-            ).add_markup(2)
+            is_monitoring = await orm.monitoring.get_item(str(current_item.product_id))
+            if is_monitoring is None:
+                data = MonitorCBD(
+                    action=MonitorAction.add,
+                    item_id=str(current_item.product_id),
+                    page=self.page,
+                ).pack()
+                kb.add_button(kb.btn_data("price", data))
+            kb.add_button(kb.delete_btn(self.navigate)).add_markup(2)
+            kb.add_button(kb.btn_text("menu")).add_markup(2)
             return kb.create_kb()
         else:
             return await kbm.back()

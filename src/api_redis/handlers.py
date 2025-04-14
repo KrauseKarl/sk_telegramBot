@@ -32,11 +32,11 @@ class RedisHandler:
         if not self.client:
             await self.connect()
         keys = await self.client.keys()
-        log.info_log.info(f"REDIS🔑 {sorted(keys)}")
+        log.info_log.debug(f"REDIS🔑 {sorted(keys)}")
         await self.client.flushall()
-        log.info_log.info("REDIS🚫 keys deleted")
+        log.info_log.debug("REDIS🚫 keys deleted")
         keys = await self.client.keys()
-        log.info_log.info(f"REDIS🔑 {sorted(keys)}")
+        log.info_log.debug(f"REDIS🔑 {sorted(keys)}")
 
     async def get_data(self, key: str):
         """Получает данные из Redis по ключу."""
@@ -44,7 +44,7 @@ class RedisHandler:
             await self.connect()
 
         value = await self.client.get(key)
-        log.info_log.info(f"REDIS🔑  EXIST = {bool(value)}[{key}]")
+        log.info_log.debug(f"REDIS🔑 EXIST = {bool(value)}[{key}]")
         return json.loads(value) if value else None
 
     async def set_data(self, key: str, value: str | dict) -> bool:
@@ -66,7 +66,7 @@ class RedisHandler:
             await self.connect()
         keys = await self.client.keys()
         if keys:
-            log.info_log.info(
+            log.info_log.debug(
                 "REDIS keys count = {0} {1}".format(
                     len(keys),
                     "\n".join([f"REDIS 🔑 {k}" for k in sorted(keys)]),

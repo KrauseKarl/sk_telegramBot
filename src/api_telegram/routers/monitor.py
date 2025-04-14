@@ -27,13 +27,14 @@ monitor = Router()
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.list))
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.back))
 async def get_monitoring_list(
-        callback: t.CallbackQuery, callback_data: MonitorCBD = None
-):
+    callback: t.CallbackQuery, callback_data: MonitorCBD = None
+) -> None:
     """
+    Возвращает список отслеживаемых товаров.
 
-    :param callback:
-    :param callback_data:
-    :return:
+    :param callback: CallbackQuery
+    :param callback_data: MonitorCBD
+    :return: None
     """
     try:
         searched_items = await orm.monitoring.get_list(callback.from_user.id)
@@ -58,44 +59,42 @@ async def get_monitoring_list(
             )
 
     except exceptions.CustomError as error:
-        log.error_log.error(str(error))
-        await callback.answer(
-            text="⚠️ Ошибка\n{0:.150}".format(str(error)), show_alert=True
-        )
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.add))
-async def add_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD):
+async def add_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD) -> None:
     """
-
-    :param callback:
-    :param callback_data:
-    :return:
+    Добавляет товар в список мониторинга цен.
+    :param callback: CallbackQuery
+    :param callback_data: MonitorCBD
+    :return: None
     """
     try:
+        print("✅✅✅", callback_data)
         manager = crud.MonitorAddManager(callback_data, callback.from_user.id)
         await manager.start_monitoring_item()
-        await callback.answer(
-            text="✅ Товар добавлен в список мониторинга цен.",
-            show_alert=True,
-        )
+        msg = "✅ Товар добавлен в список мониторинга цен."
+        log.info_log.info(msg)
+        await callback.answer(text=msg, show_alert=True)
     except exceptions.CustomError as error:
-        log.error_log.error(str(error))
-        await callback.answer(
-            text="⚠️ Ошибка\n{0:.150}".format(str(error)), show_alert=True
-        )
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.target))
 async def add_target(
-        callback: t.CallbackQuery, callback_data: MonitorCBD, state: FSMContext
-):
+    callback: t.CallbackQuery, callback_data: MonitorCBD, state: FSMContext
+) -> None:
     """
-
-    :param callback:
-    :param callback_data:
-    :param state:
-    :return:
+    Запрашивает порог приемлемой цены отслеживаемого товар.
+    :param callback: CallbackQuery
+    :param callback_data: MonitorCBD
+    :param state: FSMContext
+    :return: None
     """
     try:
         kb_data = MonitorCBD(
@@ -131,10 +130,11 @@ async def add_target(
 @monitor.message(TargetFSM.price)
 async def define_target_price(message: t.Message, state: FSMContext) -> None:
     """
+    Устанавливает прог приемлемой цены.
 
-    :param message:
-    :param state:
-    :return:
+    :param message: Message
+    :param state: FSMContext
+    :return: None
     """
     try:
         defined_price = float(message.text)
@@ -142,9 +142,11 @@ async def define_target_price(message: t.Message, state: FSMContext) -> None:
         await state.update_data(price=defined_price)
         state_data = await state.get_data()
         await state.clear()
-
+        print("✅", state_data)
         manager = crud.DefineTargetManger(state_data)
         await manager.define_target()
+        msg = "✅ Целевая цена {0} установлена.".format(defined_price)
+        log.info_log.info(msg)
         try:
             await message.bot.edit_message_media(
                 chat_id=message.chat.id,
@@ -166,54 +168,60 @@ async def define_target_price(message: t.Message, state: FSMContext) -> None:
                 reply_markup=await manager.keyboard(),
             )
     except exceptions.CustomError as error:
-        log.error_log.error(str(error))
-        await message.answer(
-            text="⚠️ Ошибка\n{0:.150}".format(str(error)), show_alert=True
-        )
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await message.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.delete))
-async def delete_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD):
+async def delete_monitoring(
+    callback: t.CallbackQuery, callback_data: MonitorCBD
+) -> None:
     """
+    Удаляет товар из писка отслеживаемых.
 
-    :param callback:
-    :param callback_data:
-    :return:
+    :param callback: CallbackQuery
+    :param callback_data: MonitorCBD
+    :return: None
     """
     try:
         manager = crud.MonitorDeleteManager(callback_data, callback.from_user.id)
         await manager.stop_monitoring_item()
-        await callback.answer(
-            text="🗑 удален из списка мониторинга цен.", show_alert=True
-        )
+        msg = "🗑 удален из списка мониторинга цен."
+        log.info_log.info(msg)
+        await callback.answer(text=msg, show_alert=True)
         await callback.message.edit_media(
             media=await manager.get_media(),
             reply_markup=await manager.get_keyboard(),
         )
     except exceptions.CustomError as error:
-        log.error_log.error(str(error))
-        await callback.answer(
-            text="⚠️ Ошибка\n{0:.150}".format(str(error)), show_alert=True
-        )
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
-# TODO refactoring graph
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.graph))
-async def send_chart_image(callback: t.CallbackQuery, callback_data: MonitorCBD):
+async def send_chart_image(
+    callback: t.CallbackQuery, callback_data: MonitorCBD
+) -> None:
     """
+    Возвращает изображение с графиком цен.
 
-    :param callback:
+    :param callback: CallbackQuery
     :param callback_data:
-    :return:
+    :return: None
     """
     try:
         chat_id = callback.message.chat.id
-        async with ChatActionSender.upload_photo(bot=bot, chat_id=chat_id, interval=1.0):
+        async with ChatActionSender.upload_photo(
+            bot=bot, chat_id=chat_id, interval=1.0
+        ):
             graph_manager = crud.GraphManager(callback_data, callback.from_user.id)
             photo = await graph_manager.get_media()
             keyboard = await graph_manager.get_keyboard()
             await callback.message.edit_media(media=photo, reply_markup=keyboard)
 
     except (ValueError, exceptions.CustomError) as error:
-        log.error_log.error(str(error))
-        await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)

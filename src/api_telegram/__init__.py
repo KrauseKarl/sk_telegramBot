@@ -1,5 +1,9 @@
 from src.api_telegram.callback_data.base import Navigation
-from src.api_telegram.callback_data.cache_key import CacheKey, CacheKeyExtended, CacheKeyReview
+from src.api_telegram.callback_data.cache_key import (
+    CacheKey,
+    CacheKeyExtended,
+    CacheKeyReview,
+)
 from src.api_telegram.callback_data.favorite import (
     FavoriteAction,
     FavoriteAddCBD,

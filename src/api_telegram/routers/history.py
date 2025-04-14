@@ -6,6 +6,7 @@ from aiogram import types as t
 from src.api_telegram import HistoryAction, HistoryCBD, Navigation
 from src.api_telegram.crud import HistoryManager
 from src.database import exceptions
+from src.logger import logger as log
 
 history = Router()
 
@@ -19,9 +20,10 @@ async def history_list(
 ) -> None:
     """
     Возвращает список записей в историю просмотров пользователя.
-    :param callback_data:
-    :param callback:
-    :return:
+
+    :param callback_data: HistoryCBD
+    :param callback: CallbackQuery | Message
+    :return: None
     """
     try:
         if callback_data is None:
@@ -41,6 +43,6 @@ async def history_list(
                 reply_markup=await manager.get_keyboard(),
             )
     except exceptions.CustomError as error:
-        await callback.answer(
-            text="⚠️ Ошибка\n{0:.150}".format(str(error)), show_alert=True
-        )
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)

@@ -20,12 +20,12 @@ scheduler = AsyncIOScheduler()
 
 class DefineTargetManger:
     def __init__(self, state_data):
-        self.product_id = state_data.get("product_id")
+        self.uid = state_data.get("product_id")
         self.target_prise = float(state_data.get("price"))
         self.callback = state_data.get("callback")
 
     async def define_target(self):
-        item_search = await orm.monitoring.get_item_by_id(self.product_id)
+        item_search = await orm.monitoring.get_item_by_id(self.uid)
         await orm.monitoring.update(item_search.uid, self.target_prise)
 
     async def message(self):
@@ -38,7 +38,7 @@ class DefineTargetManger:
         kb_data = MonitorCBD(
             action=MonitorAction.list,
             navigate=navigate,
-            item_id=self.product_id,
+            item_id=self.uid,
             page=page,
         ).pack()
         kb = BasePaginationBtn()

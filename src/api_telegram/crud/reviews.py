@@ -3,7 +3,7 @@ from typing import Optional
 from aiogram import types as t
 from pydantic import ValidationError
 
-from src.api_aliexpress import DeserializedHandler, request_api_review
+from src.api_aliexpress import DeserializedHandler, request_api
 from src.api_redis.handlers import RedisHandler
 from src.api_telegram import (
     DetailAction,
@@ -51,7 +51,7 @@ class ReviewManager:
             sort="hasImage",
             filters="allReviews",
         )
-        response = await request_api_review(data)
+        response = await request_api(data)
         return response.get("result").get("resultList", None)
 
     async def _get_review_list(self):

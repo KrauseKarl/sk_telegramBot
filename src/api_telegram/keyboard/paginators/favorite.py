@@ -21,7 +21,7 @@ class FavoritePaginationBtn(PaginationBtn):
     def next_btn(self, *args, **kwargs):  # page + 1
         return self.btn_data(
             name="next",
-            data=self._btn(num=1,navigate=self.navigate.next, *args, **kwargs),
+            data=self._btn(num=1, navigate=self.navigate.next, *args, **kwargs),
         )
 
     def prev_btn(self, *args, **kwargs):  # page - 1

@@ -1,23 +1,16 @@
 import asyncio
 import sys
 
-from aiogram import Dispatcher, types as t
+from aiogram import Dispatcher, exceptions, types as t
 
 from src.api_telegram import commands, crud, routers as r
 from src.core import config
 from src.core.bot import bot
-from src.database import db, exceptions
+from src.database import db
 from src.logger import logger as log
 
 
 async def main():
-    # bot = Bot(
-    #     token=conf.bot_token.get_secret_value(),
-    #     default=DefaultBotProperties(
-    #         parse_mode=enums.ParseMode.HTML,
-    #         show_caption_above_media=False
-    #     )
-    # )
     dp = Dispatcher()
     dp.include_routers(
         r.monitor,

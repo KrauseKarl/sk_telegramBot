@@ -1,6 +1,6 @@
 import locale
 import os.path
-from typing import Union, Any
+from typing import Any, Union
 
 from aiogram import types as t
 from matplotlib import pyplot as plt

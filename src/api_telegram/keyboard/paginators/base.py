@@ -6,6 +6,7 @@ from src.api_telegram.keyboard import factories
 
 class PaginationBtn(factories.BasePaginationBtn):
     """Базовый класс для создания клавиатуру с пагинацией"""
+
     def __init__(self, action, call_data, item_id=None):
         super().__init__()
         self.page = 1
@@ -68,28 +69,38 @@ class PaginationBtn(factories.BasePaginationBtn):
         )
 
     def create_pagination_buttons(
-            self, page, navigate, len_data, sub_page=None, *args, **kwargs
+        self, page, navigate, len_data, sub_page=None, *args, **kwargs
     ):
         """Создает клавиатуру для пагинации списка объектов."""
         if navigate == Navigation.first:
             self.add_button(
-                self.pg(page).next_btn(sub_page=self.increase(sub_page), *args, **kwargs)
+                self.pg(page).next_btn(
+                    sub_page=self.increase(sub_page), *args, **kwargs
+                )
             )
         elif navigate == Navigation.next:
             self.add_button(
-                self.pg(page).prev_btn(sub_page=self.decrease(sub_page), *args, **kwargs)
+                self.pg(page).prev_btn(
+                    sub_page=self.decrease(sub_page), *args, **kwargs
+                )
             )
             if page < len_data:
                 self.add_button(
-                    self.pg(page).next_btn(sub_page=self.increase(sub_page), *args, **kwargs)
+                    self.pg(page).next_btn(
+                        sub_page=self.increase(sub_page), *args, **kwargs
+                    )
                 )
         elif navigate == Navigation.prev:
             if page > 1:
                 self.add_button(
-                    self.pg(page).prev_btn(sub_page=self.decrease(sub_page), *args, **kwargs)
+                    self.pg(page).prev_btn(
+                        sub_page=self.decrease(sub_page), *args, **kwargs
+                    )
                 )
             self.add_button(
-                self.pg(page).next_btn(sub_page=self.increase(sub_page), *args, **kwargs)
+                self.pg(page).next_btn(
+                    sub_page=self.increase(sub_page), *args, **kwargs
+                )
             )
         self.add_markup(2 if len(self.get_kb()) == 2 else 1)
         return self

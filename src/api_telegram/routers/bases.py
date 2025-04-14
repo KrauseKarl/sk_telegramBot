@@ -2,11 +2,11 @@ from aiogram import F, Router, exceptions, filters
 from aiogram import types as t
 from aiogram.fsm.context import FSMContext
 
-from src.api_redis import RedisHandler
 from src.api_telegram import kbm
 from src.core import config
 from src.database import exceptions as exp
 from src.database import orm
+from src.logger import logger as log
 from src.utils import media
 
 base = Router()
@@ -56,7 +56,9 @@ async def help_info(callback: t.Message | t.CallbackQuery) -> None:
                 reply_markup=await kbm.back(),
             )
     except exp.CustomError as error:
-        await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
 # MENU ########################################################################
@@ -87,29 +89,11 @@ async def main_menu(callback: t.Message | t.CallbackQuery, state: FSMContext) ->
             reply_markup=await kbm.menu(),
         )
     except exp.CustomError as error:
-        await callback.answer(text=f"⚠️ Ошибка\n{str(error)}", show_alert=True)
+        msg = "{0:.150}".format(str(error))
+        log.error_log.error(msg)
+        await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
-# ONLY FOR DEVELOP ############################################################
-# TODO delete this routes on production
-@base.message(filters.Command("redis"))
-async def get_key_cache(message):
-    keys = await RedisHandler().get_keys()
-    if keys:
-        print(
-            "keys count = {0} {1}".format(
-                len(keys), "\n".join([f"🔑 {k}" for k in sorted(keys)])
-            )
-        )
-
-
-@base.message(filters.Command("del"))
-async def del_key_cache(message):
-    await RedisHandler().flush_keys()
-    print("redis delete all keys")
-
-
-###############################################################################
 @base.message()
 async def unidentified_massage(message: t.Message):
     msg = (
