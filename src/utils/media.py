@@ -40,7 +40,7 @@ async def parse_url(url: str) -> str:
 
 
 async def make_default_size_image(
-    url: str,
+        url: str,
 ) -> tuple[Optional[str], Optional[str]]:
     """
     Изменяет размер (1024х576) изображения товара и
@@ -68,11 +68,6 @@ async def make_default_size_image(
     img.close()
 
     return full_path, file_name
-
-
-# except Exception as error:
-#     # todo add logger
-#     return None, None
 
 
 async def delete_img_from_static(obj: Favorite) -> bool:
@@ -115,4 +110,4 @@ def separate_img_by_ten(images: List[str], num: int = 9) -> List[str]:
     :return:
     """
     for i in range(0, len(images), num):
-        yield list(images[i : i + num])
+        yield list(images[i: i + num])

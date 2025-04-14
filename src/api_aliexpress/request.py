@@ -65,9 +65,9 @@ async def save_fake_data(result: dict, params: dict):
 
 
 async def save_data_json(
-    data,
-    config_data,
-    folder: str = None,
+        data,
+        config_data,
+        folder: str = None,
 ):
     page = config_data.get("page")
     query = config_data.get("query")
@@ -100,7 +100,6 @@ async def save_data_json(
             json.dump(data, file, ensure_ascii=False, indent=4)
 
 
-#####################################################################################
 async def get_path_to_json(prefix, data: str | tuple):
     if isinstance(data, tuple):
         file_name = "{0}_{1}.json".format(data[0].replace(" ", "_").lower(), data[1])
@@ -113,7 +112,6 @@ async def get_path_to_json(prefix, data: str | tuple):
     )
 
 
-#####################################################################################
 async def request_api_fake(params):
     if params.get("itemId"):
         prefix = "detail"
@@ -135,6 +133,8 @@ async def request_api_fake(params):
         return data
 
 
+#####################################################################################
+
 async def request_api(params) -> dict:
     for key, value in params.items():
         if value:
@@ -155,37 +155,17 @@ async def request_api(params) -> dict:
                 )
         except httpx.HTTPError as error:
             msg = "⚠️ HTTP ERROR\n{0}".format(error)
-            log.error_log.error(msg)
+            log.error_log.exception(msg)
             raise exceptions.FreeAPIExceededError(msg)
         result = response.json()
         if "message" in result:
             msg = "⚠️ request error\n{0}".format(result.get("message"))
             log.error_log.error(msg)
             raise exceptions.FreeAPIExceededError(message=msg)
-        # todo delete after develop #########################################
+        # todo delete after develop
         await save_fake_data(result, params)
-        # todo delete after develop #########################################
+        # todo delete after develop
 
-    return result
-
-
-async def request_api_review(data) -> dict:
-    json_file = await get_path_to_json("review", data.get("url"))
-    if config.FAKE_MODE and json_file.is_file():
-        with open(json_file, "r") as file:
-            response = json.load(file)
-    else:
-        for key, value in data.items():
-            if value:
-                conf.querystring[key] = value
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                url="/".join([conf.base_url, data.get("url")]),
-                headers=conf.headers,
-                params=conf.querystring,
-            )
-    result = response.json()
-    await save_data_json(data=result, config_data=data, folder=REVIEW_FAKE_FOLDER)
     return result
 
 
@@ -198,7 +178,6 @@ async def get_data_by_request_to_api(params: dict):
             return response
     except KeyError:
         if "message" in response:
-            print(response)
-            raise exceptions.FreeAPIExceededError(
-                message="⚠️HTTP error\n{0}".format(response.get("message"))
-            )
+            msg = "⚠️HTTP error\n{0}".format(response.get("message"))
+            log.error_log.error(msg)
+            raise exceptions.FreeAPIExceededError(message=msg)

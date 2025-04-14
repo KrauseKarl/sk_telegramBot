@@ -13,6 +13,7 @@ from src.api_telegram import CacheKey, JobCBD, MonitorAction, MonitorCBD, Naviga
 from src.api_telegram.keyboard.factories import BasePaginationBtn
 from src.core import config
 from src.database import DataEntry, ItemSearch, exceptions, orm
+from src.logger import logger as log
 from src.utils.media import get_fs_input_hero_image, get_input_media_hero_image
 
 scheduler = AsyncIOScheduler()
@@ -57,11 +58,9 @@ class ScheduleManager:
         job_id = JobCBD(uid=item_search_id).pack()  # Уникальный ID задачи
         if self.scheduler.get_job(job_id):  # Проверяем, существует ли задача
             self.scheduler.remove_job(job_id)  # Удаляем задачу
-            # todo add to logger
-            print(f"Задача {job_id} удалена из планировщика.")
+            log.info_log.info(f"Задача {job_id} удалена из планировщика.")
         else:
-            # todo add to logger
-            print(f"Задача {job_id} не найдена.")
+            log.error_log.error(f"Задача {job_id} не найдена.")
 
     async def create_item_search(
         self,
@@ -69,10 +68,17 @@ class ScheduleManager:
         user_id: int,
         key: str,
         page: int,
-        target_price: Optional[float] = None,
-    ):
-        """ "
-        Создает
+        target_price: Optional[float] = None
+    ) -> None:
+        """
+        Создает объект класса `ItemSearch`.
+
+        :param item_search_id: ID товара
+        :param user_id: ID пользователя
+        :param key: ключ, для поиска кэш-данных
+        :param page: страница
+        :param target_price: целевая цена
+        :return: None
         """
         cache_key = CacheKey(key=key, api_page=page, extra="detail").pack()
         response = await self.redis_handler.get_data(cache_key)
@@ -113,8 +119,10 @@ class ScheduleManager:
         )
         # Проверка достижения целевой цены и отправка уведомления
         if item_search.target is not None and current_price <= item_search.target:
-            # todo add in logger
-            print(" Целевая цена достигнута")
+            log.info_log.info(
+                f"Целевая цена {item_search.target} "
+                f"достигнута [{item_search.product_id}]"
+            )
             await self.send_price_alert(item_search_id, current_price)
 
     async def _get_keyboard(self) -> t.InlineKeyboardMarkup:
@@ -122,7 +130,7 @@ class ScheduleManager:
         Возвращает клавиатуру с двумя кнопками:
             - назад к отслеживаемому товару;
             - главное меню
-        :return: t.InlineKeyboardMarkup
+        :return: клавиатура
         """
         kb = BasePaginationBtn()
         button_data = MonitorCBD(
@@ -144,8 +152,7 @@ class ScheduleManager:
         """
         item_search = await orm.monitoring.get_item_by_id(item_search_id)
         if self.bot is None:
-            # todo add in logger
-            print("Bot is None, cannot send alert")
+            log.error_log.error("Bot не найден. Невозможно отправить оповещение")
             return
 
         try:
@@ -158,7 +165,6 @@ class ScheduleManager:
                 )
             )
             keyboard = await self._get_keyboard()
-            # log.info_log.info(kb.get_kb())
             try:
                 await self.bot.edit_message_media(
                     chat_id=item_search.user_id,
@@ -178,10 +184,8 @@ class ScheduleManager:
             await orm.monitoring.update(item_search.uid, None)
 
         except exceptions.CustomError as error:
-            print(f"Ошибка при отправке уведомления: {error}")
-            # todo add to logger
+            log.error_log.exception(f"Ошибка при отправке уведомления: {error}")
 
-    # Функция для синхронизации планировщика с базой данных
     async def sync_scheduler_with_db(self):
         """
         Синхронизирует задачи в планировщике с записями ItemSearch в базе данных.
@@ -201,13 +205,11 @@ class ScheduleManager:
         # Удаляем задачи для несуществующих ItemSearch
         for job_id in jobs_to_remove:
             self.scheduler.remove_job(job_id)
-            # todo add to logger
-            print(f"Задача {job_id} удалена из планировщика.")
+            log.info_log.info(f"Задача {job_id} удалена из планировщика.")
         item_search_list = await orm.monitoring.get_all_items()
 
         # Добавляем задачи для новых ItemSearch
-        # todo add to logger
-        print(f"Всего задач {len(item_search_list)}")
+        log.info_log.info(f"Всего задач {len(item_search_list)}")
         for item_search in item_search_list:
             job_id = JobCBD(uid=item_search.product_id).pack()
             if not self.scheduler.get_job(job_id):
@@ -218,8 +220,7 @@ class ScheduleManager:
                     # kwargs={'bot': self.bot}
                     id=job_id,
                 )
-                # todo add to logger
-                print(
+                log.info_log.info(
                     f"время {config.SCHEDULE_HOUR}:{config.SCHEDULE_MIN}."
                     f"\tЗадача {job_id} добавлена в планировщик."
                 )
