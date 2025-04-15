@@ -94,6 +94,17 @@ async def main_menu(callback: t.Message | t.CallbackQuery, state: FSMContext) ->
         await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
+@base.callback_query(F.data == 'delete')
+async def delete_message(callback: t.CallbackQuery):
+    await callback.bot.delete_messages(
+        chat_id=callback.message.chat.id,
+        message_ids=[
+            callback.message.message_id - 1,
+            callback.message.message_id
+        ]
+    )
+
+
 @base.message()
 async def unidentified_massage(message: t.Message):
     msg = (

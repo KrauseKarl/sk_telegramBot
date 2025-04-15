@@ -11,6 +11,7 @@ from pydantic_settings import BaseSettings
 
 # DEFINE BASE DIR OA APP #############################################################
 BASE_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+
 # DEFINE PATH TO .ENV FILE (DEPEND ON OS) ############################################
 ENV_FILE = ".env" if sys.platform == "win32" else ".env.docker"
 ENV_PATH = str(Path(BASE_DIR).resolve(strict=True).joinpath(ENV_FILE))
@@ -21,7 +22,7 @@ load_dotenv(dotenv_path=ENV_PATH)
 # True from json files
 FAKE_MODE = 1 == os.getenv("DB_NAME")
 MODES = {
-    True: f"🟨☢️ BOT START FAKE_MODE = {FAKE_MODE}",
+    True:  f"🟨☢️ BOT START FAKE_MODE = {FAKE_MODE}",
     False: f"🟩🌐 BOT START FAKE_MODE = {FAKE_MODE}",
 }
 MODE_MASSAGE = MODES[FAKE_MODE]
@@ -80,7 +81,7 @@ IMG_LIMIT = 8
 SCHEDULE_RANGE = 1
 
 # [PROD] CHECK MONITORING ITEMS EACH DAY IN DEFINED TIME (9:00 AM) ####################
-MINUTES_AHEAD = 1
+MINUTES_AHEAD = 59
 PRODUCTION_HOUR = 9
 PRODUCTION_MINUTES = 0
 # SCHEDULE_HOUR = PRODUCTION_HOUR  # 9

@@ -11,7 +11,7 @@ from src.api_telegram import (
     MonitorAction,
     MonitorCBD,
     Navigation,
-    crud,
+    crud, kbm,
 )
 from src.api_telegram.statments import TargetFSM
 from src.core.bot import bot
@@ -137,15 +137,13 @@ async def define_target_price(message: t.Message, state: FSMContext) -> None:
     :return: None
     """
     try:
-        defined_price = float(message.text)
-        await target_price_validator(defined_price)
-        await state.update_data(price=defined_price)
+        await target_price_validator(message.text)
+        await state.update_data(price=message.text)
         state_data = await state.get_data()
         await state.clear()
-        print("✅", state_data)
         manager = crud.DefineTargetManger(state_data)
         await manager.define_target()
-        msg = "✅ Целевая цена {0} установлена.".format(defined_price)
+        msg = "✅ Целевая цена {0} установлена.".format(message.text)
         log.info_log.info(msg)
         try:
             await message.bot.edit_message_media(
@@ -167,10 +165,10 @@ async def define_target_price(message: t.Message, state: FSMContext) -> None:
                 photo=await media.get_fs_input_hero_image("success"),
                 reply_markup=await manager.keyboard(),
             )
-    except exceptions.CustomError as error:
+    except (exceptions.CustomError, ValueError) as error:
         msg = "{0:.150}".format(str(error))
         log.error_log.error(msg)
-        await message.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
+        await message.answer(text=f"⚠️ Ошибка\n{msg}", reply_markup=await kbm.delete())
 
 
 @monitor.callback_query(MonitorCBD.filter(F.action == MonitorAction.delete))

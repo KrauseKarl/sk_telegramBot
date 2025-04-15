@@ -13,7 +13,7 @@ from src.api_telegram import (
     kbm,
 )
 from src.core import config
-from src.database import Paginator
+from src.database import Paginator, exceptions
 from src.utils import cache_key, media
 
 
@@ -73,7 +73,10 @@ class ReviewManager:
     async def _get_len(self) -> int:
         """Возвращает длину списка избранных товаров и сохраняет её в self.len."""
         if self.len is None:
-            self.len = len(await self._get_review_list())
+            self.array = await self._get_review_list()
+            if self.array is None:
+                raise exceptions.CustomError(message='Комментарии к товару отсутствуют')
+            self.len = len(self.array)
         return self.len
 
     async def _get_item(self):

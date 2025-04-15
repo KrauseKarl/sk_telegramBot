@@ -89,24 +89,17 @@ class KeyboardManager:
         self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons(
             [self.kb.btn_text("price_min"), self.kb.btn_text("price_skip")]
-        ).add_markups(
-            [
-                2,
-            ]
-        )
+        ).add_markups([2, ])
         return self.kb.create_kb()
 
     async def error(self):
         self.kb = factories.BasePaginationBtn()
-        self.kb.add_buttons(
-            [
-                self.kb.btn_text("menu"),
-            ]
-        ).add_markups(
-            [
-                1,
-            ]
-        )
+        self.kb.add_button(self.kb.btn_text("menu"))
+        return self.kb.create_kb()
+
+    async def delete(self):
+        self.kb = factories.BasePaginationBtn()
+        self.kb.add_button(self.kb.btn_data('delete', 'delete'))
         return self.kb.create_kb()
 
 
@@ -132,7 +125,7 @@ async def builder_kb(data: list, size: tuple):
 
 
 async def kb_builder(
-    size: Optional[tuple] = None, data_list: Optional[list] = None
+        size: Optional[tuple] = None, data_list: Optional[list] = None
 ) -> t.InlineKeyboardMarkup:
     """
 

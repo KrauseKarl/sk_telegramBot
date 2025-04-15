@@ -43,6 +43,7 @@ if __name__ == "__main__":
         log.set_logger_files()
         log.info_log.info(sys.platform)
         log.info_log.info(config.MODE_MASSAGE)
+        print(config.MODE_MASSAGE)
         asyncio.run(main())
     except exceptions.TelegramBadRequest as error:
         log.error_log.error(str(error))
