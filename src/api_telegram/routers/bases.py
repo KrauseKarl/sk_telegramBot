@@ -16,9 +16,10 @@ base = Router()
 @base.message(filters.CommandStart())
 async def start_command(message: t.Message) -> None:
     """
+    Возвращает приветственное сообщение + клавиатуру.
 
-    :param message:
-    :return:
+    :param message: Message
+    :return: None
     """
     try:
         welcoming = await orm.users.get_or_create(user=message.from_user)
@@ -39,21 +40,22 @@ async def start_command(message: t.Message) -> None:
 @base.callback_query(F.data.startswith("help"))
 async def help_info(callback: t.Message | t.CallbackQuery) -> None:
     """
+    Возвращает справочную информацию по использованию бота.
 
-    :param callback:
-    :return:
+    :param callback: Message | CallbackQuery
+    :return: None
     """
     try:
         if isinstance(callback, t.CallbackQuery):
             photo = await media.get_input_media_hero_image("help", config.HELP)
             await callback.message.edit_media(
-                media=photo, reply_markup=await kbm.back()
+                media=photo, reply_markup=await kbm.video()
             )
         else:
             await callback.answer_photo(
                 photo=await media.get_fs_input_hero_image("help"),
                 caption=config.HELP,
-                reply_markup=await kbm.back(),
+                reply_markup=await kbm.video(),
             )
     except exp.CustomError as error:
         msg = "{0:.150}".format(str(error))
@@ -61,15 +63,31 @@ async def help_info(callback: t.Message | t.CallbackQuery) -> None:
         await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
+@base.callback_query(F.data.startswith("instruction"))
+async def instruction_video(callback: t.CallbackQuery) -> None:
+    """
+    Загружает видео-инструкцию по использованию бота.
+
+    :param callback:CallbackQuery
+    :return: None
+    """
+    await callback.message.answer_animation(
+        animation=await media.get_fs_input_hero_image("instruction"),
+        caption="Видеоинструкция по использованию бота",
+        reply_markup=await kbm.delete(),
+    )
+
+
 # MENU ########################################################################
 @base.message(filters.Command("menu"))
 @base.callback_query(F.data.startswith("menu"))
 async def main_menu(callback: t.Message | t.CallbackQuery, state: FSMContext) -> None:
     """
+    Возвращает главное меню.
 
-    :param state:
-    :param callback:
-    :return:
+    :param state: FSMContext
+    :param callback: Message | CallbackQuery
+    :return: None
     """
     await state.clear()
     try:
@@ -94,19 +112,29 @@ async def main_menu(callback: t.Message | t.CallbackQuery, state: FSMContext) ->
         await callback.answer(text=f"⚠️ Ошибка\n{msg}", show_alert=True)
 
 
-@base.callback_query(F.data == 'delete')
+@base.callback_query(F.data == "delete")
 async def delete_message(callback: t.CallbackQuery):
+    """
+    Удаляет два сообщения.
+
+    Сообщения об ошибки и само сообщение с некорректными данными.
+    :param callback:CallbackQuery
+    :return: None
+    """
     await callback.bot.delete_messages(
         chat_id=callback.message.chat.id,
-        message_ids=[
-            callback.message.message_id - 1,
-            callback.message.message_id
-        ]
+        message_ids=[callback.message.message_id - 1, callback.message.message_id],
     )
 
 
 @base.message()
-async def unidentified_massage(message: t.Message):
+async def unidentified_massage(message: t.Message) -> None:
+    """
+    Работает со всеми не распознанными сообщениями
+
+    :param message: Message
+    :return: None
+    """
     msg = (
         "❓❓❓\n"
         "команда {0} мне не известна\n\n"

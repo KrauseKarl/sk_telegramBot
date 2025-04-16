@@ -14,7 +14,6 @@ class KeyboardManager:
     async def back(self) -> t.InlineKeyboardMarkup:
         self.kb = factories.BasePaginationBtn()
         self.kb.add_button(self.kb.btn_text("menu")).add_markups([1])
-
         return self.kb.create_kb()
 
     async def menu(self):
@@ -59,11 +58,7 @@ class KeyboardManager:
                 self.kb.btn_text("5"),
                 self.kb.btn_text("10"),
             ]
-        ).add_markups(
-            [
-                2,
-            ]
-        )
+        ).add_markup(2)
         return self.kb.create_kb()
 
     async def sort(self):
@@ -75,11 +70,7 @@ class KeyboardManager:
                 self.kb.btn_text("priceDesc"),
                 self.kb.btn_text("priceAsc"),
             ]
-        ).add_markups(
-            [
-                2,
-            ]
-        )
+        ).add_markup(2)
         return self.kb.create_kb()
 
     # async def item(self, prefix: str, item_id: str, text: str):
@@ -89,7 +80,11 @@ class KeyboardManager:
         self.kb = factories.BasePaginationBtn()
         self.kb.add_buttons(
             [self.kb.btn_text("price_min"), self.kb.btn_text("price_skip")]
-        ).add_markups([2, ])
+        ).add_markups(
+            [
+                2,
+            ]
+        )
         return self.kb.create_kb()
 
     async def error(self):
@@ -99,7 +94,20 @@ class KeyboardManager:
 
     async def delete(self):
         self.kb = factories.BasePaginationBtn()
-        self.kb.add_button(self.kb.btn_data('delete', 'delete'))
+        self.kb.add_button(self.kb.btn_data("delete", "delete"))
+        return self.kb.create_kb()
+
+    async def video(self) -> t.InlineKeyboardMarkup:
+        self.kb = factories.BasePaginationBtn()
+        self.kb.add_buttons(
+            [self.kb.btn_text("menu"), self.kb.btn_data("video", "instruction")]
+        )
+        self.kb.add_markup(2)
+        return self.kb.create_kb()
+
+    async def back_to_info(self) -> t.InlineKeyboardMarkup:
+        self.kb = factories.BasePaginationBtn()
+        self.kb.add_button(self.kb.btn_text("help")).add_markups([1])
         return self.kb.create_kb()
 
 
@@ -125,7 +133,7 @@ async def builder_kb(data: list, size: tuple):
 
 
 async def kb_builder(
-        size: Optional[tuple] = None, data_list: Optional[list] = None
+    size: Optional[tuple] = None, data_list: Optional[list] = None
 ) -> t.InlineKeyboardMarkup:
     """
 

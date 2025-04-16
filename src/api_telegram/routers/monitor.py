@@ -11,7 +11,8 @@ from src.api_telegram import (
     MonitorAction,
     MonitorCBD,
     Navigation,
-    crud, kbm,
+    crud,
+    kbm,
 )
 from src.api_telegram.statments import TargetFSM
 from src.core.bot import bot
@@ -73,7 +74,6 @@ async def add_monitoring(callback: t.CallbackQuery, callback_data: MonitorCBD) -
     :return: None
     """
     try:
-        print("✅✅✅", callback_data)
         manager = crud.MonitorAddManager(callback_data, callback.from_user.id)
         await manager.start_monitoring_item()
         msg = "✅ Товар добавлен в список мониторинга цен."

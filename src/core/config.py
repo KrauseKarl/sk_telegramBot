@@ -22,7 +22,7 @@ load_dotenv(dotenv_path=ENV_PATH)
 # True from json files
 FAKE_MODE = 1 == os.getenv("DB_NAME")
 MODES = {
-    True:  f"🟨☢️ BOT START FAKE_MODE = {FAKE_MODE}",
+    True: f"🟨☢️ BOT START FAKE_MODE = {FAKE_MODE}",
     False: f"🟩🌐 BOT START FAKE_MODE = {FAKE_MODE}",
 }
 MODE_MASSAGE = MODES[FAKE_MODE]
@@ -81,7 +81,7 @@ IMG_LIMIT = 8
 SCHEDULE_RANGE = 1
 
 # [PROD] CHECK MONITORING ITEMS EACH DAY IN DEFINED TIME (9:00 AM) ####################
-MINUTES_AHEAD = 59
+MINUTES_AHEAD = 30
 PRODUCTION_HOUR = 9
 PRODUCTION_MINUTES = 0
 # SCHEDULE_HOUR = PRODUCTION_HOUR  # 9
@@ -116,23 +116,24 @@ QNT = {"2", "3", "5", "10"}
 
 # DICT OF MAIN IMAGES ##################################################################
 HERO = {
-    "category": os.path.join(DEFAULT_FOLDER, "category_2.png"),
-    "error": os.path.join(DEFAULT_FOLDER, "error_2.png"),
-    "favorite": os.path.join(DEFAULT_FOLDER, "favorites_2.png"),
-    "help": os.path.join(DEFAULT_FOLDER, "help_2.png"),
-    "history": os.path.join(DEFAULT_FOLDER, "history_2.png"),
-    "menu": os.path.join(DEFAULT_FOLDER, "menu_2.png"),
-    "price_min": os.path.join(DEFAULT_FOLDER, "price_min_2.png"),
-    "price_max": os.path.join(DEFAULT_FOLDER, "price_max_2.png"),
-    "range": os.path.join(DEFAULT_FOLDER, "range_2.png"),
-    "quantity": os.path.join(DEFAULT_FOLDER, "quantity_2.png"),
-    "sort": os.path.join(DEFAULT_FOLDER, "sort_2.png"),
-    "search": os.path.join(DEFAULT_FOLDER, "search_2.png"),
-    "result": os.path.join(DEFAULT_FOLDER, "result_2.png"),
-    "welcome": os.path.join(DEFAULT_FOLDER, "welcome_2.png"),
+    "category": os.path.join(DEFAULT_FOLDER, "category.png"),
+    "error": os.path.join(DEFAULT_FOLDER, "error.png"),
+    "favorite": os.path.join(DEFAULT_FOLDER, "favorites.png"),
+    "help": os.path.join(DEFAULT_FOLDER, "help.png"),
+    "history": os.path.join(DEFAULT_FOLDER, "history.png"),
+    "menu": os.path.join(DEFAULT_FOLDER, "menu.png"),
+    "price_min": os.path.join(DEFAULT_FOLDER, "price_min.png"),
+    "price_max": os.path.join(DEFAULT_FOLDER, "price_max.png"),
+    "range": os.path.join(DEFAULT_FOLDER, "range.png"),
+    "quantity": os.path.join(DEFAULT_FOLDER, "quantity.png"),
+    "sort": os.path.join(DEFAULT_FOLDER, "sort.png"),
+    "search": os.path.join(DEFAULT_FOLDER, "search.png"),
+    "result": os.path.join(DEFAULT_FOLDER, "result.png"),
+    "welcome": os.path.join(DEFAULT_FOLDER, "welcome.png"),
     "not_found": os.path.join(DEFAULT_FOLDER, "not_found.png"),
     "target": os.path.join(DEFAULT_FOLDER, "target.png"),
-    "success": os.path.join(DEFAULT_FOLDER, "success_2.png"),
+    "success": os.path.join(DEFAULT_FOLDER, "success.png"),
+    "instruction": os.path.join(DEFAULT_FOLDER, "instruction.mp4"),
 }
 # HELPING TEXT IN `/help` ROUTE ###############################################
 HELP = """
@@ -141,7 +142,7 @@ HELP = """
     Товары можно добавлять в избранное.
     А так же отслеживать изменение цен товаров
     Бот реагирует на следующие команды:
-    ▶️ /start  начать работу с ботом
+    🚀 /start  начать работу с ботом
     🏠 /menu  главное меню
     🛒 /search  поиск товара
     ⭐️ /favorite  избранные товары

@@ -93,7 +93,7 @@ pip install -r requirements.txt
 1. Создать 2 файла `.env` и `.env.docker` на основе `.env.example`
 2. Указать переменную окружения `DB_HOST` значение `localhost` для `.env` и `postgres` для `.env.docker`.
 3. Указать ваш `TELEGRAM_BOT_TOKEN`
-4. Указать ваш `RAPID_API_TOKEN`
+4. Указать ваш `RAPID_API_TOKEN` (Rapid API [Aliexpress DataHub](https://rapidapi.com/ecommdatahub/api/aliexpress-datahub))
 5. При необходимости настроить другие параметры
 
 ## 7. Запуск

@@ -68,7 +68,7 @@ class ScheduleManager:
         user_id: int,
         key: str,
         page: int,
-        target_price: Optional[float] = None
+        target_price: Optional[float] = None,
     ) -> None:
         """
         Создает объект класса `ItemSearch`.

@@ -160,7 +160,6 @@ async def search_price_max(message: t.Message, state: FSMContext) -> None:
                 chat_id=message.chat.id,
                 photo=await media.get_fs_input_hero_image("price_max"),
                 caption="Укажите максимальную цену?",
-
             )
     except (expt.CustomError, ValueError) as error:
         msg = "{0:.150}".format(str(error))
@@ -212,7 +211,7 @@ async def search_sort_add_price_range(message: t.Message, state: FSMContext) -> 
 
 @search.callback_query(F.data.startswith("price_skip"))
 async def search_sort_skip_price_range(
-        callback: t.CallbackQuery, state: FSMContext
+    callback: t.CallbackQuery, state: FSMContext
 ) -> None:
     """
     Запрос на сортировку поисковой выдачи.
@@ -236,7 +235,7 @@ async def search_sort_skip_price_range(
             await callback.message.answer_photo(
                 photo=await media.get_fs_input_hero_image("sort"),
                 caption="Как отсортировать результат?",
-                reply_markup=await kbm.sort()
+                reply_markup=await kbm.sort(),
             )
     except expt.CustomError as error:
         msg = "{0:.150}".format(str(error))
@@ -248,9 +247,9 @@ async def search_sort_skip_price_range(
 @search.callback_query(ItemCBD.filter())
 @search.callback_query(DetailCBD.filter(F.action == DetailAction.back_list))
 async def search_result(
-        callback: t.CallbackQuery,
-        state: FSMContext,
-        callback_data: ItemCBD | DetailCBD | None = None,
+    callback: t.CallbackQuery,
+    state: FSMContext,
+    callback_data: ItemCBD | DetailCBD | None = None,
 ) -> None:
     """
     Возвращает список поисковой выдачи.
@@ -263,7 +262,7 @@ async def search_result(
     try:
         chat_id = callback.message.chat.id
         async with ChatActionSender.upload_photo(
-                bot=bot, chat_id=chat_id, interval=1.0
+            bot=bot, chat_id=chat_id, interval=1.0
         ):
             await callback.answer()
             manager = crud.ItemManager(

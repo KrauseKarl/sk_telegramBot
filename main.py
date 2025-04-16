@@ -11,6 +11,11 @@ from src.logger import logger as log
 
 
 async def main():
+    """
+    Создает объект класса `Dispatcher`.
+    Добавляет маршруты.
+    Создает таблицы в БД.
+    """
     dp = Dispatcher()
     dp.include_routers(
         r.monitor,

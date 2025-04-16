@@ -75,7 +75,7 @@ class ReviewManager:
         if self.len is None:
             self.array = await self._get_review_list()
             if self.array is None:
-                raise exceptions.CustomError(message='Комментарии к товару отсутствуют')
+                raise exceptions.CustomError(message="Комментарии к товару отсутствуют")
             self.len = len(self.array)
         return self.len
 
